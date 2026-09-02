@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="ThreatIntelligence.API/ThreatIntelligence.API.csproj" />
+    <Project Path="ThreatIntelligence.Application/ThreatIntelligence.Application.csproj" />
+    <Project Path="ThreatIntelligence.Domain/ThreatIntelligence.Domain.csproj" />
+    <Project Path="ThreatIntelligence.Infrastructure/ThreatIntelligence.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+</Solution>
