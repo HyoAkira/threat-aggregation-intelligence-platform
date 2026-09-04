@@ -1,15 +1,5 @@
 ## Veri Kaynağı Notları
 
-| **Kaynak** | **Kısıt** | **Tasarım etkisi** |
-| :-: | :-: | :-: |
-| ThreatFox `get\_iocs` | Sadece son 1–7 günü döner (`days` param) | 3x/gün zamanlanmış görev için yeterli; tarihsel backfill için kullanılmaz |
-| ThreatFox export | `recent.json` (son 48s) / `full.json` (tümü, saatlik) | `full.json` ilk seed için, sonra `get\_iocs` ile devam |
-| ThreatFox expiry | 6 aydan eski IOC'lar API/export'tan düşer (2025-05-01'den beri) | Aktif silme mantığı gerekmez, sadece eski kayıtların senkronda dönmeyeceği bilinmeli |
-| PhishTank | Kişiye özel IOC sorgu endpoint'i yok — toplu dosya (XML/CSV/JSON), saatlik güncellenir | Key'siz günlük indirme limiti düşük → key'i Epic 1'de al |
-| URLhaus | Genel dokümantasyon sayfası sorgu/lookup detaylarını login arkasında gösteriyor | Kesin endpoint'i `auth.abuse.ch` üzerinden alınan Auth-Key ile portaldan doğrulanmalı, ezbere yazılmamalı |
-| Tüm abuse.ch API'leri | `Auth-Key` header zorunlu | Secret olarak saklanır, commit edilmez |
-
-
 ## Epic 1 — Proje İskeleti, Veri Modeli ve Erişim Anahtarları
 
 - 1.1 Clean Architecture katmanları (Domain/Application/Infrastructure/Presentation)

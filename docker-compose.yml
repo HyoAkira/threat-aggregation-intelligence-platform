@@ -1,0 +1,35 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+      MSSQL_PID: "Express"
+    networks:
+      - devNetwork
+    ports:
+      - "1433:1433"
+    volumes:
+      - db_mssql_data:/var/opt/mssql
+
+  api:
+    build:
+      context: .
+      dockerfile: ThreatIntelligence.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=ThreatIntel;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+      - AuthKey__AbuseCh=${AuthKey__AbuseCh}
+      - PhishTank__ApiKey=${PhishTank__ApiKey}
+    depends_on:
+      - sqlserver
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+
+networks:
+  devNetwork:
+    driver: bridge
+
+volumes:
+  db_mssql_data:
