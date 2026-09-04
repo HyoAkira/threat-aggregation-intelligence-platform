@@ -13,6 +13,11 @@ public static class DependencyInjection
         services.AddDbContext<ThreatIntelDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
+        services.AddHttpClient<ThreatFoxApiService>(client =>
+        {
+            client.BaseAddress = new Uri("https://threatfox-api.abuse.ch");
+        });
+
         return services;
     }
 }

@@ -1,12 +1,14 @@
 using Scalar.AspNetCore;
 using ThreatIntelligence.Infrastructure;
 using ThreatIntelligence.Application;
+using DotNetEnv;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+var envPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".env");
+Env.Load(envPath);
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 builder.Services
@@ -15,7 +17,6 @@ builder.Services
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
