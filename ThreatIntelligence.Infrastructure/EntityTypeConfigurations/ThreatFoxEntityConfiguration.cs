@@ -22,7 +22,7 @@ public class ThreatFoxEntityConfiguration : IEntityTypeConfiguration<ThreatFox>
         builder.Property(t => t.LastSeenUtc);
         builder.Property(t => t.ConfidenceLevel).IsRequired();
         builder.Property(t => t.IsCompromised).IsRequired();
-        builder.Property(t => t.Reference).HasMaxLength(1000);
+        builder.Property(t => t.Reference).HasColumnType("nvarchar(max)");
         builder.Property(t => t.Tags).HasColumnType("nvarchar(max)");
         builder.Property(t => t.Anonymous).IsRequired();
         builder.Property(t => t.Reporter).IsRequired().HasMaxLength(200);
