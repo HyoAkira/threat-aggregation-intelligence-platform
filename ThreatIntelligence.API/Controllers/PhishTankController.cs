@@ -1,6 +1,6 @@
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using ThreatIntelligence.Infrastructure;
+using ThreatIntelligence.Application.Features.PhishTank.DownloadDataset;
 
 namespace ThreatIntelligence.API.Controllers;
 
@@ -8,13 +8,11 @@ namespace ThreatIntelligence.API.Controllers;
 [Route("api/[controller]")]
 public class PhishTankController : ControllerBase
 {
-    private readonly PhishTankApiService _service;
-    private readonly IConfiguration _configuration;
+    private readonly IMediator _mediator;
 
-    public PhishTankController(PhishTankApiService service, IConfiguration configuration)
+    public PhishTankController(IMediator mediator)
     {
-        _service = service;
-        _configuration = configuration;
+        _mediator = mediator;
     }
 
     [HttpGet("download")]
@@ -22,7 +20,7 @@ public class PhishTankController : ControllerBase
     {
         try
         {
-            var count = await _service.DownloadDatasetAsync();
+            var count = await _mediator.Send(new DownloadPhishTankDatasetCommand());
             return Ok(new { Message = "Download completed", PhishEntriesProcessed = count });
         }
         catch (HttpRequestException ex)

@@ -1,4 +1,4 @@
-namespace ThreatIntelligence.Infrastructure;
+namespace ThreatIntelligence.Domain.Entities;
 
 public class PhishTank
 {

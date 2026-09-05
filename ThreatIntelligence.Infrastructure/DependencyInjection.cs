@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using ThreatIntelligence.Application.Abstractions;
 
-namespace ThreatIntelligence.Infrastructure;
+namespace ThreatIntelligence.Infrastructure.Services;
 
 public static class DependencyInjection
 {
@@ -15,12 +16,12 @@ public static class DependencyInjection
 
         services.AddScoped<DatabaseHealthService>();
 
-        services.AddHttpClient<ThreatFoxApiService>(client =>
+        services.AddHttpClient<IThreatFoxApiService, ThreatFoxApiService>(client =>
         {
             client.BaseAddress = new Uri("https://threatfox-api.abuse.ch");
         });
 
-        services.AddHttpClient<PhishTankApiService>(client =>
+        services.AddHttpClient<IPhishTankApiService, PhishTankApiService>(client =>
         {
             client.BaseAddress = new Uri("http://data.phishtank.com/data/");
             client.DefaultRequestHeaders.UserAgent.ParseAdd("phishtank/hyoakira");

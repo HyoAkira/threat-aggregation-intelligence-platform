@@ -12,6 +12,7 @@
         <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" />
         <PackageReference Include="DotNetEnv" Version="3.0.0" />
+        <PackageReference Include="MediatR" Version="14.2.0" />
     </ItemGroup>
 
     <ItemGroup>

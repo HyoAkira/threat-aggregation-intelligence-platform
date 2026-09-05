@@ -2,7 +2,7 @@
 
 Configures DotNetEnv to reliably load environment variables from .env files at application startup, replacing the current unreliable .NET configuration approach. Ensures all API keys and database credentials from .env are available at runtime.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: .env file is loaded at application startup
 

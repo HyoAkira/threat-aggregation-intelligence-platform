@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using ThreatIntelligence.Infrastructure;
+using ThreatIntelligence.Infrastructure.Services;
 
 #nullable disable
 
-namespace ThreatIntelligence.Infrastructure.Migrations
+namespace ThreatIntelligence.Infrastructure.Services.Migrations
 {
     [DbContext(typeof(ThreatIntelDbContext))]
     [Migration("20260904181846_IncreaseReferenceColumnLength")]
@@ -25,7 +25,7 @@ namespace ThreatIntelligence.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("ThreatIntelligence.Domain.Provider", b =>
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Provider", b =>
                 {
                     b.Property<Guid>("ProviderId")
                         .ValueGeneratedOnAdd()
@@ -52,7 +52,7 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                     b.ToTable("Provider", "threat");
                 });
 
-            modelBuilder.Entity("ThreatIntelligence.Infrastructure.PhishTank", b =>
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.PhishTank", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -98,7 +98,7 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                     b.ToTable("PhishTank", "providers");
                 });
 
-            modelBuilder.Entity("ThreatIntelligence.Infrastructure.ThreatFox", b =>
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.ThreatFox", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()

@@ -1,5 +1,5 @@
 using Scalar.AspNetCore;
-using ThreatIntelligence.Infrastructure;
+using ThreatIntelligence.Infrastructure.Services;
 using ThreatIntelligence.Application;
 using DotNetEnv;
 

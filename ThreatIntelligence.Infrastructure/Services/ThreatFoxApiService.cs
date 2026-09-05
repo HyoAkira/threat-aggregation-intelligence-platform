@@ -1,22 +1,20 @@
 using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using ThreatIntelligence.Application.Abstractions;
+using ThreatIntelligence.Domain.Entities;
 
-namespace ThreatIntelligence.Infrastructure;
+namespace ThreatIntelligence.Infrastructure.Services;
 
-public class ThreatFoxApiService
+public class ThreatFoxApiService : IThreatFoxApiService
 {
     private readonly ThreatIntelDbContext _dbContext;
-    private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
     private const string BaseUrl = "https://threatfox-api.abuse.ch";
 
-    public ThreatFoxApiService(ThreatIntelDbContext dbContext, IConfiguration configuration, HttpClient httpClient)
+    public ThreatFoxApiService(ThreatIntelDbContext dbContext, HttpClient httpClient)
     {
         _dbContext = dbContext;
-        _configuration = configuration;
         _httpClient = httpClient;
     }
 

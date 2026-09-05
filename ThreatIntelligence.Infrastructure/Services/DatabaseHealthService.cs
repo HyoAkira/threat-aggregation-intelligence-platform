@@ -1,7 +1,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
-namespace ThreatIntelligence.Infrastructure;
+namespace ThreatIntelligence.Infrastructure.Services;
 
 public class DatabaseHealthService
 {

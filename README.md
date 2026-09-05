@@ -47,10 +47,6 @@ Domain ← Application ← Infrastructure ← API
 cp .env.template .env
 # Set SA_PASSWORD, AuthKey__AbuseCh, PhishTank__ApiKey
 
-# Local dev — use dotnet user-secrets
-cd ThreatIntelligence.API
-dotnet user-secrets set "AuthKey__AbuseCh" "your-key"
-dotnet user-secrets set "PhishTank__ApiKey" "your-key"
 ```
 
 ### 2. Start services
