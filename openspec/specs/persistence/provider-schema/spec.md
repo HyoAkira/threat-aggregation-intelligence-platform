@@ -28,16 +28,15 @@ entry from the API response, with typed columns for every field in the
 response: `IocId` (int), `IocValue` (nvarchar(500)), `IocType` (nvarchar(50)),
 `ThreatType` (nvarchar(100)), `Malware` (nvarchar(200)), `MalwareAlias`
 (nvarchar(500), nullable), `MalwarePrintable` (nvarchar(200)), `FirstSeenUtc`
-(datetime2), `LastSeenUtc` (datetime2, nullable), `ConfidenceLevel` (int),
-`IsCompromised` (bit), `Reference` (nvarchar(1000), nullable), `Tags`
-(nvarchar(max), nullable), `Anonymous` (int), `Reporter` (nvarchar(200)).
+  (datetime2), `LastSeenUtc` (datetime2, nullable), `ConfidenceLevel` (int),
+  `IsCompromised` (bit), `Reference` (nvarchar(max), nullable), `Tags`
+  (nvarchar(max), nullable), `Anonymous` (int), `Reporter` (nvarchar(200)).
 
-#### Scenario: ThreatFox response entries are persisted as typed rows
-- **WHEN** a ThreatFox API response contains IOC entries
-- **THEN** each entry is inserted as a row in `providers.ThreatFox`
-- **AND** `Verified` status, `IsCompromised`, `ConfidenceLevel` etc. are stored
-  in their respective typed columns
-- **AND** `Tags` is stored as a comma-separated string
+#### Scenario: ThreatFox response entries with long reference URLs are persisted
+- **WHEN** a ThreatFox API response contains an IOC entry with a Reference URL exceeding 1000 characters
+- **THEN** the entry is inserted as a row in `providers.ThreatFox`
+- **AND** the full Reference URL is stored without truncation
+- **AND** all other typed columns are stored correctly
 
 ### Requirement: PhishTank raw responses are stored in a typed table
 
