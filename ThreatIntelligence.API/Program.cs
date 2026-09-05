@@ -15,6 +15,24 @@ builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
 
+using (var scope = builder.Services.BuildServiceProvider().CreateScope())
+{
+    var health = scope.ServiceProvider.GetRequiredService<DatabaseHealthService>();
+    try
+    {
+        if (!await health.CanConnectAsync())
+        {
+            Console.Error.WriteLine($"Database connection cannot be established to {health.GetConnectionTarget()}.");
+            Environment.FailFast("Database connection cannot be established.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Database connection cannot be established to {health.GetConnectionTarget()}. Error: {ex.Message}");
+        Environment.FailFast("Database connection cannot be established.");
+    }
+}
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
