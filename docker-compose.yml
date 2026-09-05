@@ -17,12 +17,14 @@ services:
       context: .
       dockerfile: ThreatIntelligence.API/Dockerfile
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=ThreatIntel;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
-      - AuthKey__AbuseCh=${AuthKey__AbuseCh}
-      - PhishTank__ApiKey=${PhishTank__ApiKey}
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=ThreatIntel;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;"
+      AuthKey__AbuseCh: ${AuthKey__AbuseCh}
+      PhishTank__ApiKey: ${PhishTank__ApiKey}
     depends_on:
       - sqlserver
+    networks:
+      - devNetwork
     ports:
       - "8080:8080"
       - "8081:8081"

@@ -5,7 +5,7 @@ to the `ThreatIntel` database on the running MSSQL Server container: the
 `DefaultConnection` string, the `ThreatIntelDbContext`, and EF migration
 workflow (applied manually via `dotnet ef database update`).
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Application connects to SQL Server via DefaultConnection
 

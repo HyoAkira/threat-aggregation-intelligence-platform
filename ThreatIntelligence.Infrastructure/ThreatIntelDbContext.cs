@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using ThreatIntelligence.Domain;
+using ThreatIntelligence.Domain.Entities;
 
-namespace ThreatIntelligence.Infrastructure;
+namespace ThreatIntelligence.Infrastructure.Services;
 
 public class ThreatIntelDbContext : DbContext
 {

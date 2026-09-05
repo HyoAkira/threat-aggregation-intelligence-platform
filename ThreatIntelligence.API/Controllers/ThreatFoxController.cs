@@ -1,6 +1,7 @@
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using ThreatIntelligence.Infrastructure;
+using ThreatIntelligence.Application.Features.ThreatFox.DownloadDataset;
+using ThreatIntelligence.Application.Features.ThreatFox.GetRecentIoCs;
 
 namespace ThreatIntelligence.API.Controllers;
 
@@ -8,13 +9,11 @@ namespace ThreatIntelligence.API.Controllers;
 [Route("api/[controller]")]
 public class ThreatFoxController : ControllerBase
 {
-    private readonly ThreatFoxApiService _service;
-    private readonly IConfiguration _configuration;
+    private readonly IMediator _mediator;
 
-    public ThreatFoxController(ThreatFoxApiService service, IConfiguration configuration)
+    public ThreatFoxController(IMediator mediator)
     {
-        _service = service;
-        _configuration = configuration;
+        _mediator = mediator;
     }
 
     [HttpGet("download")]
@@ -22,7 +21,7 @@ public class ThreatFoxController : ControllerBase
     {
         try
         {
-            var count = await _service.DownloadDatasetAsync();
+            var count = await _mediator.Send(new DownloadThreatFoxDatasetCommand());
             return Ok(new { Message = "Download completed", IocsProcessed = count });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not configured"))
@@ -40,7 +39,7 @@ public class ThreatFoxController : ControllerBase
     {
         try
         {
-            var count = await _service.RecentIoCsAsync();
+            var count = await _mediator.Send(new GetRecentThreatFoxIoCsCommand());
             return Ok(new { Message = "Recent IOCs fetched", IocsProcessed = count });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not configured"))

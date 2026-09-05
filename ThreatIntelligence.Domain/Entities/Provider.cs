@@ -1,4 +1,4 @@
-namespace ThreatIntelligence.Domain;
+namespace ThreatIntelligence.Domain.Entities;
 
 public class Provider
 {

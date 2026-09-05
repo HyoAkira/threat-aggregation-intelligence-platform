@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using ThreatIntelligence.Domain;
+using ThreatIntelligence.Domain.Entities;
 
-namespace ThreatIntelligence.Infrastructure.EntityTypeConfigurations;
+namespace ThreatIntelligence.Infrastructure.Services.EntityTypeConfigurations;
 
 public class ProviderEntityConfiguration : IEntityTypeConfiguration<Provider>
 {
