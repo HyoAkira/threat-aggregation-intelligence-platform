@@ -1,6 +1,8 @@
 using Scalar.AspNetCore;
-using ThreatIntelligence.Infrastructure.Services;
+using ThreatIntelligence.API.Middleware;
 using ThreatIntelligence.Application;
+using ThreatIntelligence.Infrastructure;
+using ThreatIntelligence.Infrastructure.Services;
 using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +12,8 @@ Env.Load(envPath);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 
 builder.Services
     .AddApplication()
@@ -42,6 +46,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseExceptionHandler();
 
 app.UseAuthorization();
 

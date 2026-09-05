@@ -1,9 +1,10 @@
 using MediatR;
 using ThreatIntelligence.Application.Abstractions;
+using ThreatIntelligence.Application.DTOs;
 
 namespace ThreatIntelligence.Application.Features.ThreatFox.GetRecentIoCs;
 
-public class GetRecentThreatFoxIoCsCommandHandler : IRequestHandler<GetRecentThreatFoxIoCsCommand, int>
+public class GetRecentThreatFoxIoCsCommandHandler : IRequestHandler<GetRecentThreatFoxIoCsCommand, GetRecentIoCsResponse>
 {
     private readonly IThreatFoxApiService _service;
 
@@ -12,7 +13,7 @@ public class GetRecentThreatFoxIoCsCommandHandler : IRequestHandler<GetRecentThr
         _service = service;
     }
 
-    public async Task<int> Handle(GetRecentThreatFoxIoCsCommand request, CancellationToken cancellationToken)
+    public async Task<GetRecentIoCsResponse> Handle(GetRecentThreatFoxIoCsCommand request, CancellationToken cancellationToken)
     {
         return await _service.RecentIoCsAsync(cancellationToken);
     }

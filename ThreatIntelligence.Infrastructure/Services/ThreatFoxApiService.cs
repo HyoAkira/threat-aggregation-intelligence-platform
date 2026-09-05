@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using ThreatIntelligence.Application.Abstractions;
+using ThreatIntelligence.Application.DTOs;
 using ThreatIntelligence.Domain.Entities;
 
 namespace ThreatIntelligence.Infrastructure.Services;
@@ -18,7 +19,7 @@ public class ThreatFoxApiService : IThreatFoxApiService
         _httpClient = httpClient;
     }
 
-    public async Task<int> DownloadDatasetAsync(CancellationToken cancellationToken = default)
+    public async Task<DownloadDatasetResponse> DownloadDatasetAsync(CancellationToken cancellationToken = default)
     {
         var apiKey = GetApiKey();
 
@@ -49,10 +50,10 @@ public class ThreatFoxApiService : IThreatFoxApiService
             await UpsertThreatFoxAsync(entity, cancellationToken);
         }
 
-        return entities.Count;
+        return new DownloadDatasetResponse(entities.Count, "Download completed", DateTime.UtcNow);
     }
 
-    public async Task<int> RecentIoCsAsync(CancellationToken cancellationToken = default)
+    public async Task<GetRecentIoCsResponse> RecentIoCsAsync(CancellationToken cancellationToken = default)
     {
         var apiKey = GetApiKey();
 
@@ -74,7 +75,7 @@ public class ThreatFoxApiService : IThreatFoxApiService
             await UpsertThreatFoxAsync(entity, cancellationToken);
         }
 
-        return entities.Count;
+        return new GetRecentIoCsResponse(entities.Count, "Recent IOCs fetched", DateTime.UtcNow);
     }
 
     private string GetApiKey()
