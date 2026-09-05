@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace ThreatIntelligence.Infrastructure.Services.Migrations
+namespace ThreatIntelligence.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class Initial : Migration

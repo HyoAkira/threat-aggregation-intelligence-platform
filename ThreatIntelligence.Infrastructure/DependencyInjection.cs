@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ThreatIntelligence.Application.Abstractions;
+using ThreatIntelligence.Infrastructure.ConnectionStrings;
+using ThreatIntelligence.Infrastructure.Services;
 
-namespace ThreatIntelligence.Infrastructure.Services;
+namespace ThreatIntelligence.Infrastructure;
 
 public static class DependencyInjection
 {
@@ -11,8 +13,12 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var connectionString = DatabaseConnectionStringResolver.Resolve(
+            configuration.GetConnectionString("DefaultConnection"),
+            Environment.GetEnvironmentVariable("SA_PASSWORD"));
+
         services.AddDbContext<ThreatIntelDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+            options.UseSqlServer(connectionString));
 
         services.AddScoped<DatabaseHealthService>();
 

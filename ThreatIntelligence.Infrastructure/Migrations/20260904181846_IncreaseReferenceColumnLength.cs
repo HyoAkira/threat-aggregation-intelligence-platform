@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace ThreatIntelligence.Infrastructure.Services.Migrations
+namespace ThreatIntelligence.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class IncreaseReferenceColumnLength : Migration

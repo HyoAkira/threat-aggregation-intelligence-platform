@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using ThreatIntelligence.Infrastructure.Services;
+using ThreatIntelligence.Infrastructure;
 
 #nullable disable
 
-namespace ThreatIntelligence.Infrastructure.Services.Migrations
+namespace ThreatIntelligence.Infrastructure.Migrations
 {
     [DbContext(typeof(ThreatIntelDbContext))]
     partial class ThreatIntelDbContextModelSnapshot : ModelSnapshot

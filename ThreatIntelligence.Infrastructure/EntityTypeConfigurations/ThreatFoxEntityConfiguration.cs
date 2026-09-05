@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ThreatIntelligence.Domain.Entities;
 
-namespace ThreatIntelligence.Infrastructure.Services.EntityTypeConfigurations;
+namespace ThreatIntelligence.Infrastructure.EntityTypeConfigurations;
 
 public class ThreatFoxEntityConfiguration : IEntityTypeConfiguration<ThreatFox>
 {

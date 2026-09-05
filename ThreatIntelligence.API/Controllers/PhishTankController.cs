@@ -18,14 +18,7 @@ public class PhishTankController : ControllerBase
     [HttpGet("download")]
     public async Task<IActionResult> DownloadDataset()
     {
-        try
-        {
-            var count = await _mediator.Send(new DownloadPhishTankDatasetCommand());
-            return Ok(new { Message = "Download completed", PhishEntriesProcessed = count });
-        }
-        catch (HttpRequestException ex)
-        {
-            return StatusCode(502, new { Error = ex.Message });
-        }
+        var response = await _mediator.Send(new DownloadPhishTankDatasetCommand());
+        return Ok(response);
     }
 }

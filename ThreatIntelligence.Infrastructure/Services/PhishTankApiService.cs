@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using ThreatIntelligence.Application.Abstractions;
+using ThreatIntelligence.Application.DTOs;
 using ThreatIntelligence.Domain.Entities;
 
 namespace ThreatIntelligence.Infrastructure.Services;
@@ -17,7 +18,7 @@ public class PhishTankApiService : IPhishTankApiService
         _httpClient = httpClient;
     }
 
-    public async Task<int> DownloadDatasetAsync(CancellationToken cancellationToken = default)
+    public async Task<DownloadDatasetResponse> DownloadDatasetAsync(CancellationToken cancellationToken = default)
     {
         var url = "online-valid.json.gz";
 
@@ -38,7 +39,7 @@ public class PhishTankApiService : IPhishTankApiService
             await UpsertPhishTankAsync(entity, cancellationToken);
         }
 
-        return entities.Count;
+        return new DownloadDatasetResponse(entities.Count, "Download completed", DateTime.UtcNow);
     }
 
     private List<PhishTank> ParseJsonArray(JsonDocument doc)

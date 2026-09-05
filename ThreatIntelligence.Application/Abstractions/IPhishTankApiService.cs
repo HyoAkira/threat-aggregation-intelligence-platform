@@ -1,6 +1,8 @@
+using ThreatIntelligence.Application.DTOs;
+
 namespace ThreatIntelligence.Application.Abstractions;
 
 public interface IPhishTankApiService
 {
-    Task<int> DownloadDatasetAsync(CancellationToken cancellationToken = default);
+    Task<DownloadDatasetResponse> DownloadDatasetAsync(CancellationToken cancellationToken = default);
 }

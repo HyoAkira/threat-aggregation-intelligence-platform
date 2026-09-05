@@ -19,36 +19,14 @@ public class ThreatFoxController : ControllerBase
     [HttpGet("download")]
     public async Task<IActionResult> DownloadDataset()
     {
-        try
-        {
-            var count = await _mediator.Send(new DownloadThreatFoxDatasetCommand());
-            return Ok(new { Message = "Download completed", IocsProcessed = count });
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not configured"))
-        {
-            return Unauthorized(new { Error = ex.Message });
-        }
-        catch (HttpRequestException ex)
-        {
-            return StatusCode(502, new { Error = ex.Message });
-        }
+        var response = await _mediator.Send(new DownloadThreatFoxDatasetCommand());
+        return Ok(response);
     }
 
     [HttpGet("recent")]
     public async Task<IActionResult> GetRecentIoCs()
     {
-        try
-        {
-            var count = await _mediator.Send(new GetRecentThreatFoxIoCsCommand());
-            return Ok(new { Message = "Recent IOCs fetched", IocsProcessed = count });
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not configured"))
-        {
-            return Unauthorized(new { Error = ex.Message });
-        }
-        catch (HttpRequestException ex)
-        {
-            return StatusCode(502, new { Error = ex.Message });
-        }
+        var response = await _mediator.Send(new GetRecentThreatFoxIoCsCommand());
+        return Ok(response);
     }
 }

@@ -5,5 +5,7 @@
     <Project Path="ThreatIntelligence.Domain/ThreatIntelligence.Domain.csproj" />
     <Project Path="ThreatIntelligence.Infrastructure/ThreatIntelligence.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/ThreatIntelligence.Application.Tests/ThreatIntelligence.Application.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using ThreatIntelligence.Infrastructure.Services;
+using ThreatIntelligence.Infrastructure;
 
 #nullable disable
 
-namespace ThreatIntelligence.Infrastructure.Services.Migrations
+namespace ThreatIntelligence.Infrastructure.Migrations
 {
     [DbContext(typeof(ThreatIntelDbContext))]
     [Migration("20260904102535_Initial")]
