@@ -11,7 +11,18 @@ services:
       - "1433:1433"
     volumes:
       - db_mssql_data:/var/opt/mssql
-
+  testsqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${TEST_SQLSERVER_PASSWORD}
+      MSSQL_PID: "Express"
+    networks:
+      - devNetwork
+    ports:
+      - "1433:1433"
+    volumes:
+      - db_testmssql_data:/var/opt/mssql
   api:
     build:
       context: .
@@ -35,3 +46,4 @@ networks:
 
 volumes:
   db_mssql_data:
+  db_testmssql_data:

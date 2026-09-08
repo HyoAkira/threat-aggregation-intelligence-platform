@@ -19,7 +19,9 @@ builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
 
-using (var scope = builder.Services.BuildServiceProvider().CreateScope())
+var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
 {
     var health = scope.ServiceProvider.GetRequiredService<DatabaseHealthService>();
     try
@@ -36,8 +38,6 @@ using (var scope = builder.Services.BuildServiceProvider().CreateScope())
         Environment.FailFast("Database connection cannot be established.");
     }
 }
-
-var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {

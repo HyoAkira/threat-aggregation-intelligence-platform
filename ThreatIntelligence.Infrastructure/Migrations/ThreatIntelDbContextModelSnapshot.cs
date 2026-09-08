@@ -22,151 +22,290 @@ namespace ThreatIntelligence.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Provider", b =>
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Ioc", b =>
                 {
-                    b.Property<Guid>("ProviderId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
-                    b.Property<string>("BaseUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("FetchIntervalMinutes")
-                        .HasColumnType("int");
+                    b.Property<bool?>("Anonymous")
+                        .HasColumnType("bit")
+                        .HasColumnName("anonymous");
 
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("ProviderId");
-
-                    b.ToTable("Provider", "threat");
-                });
-
-            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.PhishTank", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Details")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("Online")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("PhishDetailUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("PhishId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("SubmissionTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Target")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("VerificationTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("Verified")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PhishId")
-                        .IsUnique();
-
-                    b.ToTable("PhishTank", "providers");
-                });
-
-            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.ThreatFox", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<int>("Anonymous")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ConfidenceLevel")
-                        .HasColumnType("int");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("createdAt");
 
                     b.Property<DateTime>("FirstSeenUtc")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime2")
+                        .HasColumnName("firstSeenUtc");
 
-                    b.Property<int>("IocId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("IocType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<byte>("IocType")
+                        .HasColumnType("tinyint")
+                        .HasColumnName("iocType");
 
                     b.Property<string>("IocValue")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
+                        .HasColumnName("iocValue");
 
-                    b.Property<bool>("IsCompromised")
-                        .HasColumnType("bit");
+                    b.Property<byte[]>("IocValueHash")
+                        .IsRequired()
+                        .HasColumnType("binary(32)")
+                        .HasColumnName("iocValueHash");
+
+                    b.Property<bool?>("IsCompromised")
+                        .HasColumnType("bit")
+                        .HasColumnName("isCompromised");
+
+                    b.Property<bool?>("IsVerified")
+                        .HasColumnType("bit")
+                        .HasColumnName("isVerified");
 
                     b.Property<DateTime?>("LastSeenUtc")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime2")
+                        .HasColumnName("lastSeenUtc");
 
                     b.Property<string>("Malware")
-                        .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("malware");
 
                     b.Property<string>("MalwareAlias")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("malwareAlias");
 
                     b.Property<string>("MalwarePrintable")
-                        .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("malwarePrintable");
 
-                    b.Property<string>("Reference")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("ParentDomain")
+                        .HasMaxLength(253)
+                        .HasColumnType("nvarchar(253)")
+                        .HasColumnName("parentDomain");
 
-                    b.Property<string>("Reporter")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<string>("PhishTankDetails")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("phishTankDetails");
 
-                    b.Property<string>("Tags")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool?>("PhishTankOnline")
+                        .HasColumnType("bit")
+                        .HasColumnName("phishTankOnline");
 
-                    b.Property<string>("ThreatType")
+                    b.Property<int?>("Port")
+                        .HasColumnType("int")
+                        .HasColumnName("port");
+
+                    b.Property<string>("ProviderDetailsLink")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
+                        .HasColumnName("providerDetailsLink");
+
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("int")
+                        .HasColumnName("providerId");
+
+                    b.Property<string>("ProviderRecordId")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("providerRecordId");
+
+                    b.Property<string>("Reporter")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("reporter");
+
+                    b.Property<string>("Target")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("target");
+
+                    b.Property<byte?>("ThreatFoxConfidenceLevel")
+                        .HasColumnType("tinyint")
+                        .HasColumnName("threatFoxConfidenceLevel");
+
+                    b.Property<string>("ThreatType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("threatType");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updatedAt");
+
+                    b.Property<string>("UrlHost")
+                        .HasMaxLength(253)
+                        .HasColumnType("nvarchar(253)")
+                        .HasColumnName("urlHost");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IocId", "IocValue", "IocType")
+                    b.HasIndex("LastSeenUtc");
+
+                    b.HasIndex("IocType", "IocValueHash");
+
+                    b.HasIndex("IocType", "ParentDomain");
+
+                    b.HasIndex("IocType", "UrlHost");
+
+                    b.HasIndex("ProviderId", "ProviderRecordId")
                         .IsUnique();
 
-                    b.ToTable("ThreatFox", "providers");
+                    b.HasIndex("ProviderId", "IocType", "IocValueHash", "Port")
+                        .IsUnique();
+
+                    b.ToTable("iocs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_iocs_phishTankDetails", "[phishTankDetails] IS NULL OR ISJSON([phishTankDetails]) = 1");
+
+                            t.HasCheckConstraint("CK_iocs_port", "[port] IS NULL OR [port] BETWEEN 1 AND 65535");
+
+                            t.HasCheckConstraint("CK_iocs_threatFoxConfidenceLevel", "[threatFoxConfidenceLevel] IS NULL OR [threatFoxConfidenceLevel] BETWEEN 0 AND 100");
+                        });
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.IocTag", b =>
+                {
+                    b.Property<int>("IocId")
+                        .HasColumnType("int")
+                        .HasColumnName("iocId");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("int")
+                        .HasColumnName("tagId");
+
+                    b.HasKey("IocId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("iocTags", (string)null);
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Provider", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("baseUrl");
+
+                    b.Property<int>("IntervalMinutes")
+                        .HasColumnType("int")
+                        .HasColumnName("intervalMinutes");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit")
+                        .HasColumnName("isEnabled");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("providers", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BaseUrl = "https://threatfox-api.abuse.ch",
+                            IntervalMinutes = 5,
+                            IsEnabled = true,
+                            Name = "ThreatFox"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            BaseUrl = "http://data.phishtank.com/data/",
+                            IntervalMinutes = 60,
+                            IsEnabled = true,
+                            Name = "PhishTank"
+                        });
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Tag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("tags", (string)null);
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Ioc", b =>
+                {
+                    b.HasOne("ThreatIntelligence.Domain.Entities.Provider", "Provider")
+                        .WithMany("Iocs")
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.IocTag", b =>
+                {
+                    b.HasOne("ThreatIntelligence.Domain.Entities.Ioc", "Ioc")
+                        .WithMany("IocTags")
+                        .HasForeignKey("IocId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ThreatIntelligence.Domain.Entities.Tag", "Tag")
+                        .WithMany("IocTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ioc");
+
+                    b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Ioc", b =>
+                {
+                    b.Navigation("IocTags");
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Provider", b =>
+                {
+                    b.Navigation("Iocs");
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Tag", b =>
+                {
+                    b.Navigation("IocTags");
                 });
 #pragma warning restore 612, 618
         }

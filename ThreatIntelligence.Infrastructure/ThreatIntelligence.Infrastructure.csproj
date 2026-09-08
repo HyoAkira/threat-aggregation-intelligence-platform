@@ -23,6 +23,11 @@
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
       <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+      <PackageReference Include="Nager.PublicSuffix" Version="3.8.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="public_suffix_list.dat" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 </Project>
