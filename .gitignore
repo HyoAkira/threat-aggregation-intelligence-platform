@@ -63,3 +63,6 @@ nunit-*.xml
 *.user
 *.suo
 .opencode/node_modules/
+graphify-out
+.obsidian
+ProjectDocs/.obsidian

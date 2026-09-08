@@ -21,6 +21,9 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString));
 
         services.AddScoped<DatabaseHealthService>();
+        services.AddSingleton(new IocNormalizer(
+            Path.Combine(AppContext.BaseDirectory, "public_suffix_list.dat")));
+        services.AddScoped<IocPersistenceService>();
 
         services.AddHttpClient<IThreatFoxApiService, ThreatFoxApiService>(client =>
         {

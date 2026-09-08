@@ -31,6 +31,22 @@ public class ControllerResponseTypingTests
         Assert.Empty(missing);
     }
 
+    [Fact]
+    public void IngestionRoutesRemainStable()
+    {
+        var routes = GetActions()
+            .Select(action => new
+            {
+                Controller = action.DeclaringType!.Name,
+                Template = action.GetCustomAttribute<HttpMethodAttribute>()!.Template
+            })
+            .ToArray();
+
+        Assert.Contains(routes, route => route.Controller == nameof(ThreatFoxController) && route.Template == "download");
+        Assert.Contains(routes, route => route.Controller == nameof(ThreatFoxController) && route.Template == "recent");
+        Assert.Contains(routes, route => route.Controller == nameof(PhishTankController) && route.Template == "download");
+    }
+
     private static IEnumerable<MethodInfo> GetActions()
     {
         return typeof(ThreatFoxController).Assembly.GetTypes()
