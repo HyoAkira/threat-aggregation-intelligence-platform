@@ -13,15 +13,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "ProjectDocs/Backlog.md",
+                "file": "openspec/changes/e02-domain-model-persistence/tasks.md",
                 "mode": "source",
-                "source": true
+                "source": false
               },
               "icon": "lucide-file",
-              "title": "Backlog"
+              "title": "tasks"
+            }
+          },
+          {
+            "id": "aeb12aaf1e4f47f2",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -99,7 +110,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "ProjectDocs/Backlog.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +128,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "ProjectDocs/Backlog.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -161,7 +170,6 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "ProjectDocs/Backlog.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -188,44 +196,44 @@
       "bases:Create new base": false
     }
   },
-  "active": "30696cf7ec4b37ac",
+  "active": "aeb12aaf1e4f47f2",
   "lastOpenFiles": [
-    "src/ThreatIntelligence.Worker/obj/e8c86daf-0e44-4dd5-8658-f56c4944c63c.tmp",
-    "src/ThreatIntelligence.Worker/obj/cd2f10b2-f3df-4863-8ac8-0473340d4540.tmp",
-    "docker-compose.yml",
-    "README.md",
-    "src/ThreatIntelligence.Worker/Dockerfile",
-    "src/ThreatIntelligence.API/Dockerfile",
-    "src/ThreatIntelligence.Worker/obj/9a5e302f-1e5c-4383-a0da-c119b0c9c785.tmp",
-    "src/ThreatIntelligence.Worker/obj/e35f8fff-63ae-49af-938f-1a5713ee4c2b.tmp",
-    "src/ThreatIntelligence.Worker/obj/c9b0a9a7-9a98-4d99-a82d-b631f4844ed2.tmp",
-    "src/ThreatIntelligence.Worker/obj/359a0fb0-37d7-4722-af2f-2e71d9f65ee8.tmp",
-    "src/ThreatIntelligence.Infrastructure/HealthChecks/RabbitMqHealthCheck.cs",
-    "src/ThreatIntelligence.Infrastructure/HealthChecks/SqlServerHealthCheck.cs",
-    "frontend/node_modules/ts-jest/TROUBLESHOOTING.md",
-    "frontend/node_modules/ts-jest/README.md",
-    "frontend/node_modules/uglify-js/README.md",
-    "frontend/node_modules/ts-jest/LICENSE.md",
-    "frontend/node_modules/ts-jest/CONTRIBUTING.md",
-    "frontend/node_modules/ts-jest/CHANGELOG.md",
-    "frontend/node_modules/@types/jest/README.md",
-    "frontend/node_modules/handlebars/release-notes.md",
-    "frontend/node_modules/neo-async/README.md",
-    "frontend/node_modules/bs-logger/README.md",
-    "frontend/node_modules/bs-logger/CHANGELOG.md",
-    "frontend/node_modules/ts-jest/node_modules/type-fest/readme.md",
-    "frontend/node_modules/lodash.memoize/README.md",
-    "frontend/node_modules/ts-jest/node_modules/semver/README.md",
-    "frontend/node_modules/minimist/README.md",
-    "frontend/node_modules/minimist/CHANGELOG.md",
-    "frontend/node_modules/handlebars/node_modules/source-map/CHANGELOG.md",
-    "frontend/node_modules/make-error/README.md",
-    "frontend/node_modules/handlebars/node_modules/source-map/README.md",
-    "ProjectDocs/Technical-Specification.md",
+    "openspec/changes/e02-domain-model-persistence/tasks.md",
+    "openspec/changes/e02-domain-model-persistence/proposal.md",
+    "openspec/changes/e02-domain-model-persistence/design.md",
     "ProjectDocs/Backlog.md",
-    "frontend/node_modules/@istanbuljs/load-nyc-config/node_modules/resolve-from/readme.md",
-    "frontend/node_modules/test-exclude/node_modules/glob/node_modules/minimatch/README.md",
-    "frontend/node_modules/jest-cli/README.md",
+    "openspec/changes/e03/tasks.md",
+    "openspec/changes/e04/tasks.md",
+    "openspec/changes/e04/design.md",
+    "openspec/changes/e04/specs/auth/spec.md",
+    "openspec/changes/e04/specs/auth",
+    "openspec/changes/e04/specs",
+    "openspec/changes/e04/proposal.md",
+    "openspec/changes/e04",
+    "openspec/changes/e03/proposal.md",
+    "openspec/changes/e03/design.md",
+    "openspec/changes/e03/specs/public-suffix-list/spec.md",
+    "openspec/changes/e03/specs/provider-record-validation/spec.md",
+    "openspec/changes/e03/specs/provider-record-validation",
+    "openspec/changes/e03/specs/public-suffix-list",
+    "openspec/changes/e03/specs/ioc-normalization/spec.md",
+    "openspec/changes/e03/specs/ioc-normalization",
+    "openspec/changes/e03/specs",
+    "Dockerfile.e01check",
+    "openspec/changes/e02-domain-model-persistence/specs/repositories/spec.md",
+    "openspec/changes/e02-domain-model-persistence/specs/repositories",
+    "openspec/changes/e02-domain-model-persistence/specs/identity-hashing/spec.md",
+    "openspec/changes/e02-domain-model-persistence/specs/identity-hashing",
+    "openspec/changes/e02-domain-model-persistence/specs/admin-seed/spec.md",
+    "openspec/changes/e02-domain-model-persistence/specs/seeding/spec.md",
+    "openspec/changes/e02-domain-model-persistence/specs/persistence/spec.md",
+    "openspec/changes/e02-domain-model-persistence/specs/domain-model/spec.md",
+    "frontend/node_modules/@tanstack/react-query/README.md",
+    "frontend/node_modules/react-remove-scroll/README.md",
+    "frontend/node_modules/use-callback-ref/README.md",
+    "frontend/node_modules/use-sidecar/README.md",
+    "frontend/node_modules/react-style-singleton/README.md",
+    "frontend/node_modules/react-remove-scroll-bar/README.md",
     "frontend/node_modules/@jest/reporters/assets/jest_logo.png",
     "frontend/node_modules/istanbul-reports/lib/html/assets/sort-arrow-sprite.png",
     "frontend/node_modules/istanbul-reports/lib/html/assets/favicon.png",

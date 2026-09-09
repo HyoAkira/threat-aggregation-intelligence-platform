@@ -52,7 +52,7 @@ Deployment: docker-compose → mssql, rabbitmq, api, worker (+ nginx/frontend fi
 | Area             | Technology                                                                                    |
 | ---------------- | --------------------------------------------------------------------------------------------- |
 | Frontend         | React (Vite + TS), Radix UI, Zustand, TanStack Query, Zod                                     |
-| Frontend routing | react-router (role-guarded routes)                                                            |
+| Frontend routing | TanStack Start/Router (role-guarded routes; selected implementation)                          |
 | Backend          | .NET 10 Web API (Controller-based), Clean Architecture + CQRS (**MediatR**), FluentValidation |
 | Persistence      | SQL Server 2025, EF Core (code-first), SQL Server via Docker                                  |
 | Messaging        | MassTransit over RabbitMQ                                                                      |
@@ -439,7 +439,9 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 
 ## 10. Logging (Serilog)
 
-- Sinks: **Console** (dev) + **rolling file** `logs/app-{date}.log` (retained 7 days), structured JSON.
+- Sinks: **Console** (dev) + **rolling JSON files** `logs/api-{date}.json` and `logs/worker-{date}.json`
+  (retained 7 days). API request logs accept or generate `X-Correlation-ID`, return it on the response,
+  and include it in structured request events. Secrets are never written to logs.
 - Minimum level runtime-editable via `settings["Logging:MinimumLevel"]` (reload hook).
 - **Every fetch lifecycle event** logged: start (provider, mode, trigger), success (counts), transient retry, terminal failure (`errorDetail`), quota guard.
 - `GET /api/admin/logs` tails the latest file: level filter, ≤500 rows, timestamp desc.
@@ -463,7 +465,9 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 
 **Patterns:** TanStack Query (server state/cache/invalidations), Zustand (auth/store: token, user, role),
 Radix UI primitives, Zod schemas shared for input validation (mirrors backend §5/§6), react-router
-guards on both route and request level (server re-enforces roles).
+guards on both route and request level (server re-enforces roles). TanStack Start/Router is the selected
+Vite-based routing implementation for this repository; it replaces the originally proposed `react-router`
+choice while preserving the same role-guard requirement.
 
 **Delivery:** MVP served dev-only (`vite dev` → proxy `/api` → api:8080); **final phase** ships a static build
 served by **nginx** in docker-compose (`frontend` service).
@@ -476,14 +480,16 @@ served by **nginx** in docker-compose (`frontend` service).
 services:
   mssql:     image mcr.microsoft.com/mssql/server:2025-latest   # port 1433, volume for data
   rabbitmq:  image rabbitmq:3.13-management                     # ports 5672, 15672, volume
-  api:       build Api/, depends_on mssql rabbitmq, ports 8080 → 8080, env_file .env
-  worker:    build Worker/, depends_on mssql rabbitmq, env_file .env
+  api:       build src/ThreatIntelligence.API/Dockerfile, depends_on mssql rabbitmq, ports 8080 → 8080, env_file .env
+  worker:    build src/ThreatIntelligence.Worker/Dockerfile, depends_on mssql rabbitmq, ports 8081 → 8080, env_file .env
   # frontend: added in final phase (nginx serving dist, proxies /api → api)
 ```
 
 - One `.env` at repo root drives the keys in §4.
-- Healthchecks on api/worker (`/health`), wait-for-db + wait-for-rabbit at startup.
-- Volumes: mssql data, rabbit data, api+worker logs.
+- Healthchecks on api/worker (`/health`), plus liveness endpoints (`/health/live`); Compose waits for
+  healthy MSSQL and RabbitMQ before starting either host.
+- Volumes: mssql data, rabbit data, API logs, and Worker logs. The test SQL Server is profile-gated
+  (`test`) and uses host port 1432.
 
 ---
 
@@ -516,6 +522,10 @@ services:
 
 Fixtures: static recent CSV/JSON + PhishTank JSON inside test project; fake `IProviderClient` for
 worker tests. README documents `dotnet test` + compose bring-up steps.
+
+Frontend foundation tests use Jest with `ts-jest`; the repository includes a TypeScript schema smoke
+test. Frontend verification also runs linting and the Vite production build. The complete .NET solution
+restore, build, and test suite has been verified in a clean .NET 10 container.
 
 ---
 
