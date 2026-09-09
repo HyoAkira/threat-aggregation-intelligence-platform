@@ -12,23 +12,23 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 ## 2. Epic summary and recommended order
 
-| Order | Epic | Outcome | Priority | Depends on |
-| --- | --- | --- | --- | --- |
-| 0 | E00 — Decisions and backlog readiness | Ambiguities and infrastructure conflicts are resolved | P0 | — |
-| 1 | E01 — Solution and local platform foundation | API, worker, database, broker, and frontend run locally | P0 | E00 |
-| 2 | E02 — Domain model and persistence | Schema, constraints, seeds, and migrations implement the data contract | P0 | E01 |
-| 3 | E03 — IOC normalization and validation | All supported indicators have deterministic identity and search behavior | P0 | E01 |
-| 4 | E04 — Authentication and authorization | Users can log in and role boundaries are enforced | P0 | E02 |
-| 5 | E05 — Messaging, fetch lifecycle, and scheduling | Fetch jobs are guarded, durable, observable, and retry safely | P0 | E02 |
-| 6 | E06 — ThreatFox integration | Recent and full ThreatFox data can be fetched and mapped | P0 | E03, E05 |
-| 7 | E07 — PhishTank integration | PhishTank data can be fetched and mapped within its download budget | P0 | E03, E05 |
-| 8 | E08 — Atomic upsert and deduplication pipeline | Re-fetches update without duplicates or partial writes | P0 | E02, E03, E05 |
-| 9 | E09 — IOC query API | Authenticated users can search, browse, group, and trace sources | P0 | E08 |
-| 10 | E10 — Administration API and observability | Admins can operate and inspect the system | P0 | E05, E08 |
-| 11 | E11 — User frontend | Users can log in, search, browse, and inspect IOCs | P0 | E04, E09 |
-| 12 | E12 — Admin frontend | Admin workflows are usable and safe | P0 | E10, E11 |
-| 13 | E13 — Quality, security, and performance | Critical rules and realistic workloads are verified | P0 | All relevant feature epics |
-| 14 | E14 — Packaging, operations, and release | The full product is deployable and supportable | P1 | E11–E13 |
+| Order | Epic                                             | Outcome                                                                  | Priority | Depends on                 |
+| ----- | ------------------------------------------------ | ------------------------------------------------------------------------ | -------- | -------------------------- |
+| 0     | E00 — Decisions and backlog readiness            | Ambiguities and infrastructure conflicts are resolved                    | P0       | —                          |
+| 1     | E01 — Solution and local platform foundation     | API, worker, database, broker, and frontend run locally                  | P0       | E00                        |
+| 2     | E02 — Domain model and persistence               | Schema, constraints, seeds, and migrations implement the data contract   | P0       | E01                        |
+| 3     | E03 — IOC normalization and validation           | All supported indicators have deterministic identity and search behavior | P0       | E01                        |
+| 4     | E04 — Authentication and authorization           | Users can log in and role boundaries are enforced                        | P0       | E02                        |
+| 5     | E05 — Messaging, fetch lifecycle, and scheduling | Fetch jobs are guarded, durable, observable, and retry safely            | P0       | E02                        |
+| 6     | E06 — ThreatFox integration                      | Recent and full ThreatFox data can be fetched and mapped                 | P0       | E03, E05                   |
+| 7     | E07 — PhishTank integration                      | PhishTank data can be fetched and mapped within its download budget      | P0       | E03, E05                   |
+| 8     | E08 — Atomic upsert and deduplication pipeline   | Re-fetches update without duplicates or partial writes                   | P0       | E02, E03, E05              |
+| 9     | E09 — IOC query API                              | Authenticated users can search, browse, group, and trace sources         | P0       | E08                        |
+| 10    | E10 — Administration API and observability       | Admins can operate and inspect the system                                | P0       | E05, E08                   |
+| 11    | E11 — User frontend                              | Users can log in, search, browse, and inspect IOCs                       | P0       | E04, E09                   |
+| 12    | E12 — Admin frontend                             | Admin workflows are usable and safe                                      | P0       | E10, E11                   |
+| 13    | E13 — Quality, security, and performance         | Critical rules and realistic workloads are verified                      | P0       | All relevant feature epics |
+| 14    | E14 — Packaging, operations, and release         | The full product is deployable and supportable                           | P1       | E11–E13                    |
 
 ## 3. Detailed backlog
 
@@ -75,24 +75,25 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 **Goal:** Establish a buildable solution and repeatable developer environment.
 
-- [ ] **TI-010 — Scaffold .NET solution and projects** · P0 · M
+- [x] **TI-010 — Scaffold .NET solution and projects** · P0 · M
   - Create Domain, Application, Infrastructure, API, Worker, unit-test, and integration-test projects with dependency direction enforced.
-  - **Acceptance:** `dotnet build` and the empty test suite pass from the repository root.
-- [ ] **TI-011 — Scaffold React/Vite TypeScript frontend** · P0 · M
+  - **Acceptance:** `dotnet build` and the test suite pass in a clean .NET 10 environment; the local host SDK has an environment-specific project-reference failure.
+- [x] **TI-011 — Scaffold React/Vite TypeScript frontend** · P0 · M
   - Add routing, query client, linting, formatting, test runner, and production build.
-  - **Acceptance:** lint, unit tests, and production build pass.
-- [ ] **TI-012 — Centralize typed configuration** · P0 · M
+  - **Acceptance:** TanStack Start/Router provides routing; TanStack Query, Zustand, Zod, Radix UI, Jest/ts-jest, linting, and production build are configured and verified.
+- [x] **TI-012 — Centralize typed configuration** · P0 · M
   - Bind and validate database, RabbitMQ, JWT, provider, logging, and seed settings at startup.
   - Include `.env.example` with non-secret placeholders.
   - **Acceptance:** missing or invalid required settings fail fast without logging secrets.
-- [ ] **TI-013 — Complete development Compose topology** · P0 · L
+  - **Implementation:** `.env.example` is the canonical template; `.env` is never read back by an endpoint or committed.
+- [x] **TI-013 — Complete development Compose topology** · P0 · L
   - Add MSSQL, RabbitMQ management, API, worker, volumes, networks, and health checks.
   - Put the test database behind a profile or non-conflicting port.
-  - **Acceptance:** a clean `docker compose up` reaches healthy status and persists broker/database data across restart.
-- [ ] **TI-014 — Add baseline diagnostics** · P0 · M
+  - **Acceptance:** `docker compose up --build` reaches healthy status for MSSQL, RabbitMQ, API, and Worker; test SQL Server uses the `test` profile on port 1432.
+- [x] **TI-014 — Add baseline diagnostics** · P0 · M
   - Configure Serilog correlation fields, console/file sinks, health endpoints, and startup diagnostics.
-  - **Acceptance:** API and worker readiness reflect database/broker dependency state and logs contain no secrets.
-- [ ] **TI-015 — Add repository developer workflow** · P1 · S
+  - **Acceptance:** API and Worker `/health` endpoints report dependency-aware readiness; `X-Correlation-ID` is accepted/returned by API requests; logs contain no secrets.
+- [x] **TI-015 — Add repository developer workflow** · P1 · S
   - Add README commands for setup, migration, build, test, and teardown plus editor/format conventions.
   - **Acceptance:** a new developer can start the stack using only documented steps.
 

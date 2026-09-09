@@ -23,7 +23,19 @@ builder.Services.AddApplicationServices()
                 .AddInfrastructureServices(builder.Configuration);
 var app = builder.Build();
 
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        var correlationId = httpContext.Request.Headers.TryGetValue("X-Correlation-ID", out var header)
+            && !string.IsNullOrWhiteSpace(header)
+            ? header.ToString()
+            : httpContext.TraceIdentifier;
+
+        httpContext.Response.Headers["X-Correlation-ID"] = correlationId;
+        diagnosticContext.Set("CorrelationId", correlationId);
+    };
+});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
