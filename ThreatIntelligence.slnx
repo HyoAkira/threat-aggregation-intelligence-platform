@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ThreatIntelligence.API/ThreatIntelligence.API.csproj" />
+    <Project Path="src/ThreatIntelligence.Application/ThreatIntelligence.Application.csproj" />
+    <Project Path="src/ThreatIntelligence.Domain/ThreatIntelligence.Domain.csproj" />
+    <Project Path="src/ThreatIntelligence.Infrastructure/ThreatIntelligence.Infrastructure.csproj" />
+    <Project Path="src/ThreatIntelligence.Worker/ThreatIntelligence.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ThreatIntelligence.IntegrationTests/ThreatIntelligence.IntegrationTests.csproj" />
+    <Project Path="tests/ThreatIntelligence.UnitTests/ThreatIntelligence.UnitTests.csproj" />
+  </Folder>
+</Solution>
