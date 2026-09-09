@@ -3,12 +3,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ThreatIntelligence.Application.Abstractions.Hashing;
 using ThreatIntelligence.Application.Abstractions.Persistence;
+using ThreatIntelligence.Application.Normalization;
 using ThreatIntelligence.Infrastructure.Configuration;
 using ThreatIntelligence.Infrastructure.Hashing;
 using ThreatIntelligence.Infrastructure.HealthChecks;
 using ThreatIntelligence.Infrastructure.Persistence;
 using ThreatIntelligence.Infrastructure.Persistence.Repositories;
 using ThreatIntelligence.Infrastructure.Persistence.Seeding;
+using ThreatIntelligence.Infrastructure.PublicSuffix;
 
 namespace ThreatIntelligence.Infrastructure;
 
@@ -38,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddSingleton<IValueHasher, Sha256ValueHasher>();
+        services.AddSingleton<IParentDomainResolver, PublicSuffixParentDomainResolver>();
         services.AddSingleton(TimeProvider.System);
 
         services.AddHealthChecks()
