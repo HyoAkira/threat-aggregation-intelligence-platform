@@ -1,6 +1,6 @@
 ## Purpose
 
-Enforces provider capability and cadence rules before a fetch is enqueued or executed, so cooldowns, the PhishTank budget, and enabled/running state are checked both at trigger time and at consume time.
+Enforces provider capability and cadence rules before a fetch is enqueued or executed, so cooldowns and enabled/running state are checked both at trigger time and at consume time. Provider scheduling uses the configured interval; PhishTank's seeded interval is 8 hours.
 
 ## ADDED Requirements
 
@@ -30,21 +30,6 @@ The system SHALL reject a fetch whose provider/mode is on cooldown: ThreatFox re
 - **WHEN** a ThreatFox fetch is requested after its cooldown has elapsed
 - **THEN** the trigger is accepted and a job is published
 
-### Requirement: Rolling budget enforcement
-The system SHALL count logical PhishTank fetch starts in the rolling 24 hours (from `fetchHistory.startedAt`) and SHALL reject a new start when the count is already 3. Scheduled and manual triggers SHALL share the same budget, and internal retries of one job SHALL NOT consume extra budget.
-
-#### Scenario: Budget not exhausted accepted
-- **WHEN** fewer than 3 PhishTank fetches have started in the rolling 24 hours
-- **THEN** a new trigger is accepted and a job is published
-
-#### Scenario: Budget exhausted rejected
-- **WHEN** 3 PhishTank fetches have already started in the rolling 24 hours
-- **THEN** a manual trigger is rejected with 409 and nothing is published
-
-#### Scenario: Retries do not consume budget
-- **WHEN** a PhishTank job is retried after a transient failure
-- **THEN** no additional budget slot is consumed for the retry
-
 ### Requirement: Enabled and running-state guards
 The system SHALL reject a fetch for a disabled provider and SHALL reject a fetch while a previous job for the same provider is still queued or running.
 
@@ -57,7 +42,7 @@ The system SHALL reject a fetch for a disabled provider and SHALL reject a fetch
 - **THEN** the trigger is rejected with 409 and nothing is published
 
 ### Requirement: Guards are atomic and rechecked at consume
-The system SHALL reserve an allowed logical fetch atomically so simultaneous trigger requests and scheduler ticks cannot both pass the same guard, and the worker consumer SHALL re-evaluate persisted enabled/running/cooldown/budget state before executing a delivered message.
+The system SHALL reserve an allowed logical fetch atomically so simultaneous trigger requests and scheduler ticks cannot both pass the same guard, and the worker consumer SHALL re-evaluate persisted enabled/running/cooldown state before executing a delivered message.
 
 #### Scenario: No double reservation
 - **WHEN** two guard evaluations for the same provider/mode run concurrently
@@ -65,4 +50,4 @@ The system SHALL reserve an allowed logical fetch atomically so simultaneous tri
 
 #### Scenario: Obsolete duplicate message skipped
 - **WHEN** a stale or duplicate FetchJob is delivered and the persisted guards no longer allow it
-- **THEN** the consumer skips execution without starting another fetch and without changing the budget
+- **THEN** the consumer skips execution without starting another fetch

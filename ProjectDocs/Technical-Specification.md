@@ -330,8 +330,8 @@ originating source entry.
 ### Admin (`/api/admin/*`, Role=Admin)
 | Method + Path                                          | Description                                                        |
 | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| `GET /api/admin/providers`                              | All providers + `{id, name, baseUrl, isEnabled, intervalMinutes, lastFetchStatus, lastFetchAt, nextFetchTime, fetchesPast24h, availableModes}`; budget and modes are derived from provider behavior/history, not extra provider columns. |
-| `POST /api/admin/providers/{id}/fetch`                  | Manual trigger using the provider's default mode: ThreatFox → `recent`; PhishTank → `full`. Creates Queued history, publishes `FetchJob`, then returns **202 Accepted** `{jobId,status:"queued"}` after broker confirmation. **409** if running, on cooldown, or PhishTank daily budget exhausted. |
+| `GET /api/admin/providers`                              | All providers + `{id, name, baseUrl, isEnabled, intervalMinutes, lastFetchStatus, lastFetchAt, nextFetchTime, availableModes}`. |
+| `POST /api/admin/providers/{id}/fetch`                  | Manual trigger using the provider's default mode: ThreatFox → `recent`; PhishTank → `full`. Creates Queued history, publishes `FetchJob`, then returns **202 Accepted** `{jobId,status:"queued"}` after broker confirmation. **409** if running or on cooldown. |
 | `POST /api/admin/providers/{id}/fetch/full`             | ThreatFox only; publishes `mode=full`. 400 if the adapter does not expose Full mode; **409** if already running or last fetch < 60 min cooldown. |
 | `GET /api/admin/providers/{id}/history?page=&pageSize=` | `fetchHistory` for the provider.                                  |
 | `GET /api/admin/fetch-history/{jobId}`                  | Current job status, timing, added/updated counts, and terminal error. |
@@ -341,7 +341,7 @@ originating source entry.
 | `PUT /api/admin/settings`                               | Update global settings + per-provider enabled/interval at runtime. Validate → 400 on invalid. |
 
 **Status codes:** 200 OK · 202 (fetch queued) · 400 invalid input / validation · 401 unauthenticated ·
-403 forbidden (non-Admin on `/admin`) · 404 missing · 409 cooldown/daily-budget violated or concurrent fetch already running · 429 upstream rate-limited (surfaced as provider status, not HTTP).
+403 forbidden (non-Admin on `/admin`) · 404 missing · 409 cooldown violated or concurrent fetch already running · 429 upstream rate-limited (surfaced as provider status, not HTTP).
 
 **CORS:** dev `http://localhost:5173` (Vite); no auth-token exposure beyond JWT claims (username, role, exp, iss, aud).
 
@@ -377,7 +377,6 @@ Error:    tieto.fetch.jobs_error  (MassTransit default error queue after retry e
 - **Cooldown** — query the latest matching `fetchHistory.startedAt` by provider and mode: ThreatFox
   Recent must be at least 5 minutes old and Full at least 60 minutes old. Starting an attempt consumes
   the cooldown even when that attempt later fails; `providers.lastFetchAt` remains display-only.
-- **Daily budget** — PhishTank fetches started in the rolling 24 h (`fetchHistory` rows) must be `< 3`. When exhausted: manual → 409; scheduled → `nextFetchTime` advanced until the oldest in-window fetch leaves the window. Retry attempts within one job do not consume extra budget.
 
 **Consumer (Worker):**
 - `prefetch = 1` and consumer concurrency `1`; the MVP processes only one fetch globally at a time.
@@ -385,7 +384,7 @@ Error:    tieto.fetch.jobs_error  (MassTransit default error queue after retry e
 - The publisher creates `fetchHistory(trigger, mode, startedAt, status=Queued)`. At the first job
   attempt, the Worker changes that row and `providers.lastFetchStatus` to Running. Internal HTTP
   calls are not retried independently. MassTransit retries reuse the provider's single Running history row under the
-  same `jobId`; they do not insert another history row or consume another daily-budget slot.
+  same `jobId`; they do not insert another history row.
 - Adapter executes (ThreatFox recent/full, PhishTank full). **One DB transaction per fetch.** Process
   approximately 2,000 provider records per chunk using EF `AddRange`/`SaveChanges` inside the outer
   transaction, then clear the change tracker before the next chunk.
@@ -431,7 +430,7 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 ## 9. Worker Scheduler
 
 - `BackgroundService` running in the **Worker** project.
-- Loop (every ~15 s): read providers where `isEnabled AND nextFetchTime IS NOT NULL AND nextFetchTime <= now` → apply trigger guards (§7) → publish scheduled `FetchJob`; if the budget window blocks the run, push `nextFetchTime` past the blocking window. A newly seeded provider waits for its first successful manual fetch before scheduling begins.
+- Loop (every ~15 s): read providers where `isEnabled AND nextFetchTime IS NOT NULL AND nextFetchTime <= now` → apply trigger guards (§7) → publish scheduled `FetchJob`. A newly seeded provider waits for its first successful manual fetch before scheduling begins.
 - On a failed scheduled run, scheduler **waits** for the next interval / manual trigger (PRD FR-008, FR-012) — no fast retry storm.
 - MVP consumer concurrency is fixed at one. Configurable parallel fetching is deferred until needed.
 
@@ -458,7 +457,7 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 | `/search`      | Search IOC + related host/URLs | User+ |
 | `/iocs/:id`    | IOC detail     | User+        |
 | `/browse`      | List + filters (type/provider), pagination | User+ |
-| `/admin/providers` | Providers dashboard (status badges, last/next fetch, trigger buttons — recent/full for ThreatFox, full for PhishTank; PhishTank budget indicator "2/3 used today", cooldown countdown, history drill-down) | Admin |
+| `/admin/providers` | Providers dashboard (status badges, last/next fetch, trigger buttons — recent/full for ThreatFox, full for PhishTank; interval and cooldown information, history drill-down) | Admin |
 | `/admin/summary`   | Database summary (total + per-type) | Admin |
 | `/admin/logs`      | Log tail viewer | Admin       |
 | `/admin/settings`  | Global + per-provider runtime settings | Admin |
@@ -495,7 +494,7 @@ services:
 
 ## 13. Constraints & Known Limitations
 
-- **PhishTank budget**: no app key → **3 fetches/day** (rolling 24 h, scheduled + manual combined), enforced before enqueue (manual 409, scheduler waits); a free key later may raise/remove it and enable ETag skip-checks (PRD OQ-5). 429 → immediate fail, no retry.
+- **PhishTank cadence**: full dump is scheduled every 8 hours. 429 → immediate fail, no retry.
 - **ThreatFox cooldowns**: recent ≥ 5 min, full ≥ 60 min; **ThreatFox expiry**: IOCs older than 6 months vanish from exports (2025-05-01 behavior) — additive-only means our DB keeps them longer than the source does; acceptable per PRD, documented.
 - **ThreatFox cadence**: don't fetch recent more often than every 5 min, full more often than hourly (provider rule, enforced by interval guard).
 - IPv4, IPv6, Domain, and URL are supported; URLs are capped at 2048 chars and pagination at `pageSize ≤ 100`.

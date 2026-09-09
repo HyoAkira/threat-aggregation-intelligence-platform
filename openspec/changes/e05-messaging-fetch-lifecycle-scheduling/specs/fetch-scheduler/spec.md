@@ -1,6 +1,6 @@
 ## Purpose
 
-Runs the worker-side scheduler that polls enabled, due providers and publishes scheduled FetchJobs, advancing `nextFetchTime` while respecting trigger guards and the PhishTank budget.
+Runs the worker-side scheduler that polls enabled, due providers and publishes scheduled FetchJobs, advancing `nextFetchTime` from each provider's configured interval.
 
 ## ADDED Requirements
 
@@ -33,13 +33,6 @@ After publishing a scheduled job, the system SHALL advance the provider's `nextF
 #### Scenario: First successful manual fetch initializes schedule
 - **WHEN** the first successful manual fetch completes for a never-run provider
 - **THEN** `nextFetchTime` is set to completion time plus the configured interval
-
-### Requirement: Budget-blocked scheduled runs
-When the PhishTank budget window blocks a scheduled run, the system SHALL advance `nextFetchTime` past the blocking window instead of publishing.
-
-#### Scenario: Budget exhausted pushes next fetch later
-- **WHEN** a scheduled PhishTank run is due but the rolling 24-hour budget is exhausted
-- **THEN** no job is published and `nextFetchTime` is pushed past the time the oldest in-window fetch leaves the window
 
 ### Requirement: Cooldown-guarded scheduled runs
 When a scheduled run is blocked by a provider cooldown, the system SHALL skip the run and rely on the next tick after the cooldown rather than retrying immediately.

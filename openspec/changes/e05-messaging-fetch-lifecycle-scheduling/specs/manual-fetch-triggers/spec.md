@@ -8,11 +8,11 @@ Exposes the admin endpoints that validate provider capabilities, apply trigger g
 `POST /api/admin/providers/{id}/fetch` SHALL trigger the provider's default mode (ThreatFox recent, PhishTank full). On success it SHALL persist a Queued `fetchHistory` row with a new logical `jobId`, publish a `FetchJob` with publisher confirmation, and return **202 Accepted** with `{jobId, status: "queued"}`. A guarded or unsupported request SHALL be rejected before any publish.
 
 #### Scenario: Valid default-mode trigger
-- **WHEN** an Admin requests a fetch for an enabled provider that is not on cooldown and has budget available
+- **WHEN** an Admin requests a fetch for an enabled provider that is not on cooldown
 - **THEN** a Queued history row with a new jobId is persisted, a FetchJob is confirmed to the broker, and 202 with the jobId is returned
 
 #### Scenario: Guarded trigger returns 409
-- **WHEN** an Admin requests a fetch while the provider is disabled, already queued/running, on cooldown, or out of budget
+- **WHEN** an Admin requests a fetch while the provider is disabled, already queued/running, or on cooldown
 - **THEN** the request returns 409 and no FetchJob is published
 
 #### Scenario: Unknown provider returns 404

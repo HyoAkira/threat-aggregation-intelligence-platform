@@ -73,7 +73,7 @@ Auth is **JWT** (HS256, no refresh tokens in MVP). Login required for everything
 
 - **PhishTank has no "recent" endpoint** — it is always a full-dump fetch.
 - **Manual triggers are available for every provider/mode from the UI**: ThreatFox *recent*, ThreatFox *full*, and PhishTank *full*.
-- Scheduled jobs respect cadence (ThreatFox recent by interval; PhishTank by interval **within its daily budget**).
+- Scheduled jobs respect cadence (ThreatFox recent by interval; PhishTank full dump every 8 hours).
 - Provider **intervals are runtime-editable** (DB settings, applied without restart).
 - Ingestion is **additive-only**: new provider IOC rows are added, existing rows are upserted,
   and records absent from later feeds are retained.
@@ -85,9 +85,7 @@ Auth is **JWT** (HS256, no refresh tokens in MVP). Login required for everything
 - **ThreatFox** requires an Auth-Key (free) included in export URLs; IOCs older than 6 months are
   expired/removed from exports; full dump regenerates hourly, recent every 5 min (don't fetch more often).
   Guards: recent fetches **≥ 5 min apart**; full fetches **≥ 60 min apart** (cooldown, enforced at trigger time).
-- **PhishTank** (no app key): fetches are capped at a **3-per-day budget**, covering scheduled
-  **and** manual combined. Both triggers are denied when the rolling-24 h budget is exhausted; files
-  update hourly. If a free app key is registered later, the budget can be relaxed (see **OQ-5**).
+- **PhishTank** (no app key): the full dump is fetched on an 8-hour interval. Files update hourly.
 
 ---
 
@@ -137,13 +135,12 @@ Auth is **JWT** (HS256, no refresh tokens in MVP). Login required for everything
 - Providers expose the latest fetch status and completion time as dashboard summary fields.
 - Every run is recorded in `fetchHistory` (trigger, mode, started/finished, status, records added, records updated, error detail).
 - Scheduler publishes due jobs; manual triggers publish immediately; both go through RabbitMQ.
-- **Trigger guards**: provider cooldowns (§5) and PhishTank's 3-per-day budget are enforced **before** a fetch is enqueued (denied → HTTP 409 / skipped scheduler tick).
+- **Trigger guards**: provider cooldowns (§5) are enforced **before** a fetch is enqueued (denied → HTTP 409 / skipped scheduler tick).
 
 ### FR-008 — Retry policy (MassTransit/RabbitMQ)
 - **Transient errors** (network, 5xx, timeout, temporary database failure): MassTransit retries after 10 seconds, 30 seconds, and 1 minute; after the initial execution and three failed retries, move to the default `_error` queue → status `failed`.
 - Provider HTTP clients do not retry independently.
-- **PhishTank quota/rate-limit (429)**: **no retry**, immediate `failed` (protects the 3-per-day budget).
-- **PhishTank daily budget (3/day)** and provider cooldowns are enforced **before** a fetch is enqueued (trigger → 409); the budget covers scheduled + manual combined.
+- **PhishTank quota/rate-limit (429)**: **no retry**, immediate `failed`.
 - **Invalid-record abort**: **no retry** — deterministic; `failed` with the offending record + reason in the error detail.
 
 ### FR-009 — Whole-batch transaction on failure
@@ -177,7 +174,7 @@ Auth is **JWT** (HS256, no refresh tokens in MVP). Login required for everything
 | US-005 | Admin | view DB summary | total + per-type counts |
 | US-006 | Admin | view system logs | timestamped, filterable tail; failed fetches present |
 | US-007 | Admin | manage settings | view + update; invalid rejected; runtime-applied |
-| US-008 | Admin | collect data | scheduled + manual triggers for every provider/mode; status logged; cooldowns/budget enforced; failures don't crash the app |
+| US-008 | Admin | collect data | scheduled + manual triggers for every provider/mode; status logged; intervals/cooldowns enforced; failures don't crash the app |
 | US-009 | System | normalize from different providers | common provider-row model; correct type; typed ThreatFox fields and PhishTank details preserved |
 | US-010 | System | prevent duplicates | unique provider/value/port and provider/external-id indexes; cross-provider rows grouped at query time |
 | US-011 | Admin | re-fetch / update data | atomic upsert; current metadata/tags replaced; timestamps refreshed; no provider-scoped duplicates |
