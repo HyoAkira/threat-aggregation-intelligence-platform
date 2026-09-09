@@ -47,3 +47,14 @@ A failed scheduled run SHALL NOT trigger a fast retry; the provider SHALL wait f
 #### Scenario: Failure does not reschedule early
 - **WHEN** a scheduled fetch fails
 - **THEN** the provider is not re-published until the next due time or a manual trigger
+
+### Requirement: Runtime interval changes recompute schedule
+After a provider has completed at least one successful fetch, changing its interval SHALL recompute `nextFetchTime` as that successful completion time plus the new interval. If the recomputed time is at or before now, the provider SHALL be eligible on the next scheduler tick. Disabling a provider SHALL prevent publication; re-enabling it SHALL use the recomputed time. A never-run provider SHALL retain NULL `nextFetchTime`.
+
+#### Scenario: Shortened interval becomes due
+- **WHEN** an Admin shortens an already-run provider's interval and the recomputed time is in the past
+- **THEN** the scheduler may reserve it on the next tick subject to normal guards
+
+#### Scenario: Never-run provider remains unscheduled after settings change
+- **WHEN** an Admin changes or re-enables a provider that has never completed a successful fetch
+- **THEN** `nextFetchTime` remains NULL until a successful manual fetch

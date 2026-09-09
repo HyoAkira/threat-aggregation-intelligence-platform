@@ -1,33 +1,7 @@
-## 1. PhishTank HTTP client
+## 1. PhishTank adapter
 
-- [ ] 1.1 Register a named `PhishTank` HTTP client (descriptive user agent, explicit timeout) via `IHttpClientFactory` and verify a mocked request carries the user agent
-- [ ] 1.2 Implement streaming download with `ResponseHeadersRead` + generic `Content-Encoding` decompression (gzip/identity) and verify the body is streamed without whole-file buffering
-- [ ] 1.3 Add optional app-key support (default unconfigured, never logged) and verify a configured key appears nowhere in logs or exception messages and that no key still works
-- [ ] 1.4 Surface HTTP 429 as a typed quota condition and 5xx/transport failures as retryable transport errors; verify a simulated 429 raises the quota type and a 5xx raises transport
-
-## 2. Streaming parse and memory bound
-
-- [ ] 2.1 Implement streaming full-feed parsing via `JsonSerializer.DeserializeAsyncEnumerable<T>` over the decompressed stream and verify records are produced one at a time without whole-file retention
-- [ ] 2.2 Implement the failure taxonomy (transport / decompression / JSON / record-validation) and verify corrupt and truncated gzip/JSON inputs fail cleanly with distinct error classes
-- [ ] 2.3 Capture the real sampled full-feed size from a dev fetch, record it in the test fixture notes, and add a memory test on a fixture ≥2× that size asserting ≤256 MiB additional resident memory; recalibrate the threshold with the recorded evidence if needed
-
-## 3. Record mapping and details preservation
-
-- [ ] 3.1 Map record fields to the provider record (`phish_id` → providerRecordId, `phish_detail_url` → providerDetailsLink, URL through the shared normalization service, `submission_time` → firstSeenUtc, `verification_time` → lastSeenUtc, `verified`/`online`/`target`) and verify a golden record retains every value including false/zero/empty
-- [ ] 3.2 Serialize `phishTankDetails` from the raw detail array and verify a round-trip test preserves every field (`ipAddress`, `cidrBlock`, `announcingNetwork`, `rir`, `detailTime`) and that the stored value passes the `ISJSON` constraint
-- [ ] 3.3 Verify contextual detail IPs never become standalone IOC rows (test asserts no IP-type provider records are produced from details)
-
-## 4. Quota behavior
-
-- [ ] 4.1 Verify end-to-end that a simulated 429 results in exactly one attempt, a Failed history row with the quota reason, and zero IOC writes (integration test)
-
-## 5. Adapter integration with the atomic pipeline
-
-- [ ] 5.1 Implement the PhishTank adapter as `IProviderFetchExecutor` (full mode only) returning mapped provider records or throwing the typed taxonomy exceptions, and register it in Worker DI
-- [ ] 5.2 Verify the consumer invokes the adapter through the E05 lifecycle shell and a valid sanitized fixture commits exactly once with correct added/updated counters
-- [ ] 5.3 Verify a bad final record rolls back the entire IOC batch with a Failed history row, zero counters, and the offender named (no partial writes)
-
-## 6. Fixtures and verification
-
-- [ ] 6.1 Add a sanitized `online-valid.json.gz` fixture covering all record shapes (null/false/zero values, detail arrays, malformed record, truncated variant) with a fake HTTP handler for tests
-- [ ] 6.2 Verify the clean build, unit tests, and integration tests pass and document the feed-size evidence and memory-bound result in the operator/README notes
+- [ ] 1.1 Implement the client with user agent, timeout, optional key, streamed `.json.gz`, and typed HTTP failures; verify request tests (TI-070).
+- [ ] 1.2 Stream the JSON within the memory bound; verify gzip, JSON, and record failures are terminal and safe (TI-071, TI-003).
+- [ ] 1.3 Map every record/detail field and keep detail IPs contextual; verify round-trip fixtures (TI-072).
+- [ ] 1.4 Make HTTP 429 fail once with zero counters/writes; verify the lifecycle test (TI-074).
+- [ ] 1.5 Run a full fixture through E05/E08 and verify counters, idempotency, and bad-final-record rollback (TI-075).

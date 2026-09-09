@@ -42,7 +42,7 @@ The system SHALL reject a fetch for a disabled provider and SHALL reject a fetch
 - **THEN** the trigger is rejected with 409 and nothing is published
 
 ### Requirement: Guards are atomic and rechecked at consume
-The system SHALL reserve an allowed logical fetch atomically so simultaneous trigger requests and scheduler ticks cannot both pass the same guard, and the worker consumer SHALL re-evaluate persisted enabled/running/cooldown state before executing a delivered message.
+The system SHALL reserve an allowed logical fetch atomically so simultaneous trigger requests and scheduler ticks cannot both pass the same guard, and the worker consumer SHALL re-evaluate persisted enabled/running/cooldown state before executing a delivered message. The consume-time check SHALL identify the current reservation by `jobId`: that job's own Queued/Running row SHALL NOT reject itself, while another active row or a terminal/obsolete current row SHALL prevent execution.
 
 #### Scenario: No double reservation
 - **WHEN** two guard evaluations for the same provider/mode run concurrently
@@ -51,3 +51,7 @@ The system SHALL reserve an allowed logical fetch atomically so simultaneous tri
 #### Scenario: Obsolete duplicate message skipped
 - **WHEN** a stale or duplicate FetchJob is delivered and the persisted guards no longer allow it
 - **THEN** the consumer skips execution without starting another fetch
+
+#### Scenario: Current reservation passes its own recheck
+- **WHEN** a newly delivered FetchJob has the matching current Queued history row and no other active job
+- **THEN** its own reservation does not trigger the queued/running rejection and execution may start

@@ -16,7 +16,7 @@ The system SHALL parse the full PhishTank feed as a stream of records without ma
 - **THEN** parsing fails cleanly without leaving partial provider records or writing to the database
 
 ### Requirement: Failure taxonomy
-The system SHALL distinguish transport, decompression, JSON-parsing, and record-validation failures so each is handled and reported distinctly.
+The system SHALL distinguish transport, decompression, JSON-parsing, and record-validation failures so each is handled and reported distinctly. Only network, timeout, HTTP 5xx, and temporary database failures SHALL be retryable. Decompression, JSON-parsing, validation, authentication, conflict, and quota failures SHALL be terminal and SHALL NOT be retried.
 
 #### Scenario: Each failure class is identifiable
 - **WHEN** a fetch fails during transport, decompression, JSON parsing, or record validation
@@ -25,6 +25,10 @@ The system SHALL distinguish transport, decompression, JSON-parsing, and record-
 #### Scenario: Invalid record carries record context
 - **WHEN** an individual record fails validation
 - **THEN** the error identifies the offending record and reason without exposing secrets
+
+#### Scenario: Parse failure is not retried
+- **WHEN** gzip decompression or JSON parsing fails
+- **THEN** the fetch is marked Failed after one attempt with zero IOC writes
 
 ### Requirement: PhishTank record mapping
 The system SHALL map each valid record to a normalized provider record: `phish_id` as the provider record ID, `phish_detail_url` as the provider details link, the URL normalized per the shared normalization rules, `submission_time` as `firstSeenUtc`, `verification_time` as `lastSeenUtc`, and `verified`, `online`, and `target` as typed fields. Valid `false`, `0`, and empty values SHALL be retained.

@@ -17,7 +17,7 @@
 
 ## 4. Public Suffix List resolution
 
-- [ ] 4.1 Add and pin `Nager.PublicSuffix` 3.8.0 and verify dependency restore succeeds (TI-033)
+- [x] 4.1 Add and pin `Nager.PublicSuffix` 3.8.0 and verify dependency restore succeeds (TI-033)
 - [x] 4.2 Add the checked-in PSL snapshot and verify its source URL, retrieval date, and SHA-256 checksum are recorded beside it (TI-033)
 - [x] 4.3 Implement registrable-domain resolution with `LocalFileRuleProvider` and verify fixed tests cover apex, subdomain, wildcard, exception, and multi-level suffix rules (TI-033)
 - [x] 4.4 Implement PSL fallback behavior and verify tests cover IP literals, single-label hosts, unknown suffixes under the prevailing rule, and public-suffix-only inputs (TI-033)

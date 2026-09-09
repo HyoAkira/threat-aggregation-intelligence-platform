@@ -206,7 +206,7 @@ time is UTC and is obtained through .NET `TimeProvider` so tests can control it.
 | Database        | `DATABASE__CONNECTIONSTRING`                                |
 | Messaging       | `RABBITMQ__URI` (or HOST/USER/PASS), `RABBITMQ__EXCHANGE`   |
 | Providers       | `THREATFOX__APIKEY`                    |
-| Auth            | `JWT__SECRET` (≥32 bytes), `JWT__ISSUER`, `JWT__AUDIENCE`, `JWT__EXPIRYMINUTES` (default 480) |
+| Auth            | `JWT__SECRET` (≥32 bytes), `JWT__ISSUER`, `JWT__AUDIENCE`; token lifetime is fixed at 8 hours for MVP |
 | Admin seed      | `ADMIN__USERNAME`, `ADMIN__PASSWORD`                        |
 
 ---
@@ -268,9 +268,10 @@ Auth: `Authorization: Bearer <jwt>` (required except login).
 | Method + Path                | Auth | Description                                                          |
 | ---------------------------- | ---- | -------------------------------------------------------------------- |
 | `POST /api/auth/login`       | none | Body `{username, password}` → `{token, username, role, expiresAt}`. Invalid creds → 401. |
-| `GET /api/iocs/search?q=`    | any  | Auto-detect type (§5.5); normalize and exact-match; optional `tag` uses the same grouped source-attributed response. 400 on invalid input. |
-| `GET /api/iocs/{id}`         | any  | Resolve the row's normalized type/value and return the full grouped IOC detail. 404 if missing. |
-| `GET /api/iocs?type=&provider=&tag=&page=&pageSize=&orderBy=lastSeenUtc&dir=desc` | any | Browse grouped results; `type` ∈ ipv4/ipv6/domain/url; optional provider and normalized tag filters. |
+| `GET /api/iocs/search?q=&tag=&provider=` | any | `q` required; auto-detect/normalize and exact-match. Optional tag/provider filters narrow sources. Invalid input → 400; valid absent match → 404. |
+| `GET /api/iocs/{id}`         | any  | Resolve the row's normalized type/value and return the full grouped IOC detail without inline relations. 404 if missing. |
+| `GET /api/iocs/{id}/relations?relation=urlHost|parentDomain&page=&pageSize=` | any | Paginated related groups; default page 1/pageSize 20, maximum 100. IP groups → 400. |
+| `GET /api/iocs?type=&provider=&tag=&page=&pageSize=&orderBy=lastSeenUtc&dir=desc` | any | Browse grouped results; filters compose, pageSize ≤ 100, NULL aggregates last, stable type/value tie-break. |
 
 **IOC detail response shape (`GET /api/iocs/{id}`):**
 ```json
@@ -308,24 +309,15 @@ Auth: `Authorization: Bearer <jwt>` (required except login).
       "phishTankDetails": [],
       "isFalsePositive": false
     }
-  ],
-  "related": {
-    "urlHost": "evil.example",
-    "parentDomain": "evil.example",
-    "urlCount": 4,
-    "urls": [
-      { "iocValue": "https://evil.example/a", "iocType": "url" },
-      { "iocValue": "https://evil.example/b", "iocType": "url" }
-    ]
-  }
+  ]
 }
 ```
 Null provider-inapplicable properties are omitted, while valid `false`, `0`, and empty values remain.
 Grouped `firstSeenUtc` and `lastSeenUtc` are respectively `MIN` and `MAX` across source rows. Sources
-are not merged by provider: separate port-bearing rows may repeat the same provider. Related URLs are
-resolved at query time through `urlHost` and `parentDomain`; no relation table is used. Tag filtering
-selects groups having at least one matching `iocTags` row and leaves each returned tag under its
-originating source entry.
+are not merged by provider: separate port-bearing rows may repeat the same provider. Relations are
+resolved on demand through the paginated relations endpoint using stored `urlHost` and `parentDomain`;
+no relation table is used. Exact-search tag/provider filters narrow returned sources, while browse tag
+filtering selects matching groups and keeps each tag under its originating source entry.
 
 ### Admin (`/api/admin/*`, Role=Admin)
 | Method + Path                                          | Description                                                        |
@@ -336,9 +328,9 @@ originating source entry.
 | `GET /api/admin/providers/{id}/history?page=&pageSize=` | `fetchHistory` for the provider.                                  |
 | `GET /api/admin/fetch-history/{jobId}`                  | Current job status, timing, added/updated counts, and terminal error. |
 | `GET /api/admin/summary`                                | Distinct grouped `{ total, ipv4, ipv6, domain, url }` counts.      |
-| `GET /api/admin/logs?level=&count=`                     | Tail recent log entries `[{ timestamp, level, message, exception? }]`, `count ≤ 500`. |
+| `GET /api/admin/logs?level=&count=`                     | Tail newest safe log entries `[{ timestamp, level, message, exception? }]`; default count 100, maximum 500; redact credentials, tokens, keys, and credential-bearing URLs. |
 | `GET /api/admin/settings`                               | Global settings + per-provider `enabled`/`interval`. |
-| `PUT /api/admin/settings`                               | Update global settings + per-provider enabled/interval at runtime. Validate → 400 on invalid. |
+| `PUT /api/admin/settings`                               | Atomically update log level + provider enabled/interval at runtime. ThreatFox scheduled interval ≥ 5 min; PhishTank ≥ 480 min. Any invalid value → 400 with no writes. |
 
 **Status codes:** 200 OK · 202 (fetch queued) · 400 invalid input / validation · 401 unauthenticated ·
 403 forbidden (non-Admin on `/admin`) · 404 missing · 409 cooldown violated or concurrent fetch already running · 429 upstream rate-limited (surfaced as provider status, not HTTP).
@@ -423,7 +415,7 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 - ThreatFox metadata is mapped into nullable typed `iocs` fields. PhishTank maps submission time to
   `firstSeenUtc`, verification time to `lastSeenUtc`, online/verified/target to typed fields, and all
   network detail objects to `phishTankDetails` JSON.
-- Each adapter exposes result `{ added, error? }`; worker maps to transaction + history.
+- Each adapter streams normalized provider records or raises a typed failure. The shared atomic pipeline returns `{ recordsAdded, recordsUpdated }`; the worker maps that result to fetch history.
 
 ---
 
@@ -431,6 +423,7 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 
 - `BackgroundService` running in the **Worker** project.
 - Loop (every ~15 s): read providers where `isEnabled AND nextFetchTime IS NOT NULL AND nextFetchTime <= now` → apply trigger guards (§7) → publish scheduled `FetchJob`. A newly seeded provider waits for its first successful manual fetch before scheduling begins.
+- After an interval update, recompute an already-run provider's `nextFetchTime` from its last successful completion plus the new interval. A past result is due on the next tick; a never-run provider remains NULL. Disabling prevents publication and re-enabling uses the recomputed time.
 - On a failed scheduled run, scheduler **waits** for the next interval / manual trigger (PRD FR-008, FR-012) — no fast retry storm.
 - MVP consumer concurrency is fixed at one. Configurable parallel fetching is deferred until needed.
 
@@ -462,7 +455,7 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 | `/admin/logs`      | Log tail viewer | Admin       |
 | `/admin/settings`  | Global + per-provider runtime settings | Admin |
 
-**Patterns:** TanStack Query (server state/cache/invalidations), Zustand (auth/store: token, user, role),
+**Patterns:** TanStack Query (server state/cache/invalidations), Zustand (auth/store: token, user, role) backed by per-tab `sessionStorage`,
 Radix UI primitives, Zod schemas shared for input validation (mirrors backend §5/§6), react-router
 guards on both route and request level (server re-enforces roles). TanStack Start/Router is the selected
 Vite-based routing implementation for this repository; it replaces the originally proposed `react-router`
