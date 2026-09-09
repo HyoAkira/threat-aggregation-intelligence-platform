@@ -62,14 +62,15 @@ This backlog turns the PRD and Technical Specification into an implementation se
   - Seed enabled ThreatFox as ID 1 with a 5-minute interval and PhishTank as ID 2 with an 8-hour interval. Keep `nextFetchTime` NULL until the first successful manual fetch. Use UTC through .NET `TimeProvider`.
   - **Acceptance:** deterministic seed and time behavior is documented.
 - [x] **TI-008 — Define enqueue and logical-job identity** · P0 · M
-  - Create a unique Queued history row, publish directly with broker confirmation, return its `jobId`, and reuse that identity for retries and dashboard polling. Mark confirmed publish failures as Failed; accept the small DB-to-broker crash window instead of adding an outbox.
+  - Create a unique Queued history row, publish directly with broker confirmation, return its `jobId`, and reuse that identity for retries and dashboard polling. Mark unconfirmed publish attempts as Failed; accept the small DB-to-broker crash window instead of adding an outbox.
   - Process one message at a time and recheck persisted guards in the consumer; no distributed provider lock is required for the MVP.
   - **Acceptance:** ordinary publish failure, duplicate delivery, queued duplicates, and terminal error handling reuse one logical history where the same `jobId` is delivered.
-- [ ] **TI-009 — Finalize query and pagination contracts** · P0 · M
-  - Define tag-only versus IOC-plus-tag search, normalization, not-found response, and whether search results paginate.
-  - Define related-URL page/cursor parameters and response shape; define grouped browse `lastSeenUtc` aggregation, null ordering, and stable tie-breaker.
-  - Confirm groups are `(iocType, iocValue)` and ports remain separate source rows rather than separate summary groups.
-  - **Acceptance:** PRD/API examples and backlog tasks use one unambiguous contract.
+- [x] **TI-009 — Finalize query and pagination contracts** · P0 · M
+  - Exact search requires `q`; optional `tag` and `provider` narrow the matched group's sources. Tag-only discovery uses grouped browse. Invalid input is 400 and a valid absent match is 404.
+  - Relations use `GET /api/iocs/{id}/relations?relation=urlHost|parentDomain&page=&pageSize=` and never appear as an unbounded inline detail array. Browse and relations default to page 1/pageSize 20 and reject pageSize above 100.
+  - Browse defaults to aggregate `MAX(lastSeenUtc)` descending, always puts NULL aggregates last, and ties by `iocType` then normalized `iocValue` ascending.
+  - Groups are `(iocType, iocValue)`; ports remain separate source rows inside the group.
+  - **Acceptance:** PRD, API examples, E09 specs, and backlog tasks use this contract.
 
 ### E01 — Solution and local platform foundation
 

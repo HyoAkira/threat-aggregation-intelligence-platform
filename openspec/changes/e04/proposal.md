@@ -29,4 +29,4 @@ The PRD (FR-001, §4) requires that every non-login endpoint be protected and th
 - `src/ThreatIntelligence.Worker` — no changes expected (auth is API-side), unless shared startup config requires the same JWT validation settings.
 - `tests/ThreatIntelligence.UnitTests` — hashing, token, and policy unit tests.
 - `tests/ThreatIntelligence.IntegrationTests` — login, seed, and authorization-matrix tests against real persistence (SQL Server).
-- New configuration keys: `JWT__SECRET` (≥32 bytes), `JWT__ISSUER`, `JWT__AUDIENCE`, `JWT__EXPIRYMINUTES` (default 480), `ADMIN__USERNAME`, `ADMIN__PASSWORD`; `.env.example` updated with non-secret placeholders.
+- Configuration keys: `JWT__SECRET` (≥32 bytes), `JWT__ISSUER`, `JWT__AUDIENCE`, `ADMIN__USERNAME`, and `ADMIN__PASSWORD`; `.env.example` is updated with non-secret placeholders. Token lifetime is fixed at 8 hours for the MVP.

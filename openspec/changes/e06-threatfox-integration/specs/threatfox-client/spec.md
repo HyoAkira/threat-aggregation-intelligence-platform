@@ -48,3 +48,14 @@ The client SHALL open the response as a stream rather than buffering the whole p
 #### Scenario: No client-level retry
 - **WHEN** a request fails transiently
 - **THEN** the client returns the failure to the caller and does not retry independently
+
+### Requirement: HTTP failures support the shared retry policy
+The client SHALL distinguish network, timeout, and HTTP 5xx failures as retryable transport failures. HTTP 429/quota and HTTP 401/403 authentication failures SHALL be terminal. Cancellation requested by the caller SHALL remain cancellation rather than being converted into a retryable timeout.
+
+#### Scenario: Server failure is retryable at job level
+- **WHEN** ThreatFox returns HTTP 5xx
+- **THEN** the client reports a retryable transport failure without retrying locally
+
+#### Scenario: Quota or authentication failure is terminal
+- **WHEN** ThreatFox returns HTTP 429, 401, or 403
+- **THEN** the client reports a terminal typed failure that E05 does not retry

@@ -20,14 +20,14 @@ Exposes the admin endpoints that validate provider capabilities, apply trigger g
 - **THEN** the request returns 404 and nothing is published
 
 ### Requirement: Manual full-mode fetch
-`POST /api/admin/providers/{id}/fetch/full` SHALL trigger a full fetch for providers that expose Full mode (ThreatFox). It SHALL return **400** when the provider does not expose Full mode, **409** when the provider is already running or the full cooldown has not elapsed, and **202** with `{jobId, status: "queued"}` after a confirmed publish otherwise.
+`POST /api/admin/providers/{id}/fetch/full` SHALL be a ThreatFox-only shortcut for a manual full fetch. PhishTank full fetches SHALL use the default `/fetch` endpoint because Full is PhishTank's default and only mode. The shortcut SHALL return **400** for every provider other than ThreatFox, **409** when ThreatFox is already queued/running or the 60-minute full cooldown has not elapsed, and **202** with `{jobId, status: "queued"}` after a confirmed publish otherwise.
 
 #### Scenario: Full fetch accepted for ThreatFox
 - **WHEN** an Admin requests full mode for ThreatFox outside its 60-minute cooldown
 - **THEN** the request returns 202 with a jobId after a confirmed publish
 
 #### Scenario: Full mode unsupported returns 400
-- **WHEN** an Admin requests full mode for a provider that only supports recent or full is unavailable (e.g., PhishTank)
+- **WHEN** an Admin calls the `/fetch/full` shortcut for any provider other than ThreatFox, including PhishTank
 - **THEN** the request returns 400 and nothing is published
 
 ### Requirement: Publish failure surfaces as failure

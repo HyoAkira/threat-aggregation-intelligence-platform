@@ -74,7 +74,7 @@ Auth is **JWT** (HS256, no refresh tokens in MVP). Login required for everything
 - **PhishTank has no "recent" endpoint** — it is always a full-dump fetch.
 - **Manual triggers are available for every provider/mode from the UI**: ThreatFox *recent*, ThreatFox *full*, and PhishTank *full*.
 - Scheduled jobs respect cadence (ThreatFox recent by interval; PhishTank full dump every 8 hours).
-- Provider **intervals are runtime-editable** (DB settings, applied without restart).
+- Provider **intervals are runtime-editable** (DB settings, applied without restart) but cannot be set below provider cadence: ThreatFox recent 5 minutes and PhishTank full 480 minutes.
 - Ingestion is **additive-only**: new provider IOC rows are added, existing rows are upserted,
   and records absent from later feeds are retained.
 - A provider IOC row is calculated as `isFalsePositive = true` when its `updatedAt` is older than
@@ -101,7 +101,7 @@ Auth is **JWT** (HS256, no refresh tokens in MVP). Login required for everything
 - Exact match uses the normalized value. Rows with the same normalized type/value are returned as
   one grouped result with a `sources` collection; multiple rows from one provider may remain as
   separate source entries when ports differ.
-- Tag search returns the same grouped shape and identifies which source supplied each matched tag.
+- Exact search requires an IOC query; optional tag/provider filters narrow its returned sources. Tag-only discovery uses the grouped browse endpoint. Invalid input returns 400 and a valid query with no match returns 404.
 - URL results expose their full `urlHost` and registrable `parentDomain` for host and parent-domain searches.
 
 ### FR-003 — IOC details & source tracing
@@ -109,7 +109,7 @@ Auth is **JWT** (HS256, no refresh tokens in MVP). Login required for everything
   rows), **all source entries**, and provider-specific fields under the source that supplied them.
 - Null provider-inapplicable properties are omitted from JSON; valid `false`, `0`, and empty values
   are retained. PhishTank `details` remains complete validated JSON.
-- URL details include related exact hosts, registrable parent domains, and URLs.
+- Related exact-host and registrable-parent-domain results are fetched on demand from a paginated relations endpoint; detail responses never embed an unbounded related-URL list.
 
 ### FR-004 — Deduplication
 - Each database row belongs to exactly one provider. Provider-scoped identity is

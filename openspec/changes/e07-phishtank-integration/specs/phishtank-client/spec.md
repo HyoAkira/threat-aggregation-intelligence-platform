@@ -50,3 +50,7 @@ The system SHALL surface a PhishTank HTTP 429/rate-limit response as a distinct 
 #### Scenario: Other non-success responses are transport failures
 - **WHEN** the upstream responds with a 5xx or another transport-level failure
 - **THEN** the client fails the request as a transport error, which is retryable at the job level
+
+#### Scenario: Authentication failure is terminal
+- **WHEN** the upstream responds with HTTP 401 or 403 for a configured app key
+- **THEN** the client reports a terminal authentication failure that is not retried
