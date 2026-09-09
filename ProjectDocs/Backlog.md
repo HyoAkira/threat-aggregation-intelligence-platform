@@ -21,7 +21,7 @@ This backlog turns the PRD and Technical Specification into an implementation se
 | 4     | E04 — Authentication and authorization           | Users can log in and role boundaries are enforced                        | P0       | E02                        |
 | 5     | E05 — Messaging, fetch lifecycle, and scheduling | Fetch jobs are guarded, durable, observable, and retry safely            | P0       | E02                        |
 | 6     | E06 — ThreatFox integration                      | Recent and full ThreatFox data can be fetched and mapped                 | P0       | E03, E05                   |
-| 7     | E07 — PhishTank integration                      | PhishTank data can be fetched and mapped within its download budget      | P0       | E03, E05                   |
+| 7     | E07 — PhishTank integration                      | PhishTank data can be fetched and mapped on its 8-hour interval          | P0       | E03, E05                   |
 | 8     | E08 — Atomic upsert and deduplication pipeline   | Re-fetches update without duplicates or partial writes                   | P0       | E02, E03, E05              |
 | 9     | E09 — IOC query API                              | Authenticated users can search, browse, group, and trace sources         | P0       | E08                        |
 | 10    | E10 — Administration API and observability       | Admins can operate and inspect the system                                | P0       | E05, E08                   |
@@ -101,26 +101,26 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 **Goal:** Implement the common provider-attributed data model and database invariants.
 
-- [ ] **TI-020 — Implement domain enums and entities** · P0 · M
+- [x] **TI-020 — Implement domain enums and entities** · P0 · M
   - Model Provider, IOC, Tag, FetchHistory, User, Setting, modes, triggers, statuses, and roles.
   - **Acceptance:** invalid enum/domain states cannot be created through normal constructors or commands.
-- [ ] **TI-021 — Configure EF Core mappings** · P0 · L
+- [x] **TI-021 — Configure EF Core mappings** · P0 · L
   - Map lower-camel plural tables, lengths, nullability, relationships, UTC timestamps, and enum conversions.
   - **Acceptance:** generated schema matches Technical Specification §4.
-- [ ] **TI-022 — Add database constraints and indexes** · P0 · L
+- [x] **TI-022 — Add database constraints and indexes** · P0 · L
   - Add both unique identities, hash/search/relation/history indexes, port/confidence checks, and JSON validation.
   - Define correct uniqueness behavior for nullable `port` in SQL Server.
   - **Acceptance:** SQL-backed tests prove every stated constraint, including null-port duplicates.
-- [ ] **TI-023 — Create initial migration and seed providers** · P0 · M
+- [x] **TI-023 — Create initial migration and seed providers** · P0 · M
   - Seed ThreatFox and PhishTank idempotently with decided defaults.
   - **Acceptance:** migration succeeds on an empty database and on a restarted environment without duplicate seeds.
-- [ ] **TI-024 — Implement admin-user seed** · P0 · M
+- [x] **TI-024 — Implement admin-user seed** · P0 · M
   - Hash the configured password and create the first admin only when no admin exists.
   - **Acceptance:** plaintext is never persisted/logged; restart does not reset credentials or duplicate the account; missing/invalid settings, an existing same-name User, and concurrent startup have deterministic SQL-backed outcomes.
-- [ ] **TI-025 — Add repository abstractions and transaction boundary** · P0 · L
+- [x] **TI-025 — Add repository abstractions and transaction boundary** · P0 · L
   - Support grouped reads, identity resolution, history outside the IOC transaction, and unit-of-work behavior.
   - **Acceptance:** transaction tests demonstrate commit and rollback boundaries.
-- [ ] **TI-026 — Implement SHA-256 value hashing** · P0 · S
+- [x] **TI-026 — Implement SHA-256 value hashing** · P0 · S
   - Persist exactly 32 bytes calculated from a documented UTF-8 normalized-value representation.
   - **Acceptance:** fixed test vectors match and hash lookups verify the original value to detect collision.
 
@@ -178,15 +178,15 @@ This backlog turns the PRD and Technical Specification into an implementation se
   - Let MassTransit declare the durable exchange/work queue, default `_error` queue, persistent messages, publisher confirmation, prefetch one, and consumer concurrency one.
   - **Acceptance:** topology survives broker restart and an exhausted message arrives in `_error`.
 - [ ] **TI-052 — Implement trigger guard service** · P0 · L
-  - Atomically reserve an allowed logical fetch, then enforce enabled state, queued/running state, ThreatFox mode cooldowns, and rolling-24-hour PhishTank budget before publish and re-check at consume time.
+  - Atomically reserve an allowed logical fetch, then enforce enabled state, queued/running state, and ThreatFox mode cooldowns before publish and re-check at consume time.
   - **Acceptance:** boundary-time, simultaneous request/tick, publish-failure, and duplicate-consume tests return consistent allow/409/skip decisions without two reservations.
 - [ ] **TI-053 — Implement manual fetch publisher endpoints** · P0 · M
   - Support default mode and ThreatFox full mode; validate provider capabilities; return 202 only after confirmed publication.
   - **Acceptance:** correct jobs publish once; unsupported modes return 400; guarded triggers return 409.
 - [ ] **TI-054 — Implement scheduler loop** · P0 · L
-  - Poll enabled/due providers, apply guards, publish, and advance blocked budget windows safely.
+  - Poll enabled/due providers, apply guards, publish, and advance each provider's configured interval safely.
   - Define initial `nextFetchTime`, restart behavior, failed scheduled-run cadence, and recomputation after enable/disable or interval shorten/lengthen.
-  - **Acceptance:** injectable-clock tests cover first start, restart, due/not-due/disabled, settings changes, failure, budget/cooldown cases, and duplicate ticks.
+  - **Acceptance:** injectable-clock tests cover first start, restart, due/not-due/disabled, settings changes, failure, cooldown cases, and duplicate ticks.
 - [ ] **TI-055 — Enforce one-at-a-time fetch execution** · P0 · S
   - Configure MassTransit prefetch and consumer concurrency to one and recheck job/provider guards before execution.
   - **Acceptance:** only one fetch executes at a time and obsolete duplicate messages do not start another fetch.
@@ -235,9 +235,6 @@ This backlog turns the PRD and Technical Specification into an implementation se
 - [ ] **TI-072 — Map PhishTank records and complete details** · P0 · L
   - Map phish ID/link, URL, submission/verification time, verified, online, target, and all network detail objects.
   - **Acceptance:** validated stored JSON round-trips every detail field and contextual IPs do not become standalone IOCs.
-- [ ] **TI-073 — Enforce rolling download budget** · P0 · M
-  - Count scheduled and manual logical fetch starts, not internal retries; block the fourth start in 24 hours.
-  - **Acceptance:** exact window-boundary and retry tests pass; UI/API can obtain `fetchesPast24h`.
 - [ ] **TI-074 — Implement PhishTank 429 behavior** · P0 · S
   - Fail immediately without retry and record a clear operational reason.
   - **Acceptance:** a simulated 429 results in one attempt, Failed status, and zero IOC writes.
@@ -303,7 +300,7 @@ This backlog turns the PRD and Technical Specification into an implementation se
 **Goal:** Give administrators accurate operational controls and diagnostics.
 
 - [ ] **TI-100 — Implement provider dashboard endpoint** · P0 · M
-  - Return status/times, enabled/interval, budget usage, available modes, and base metadata.
+  - Return status/times, enabled/interval, available modes, and base metadata.
   - **Acceptance:** running/success/failed and never-run providers serialize correctly.
 - [ ] **TI-101 — Implement paginated fetch history endpoint** · P0 · M
   - Order newest first and expose safe terminal error details.
@@ -352,11 +349,11 @@ This backlog turns the PRD and Technical Specification into an implementation se
 **Goal:** Make fetch operations, history, metrics, logs, and settings manageable.
 
 - [ ] **TI-120 — Build provider dashboard** · P0 · L
-  - Display status, last/next fetch, enabled state, modes, cooldown countdown, and PhishTank budget.
+  - Display status, last/next fetch, enabled state, modes, interval, and cooldown countdown.
   - **Acceptance:** refresh/polling does not duplicate actions or show stale running state indefinitely.
 - [ ] **TI-121 — Implement manual fetch controls** · P0 · M
   - Show only supported modes, confirm full fetch where appropriate, disable guarded actions, and surface 202/409 outcomes.
-  - **Acceptance:** double-click cannot enqueue duplicate jobs and cooldown/budget reason is visible.
+  - **Acceptance:** double-click cannot enqueue duplicate jobs and cooldown reason is visible.
 - [ ] **TI-122 — Build fetch history view** · P0 · M
   - Paginate per provider and display trigger/mode/status/timing/count/error.
   - **Acceptance:** long errors are inspectable without breaking layout or executing content.
@@ -422,7 +419,7 @@ This backlog turns the PRD and Technical Specification into an implementation se
   - Cover MSSQL data, RabbitMQ durability expectations, `.env`, logs, schema rollback limits, and release rollback.
   - **Acceptance:** a restore drill succeeds using documented commands and a disposable environment.
 - [ ] **TI-144 — Write operator runbook** · P1 · M
-  - Document health checks, common provider failures, budget/cooldown behavior, stuck Running recovery, DLQ inspection/replay, secret rotation, and log locations.
+  - Document health checks, common provider failures, cooldown behavior, stuck Running recovery, DLQ inspection/replay, secret rotation, and log locations.
   - **Acceptance:** an operator unfamiliar with the code can diagnose each rehearsed scenario.
 - [ ] **TI-145 — Complete release readiness review** · P0 · M
   - Verify acceptance metrics, license notices, supported browsers, accessibility, known limits, default credentials changed, and no real provider keys in history/images.
@@ -467,4 +464,4 @@ Every task must satisfy the applicable items below:
 
 Sprint 1 should include TI-001 through TI-010, TI-012, TI-013, TI-020, TI-021, TI-023, TI-026, and TI-030 through TI-035. Its exit is a backend/platform foundation with resolved contracts, a running local dependency stack, a migrated core model, and fully tested normalization—not completion of Milestone 1. TI-011, TI-022, TI-024, TI-025, TI-036, and TI-040 through TI-043 follow to close M1.
 
-Do not begin both provider adapters in the first sprint. Complete a thin ThreatFox recent-fetch vertical slice through storage and search first; it will expose contract, transaction, scheduling, and UI integration problems before the larger full feeds and PhishTank budget rules increase complexity.
+Do not begin both provider adapters in the first sprint. Complete a thin ThreatFox recent-fetch vertical slice through storage and search first; it will expose contract, transaction, scheduling, and UI integration problems before the larger full feeds and PhishTank interval rules increase complexity.

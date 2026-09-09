@@ -9,32 +9,32 @@
 - [ ] 2.1 Add `MassTransit` and `MassTransit.RabbitMQ` packages to API and Worker and verify restore/build succeeds
 - [ ] 2.2 Configure MassTransit in both projects from `RabbitMqOptions` (Host/Port/User/Password/Exchange `tieto.fetches`, routing key `fetch`) and verify startup connects to RabbitMQ with no exceptions
 - [ ] 2.3 Configure durable exchange/queue with persistent messages, publisher confirmation on publish, `PrefetchCount = 1` and consumer concurrency 1, and verify broker restart keeps topology and an unacked message on the queue
-- [ ] 2.4 Add an integration test proving a published `FetchJob` is confirmed and delivered exactly once to the worker consumer, and that an exhausted message lands in the default `_error` queue
+- [ ] 2.4 Add an integration test proving a published `FetchJob` is confirmed, redelivery reuses the same logical job, and an exhausted message lands in the default `_error` queue
 
 ## 3. Trigger guard service
 
 - [ ] 3.1 Add `IFetchGuard.ReserveAsync(providerId, trigger, mode)` abstraction in Application and verify it compiles
-- [ ] 3.2 Implement guard in Infrastructure: capability check (ThreatFox recent/full, PhishTank full), enabled check, queued/running check, ThreatFox cooldown (recent ≥ 5 min, full ≥ 60 min from latest `fetchHistory.startedAt`), PhishTank rolling-24h budget (< 3 starts), all evaluated in one atomic transaction that inserts the Queued history row and returns its `jobId`
-- [ ] 3.3 Add unit tests for guard math: cooldown boundary times, budget window boundaries, retries not consuming budget, disabled provider, and running/queued provider, and verify all pass
+- [ ] 3.2 Implement guard in Infrastructure: capability check (ThreatFox recent/full, PhishTank full), enabled check, queued/running check, and ThreatFox cooldown (recent ≥ 5 min, full ≥ 60 min from latest `fetchHistory.startedAt`), all evaluated in one atomic transaction that inserts the Queued history row and returns its `jobId`
+- [ ] 3.3 Add unit tests for cooldown boundaries, disabled provider, and running/queued provider, and verify all pass
 - [ ] 3.4 Add an integration test proving two concurrent guard reservations for the same provider/mode result in exactly one success and one rejection
-- [ ] 3.5 Add consumer-side recheck: on consume, re-read persisted enabled/running/cooldown/budget state and skip obsolete or duplicate messages without executing or consuming budget; verify with a duplicate-delivery test
+- [ ] 3.5 Add consumer-side recheck: on consume, re-read persisted enabled/running/cooldown state and skip obsolete or duplicate messages without executing; verify with a duplicate-delivery test
 
 ## 4. Manual fetch trigger endpoints
 
 - [ ] 4.1 Add `POST /api/admin/providers/{id}/fetch` (default mode) that calls the guard, persists Queued history, publishes with confirmation, and returns 202 `{jobId, status:"queued"}`; verify happy path with a real broker
 - [ ] 4.2 Add `POST /api/admin/providers/{id}/fetch/full` (ThreatFox only) with 400 for unsupported mode and 409 for cooldown/running; verify each status code
-- [ ] 4.3 Verify guard rejections map to 409 (disabled, running, cooldown, budget), unknown provider to 404, and unconfirmed publish marks the history row Failed without returning 202
+- [ ] 4.3 Verify guard rejections map to 409 (disabled, running, cooldown), unknown provider to 404, and unconfirmed publish marks the history row Failed without returning 202
 
 ## 5. Scheduler loop
 
 - [ ] 5.1 Replace the idle worker loop with a scheduler `BackgroundService` polling (every ~15 s) for `isEnabled AND nextFetchTime IS NOT NULL AND nextFetchTime <= now` providers, applying guards and publishing scheduled jobs
-- [ ] 5.2 Implement `nextFetchTime` advancement: interval after each scheduled publish, initialization to `now + interval` on first successful manual fetch, skip when NULL, and push past the blocking window when PhishTank budget is exhausted
-- [ ] 5.3 Add injectable-clock unit tests covering first start, restart, due/not-due/disabled, settings changes, budget-block push, cooldown block, failure (no fast retry), and duplicate ticks; verify no double publication
+- [ ] 5.2 Implement `nextFetchTime` advancement from each provider's configured interval, initialization to `now + interval` on first successful manual fetch, and skip when NULL
+- [ ] 5.3 Add injectable-clock unit tests covering first start, restart, due/not-due/disabled, settings changes, cooldown block, failure (no fast retry), and duplicate ticks; verify no double publication
 
 ## 6. Fetch history lifecycle
 
 - [ ] 6.1 Implement the lifecycle service resolving the history row by `jobId`, transitioning Queued → Running at first execution, and updating `providers.lastFetchStatus` (Running then Success/Failed) and `lastFetchAt` on success
-- [ ] 6.2 Verify retries and redeliveries reuse the same logical history row (no new rows, no duplicate budget consumption) with integration tests against real RabbitMQ
+- [ ] 6.2 Verify retries and redeliveries reuse the same logical history row with integration tests against real RabbitMQ
 - [ ] 6.3 Verify Success records exact `recordsAdded`/`recordsUpdated` and a rolled-back batch records Failed with zero counters and the named offender error; enforce the FetchHistory state machine invariants
 
 ## 7. Error classification and retries
