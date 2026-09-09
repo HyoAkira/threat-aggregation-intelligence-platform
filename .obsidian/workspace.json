@@ -25,14 +25,17 @@
             "id": "aeb12aaf1e4f47f2",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "openspec/changes/e03/design.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "design"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -110,6 +113,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "openspec/changes/e02-domain-model-persistence/tasks.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -128,6 +132,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "openspec/changes/e02-domain-model-persistence/tasks.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -170,6 +175,7 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "openspec/changes/e02-domain-model-persistence/tasks.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -196,44 +202,44 @@
       "bases:Create new base": false
     }
   },
-  "active": "aeb12aaf1e4f47f2",
+  "active": "30696cf7ec4b37ac",
   "lastOpenFiles": [
-    "openspec/changes/e02-domain-model-persistence/tasks.md",
-    "openspec/changes/e02-domain-model-persistence/proposal.md",
-    "openspec/changes/e02-domain-model-persistence/design.md",
-    "ProjectDocs/Backlog.md",
-    "openspec/changes/e03/tasks.md",
-    "openspec/changes/e04/tasks.md",
-    "openspec/changes/e04/design.md",
-    "openspec/changes/e04/specs/auth/spec.md",
-    "openspec/changes/e04/specs/auth",
-    "openspec/changes/e04/specs",
-    "openspec/changes/e04/proposal.md",
-    "openspec/changes/e04",
-    "openspec/changes/e03/proposal.md",
+    "openspec/changes/e02-domain-model-persistence/sedDVKo8W",
     "openspec/changes/e03/design.md",
-    "openspec/changes/e03/specs/public-suffix-list/spec.md",
-    "openspec/changes/e03/specs/provider-record-validation/spec.md",
-    "openspec/changes/e03/specs/provider-record-validation",
-    "openspec/changes/e03/specs/public-suffix-list",
-    "openspec/changes/e03/specs/ioc-normalization/spec.md",
-    "openspec/changes/e03/specs/ioc-normalization",
-    "openspec/changes/e03/specs",
-    "Dockerfile.e01check",
-    "openspec/changes/e02-domain-model-persistence/specs/repositories/spec.md",
-    "openspec/changes/e02-domain-model-persistence/specs/repositories",
-    "openspec/changes/e02-domain-model-persistence/specs/identity-hashing/spec.md",
-    "openspec/changes/e02-domain-model-persistence/specs/identity-hashing",
-    "openspec/changes/e02-domain-model-persistence/specs/admin-seed/spec.md",
-    "openspec/changes/e02-domain-model-persistence/specs/seeding/spec.md",
-    "openspec/changes/e02-domain-model-persistence/specs/persistence/spec.md",
-    "openspec/changes/e02-domain-model-persistence/specs/domain-model/spec.md",
-    "frontend/node_modules/@tanstack/react-query/README.md",
-    "frontend/node_modules/react-remove-scroll/README.md",
-    "frontend/node_modules/use-callback-ref/README.md",
-    "frontend/node_modules/use-sidecar/README.md",
-    "frontend/node_modules/react-style-singleton/README.md",
-    "frontend/node_modules/react-remove-scroll-bar/README.md",
+    "openspec/changes/e03/proposal.md",
+    "openspec/changes/e04/tasks.md",
+    "tests/ThreatIntelligence.IntegrationTests/sed0djURR",
+    "tests/ThreatIntelligence.IntegrationTests/sedCHdfFJ",
+    "openspec/changes/e02-domain-model-persistence/tasks.md",
+    "openspec/changes/e03/tasks.md",
+    "openspec/changes/e07-phishtank-integration/tasks.md",
+    "openspec/changes/e07-phishtank-integration/design.md",
+    "openspec/changes/e07-phishtank-integration/specs/phishtank-budget/spec.md",
+    "openspec/changes/e07-phishtank-integration/specs/phishtank-budget",
+    "openspec/changes/e07-phishtank-integration/specs/phishtank-ingestion/spec.md",
+    "openspec/changes/e07-phishtank-integration/specs/phishtank-ingestion",
+    "tests/ThreatIntelligence.IntegrationTests/sedQGSxLg",
+    "openspec/changes/e07-phishtank-integration/specs/phishtank-client/spec.md",
+    "openspec/changes/e07-phishtank-integration/specs/phishtank-client",
+    "openspec/changes/e07-phishtank-integration/specs",
+    "openspec/changes/e07-phishtank-integration/proposal.md",
+    "openspec/changes/e06-threatfox-integration/tasks.md",
+    "tests/ThreatIntelligence.IntegrationTests/sedxEygOk",
+    "tests/ThreatIntelligence.IntegrationTests/sedazo1FD",
+    "openspec/changes/e06-threatfox-integration/design.md",
+    "openspec/changes/e06-threatfox-integration/specs/threatfox-provider-validation/spec.md",
+    "openspec/changes/e06-threatfox-integration/specs/threatfox-provider-validation",
+    "openspec/changes/e06-threatfox-integration/specs/threatfox-metadata-mapping/spec.md",
+    "openspec/changes/e06-threatfox-integration/specs/threatfox-full-ingestion/spec.md",
+    "openspec/changes/e06-threatfox-integration/specs/threatfox-recent-ingestion/spec.md",
+    "openspec/changes/e06-threatfox-integration/specs/threatfox-client/spec.md",
+    "openspec/changes/e06-threatfox-integration/proposal.md",
+    "openspec/changes/e05-messaging-fetch-lifecycle-scheduling/tasks.md",
+    "openspec/changes/e05-messaging-fetch-lifecycle-scheduling/design.md",
+    "openspec/changes/e05-messaging-fetch-lifecycle-scheduling/specs/fetch-execution/spec.md",
+    "openspec/changes/e05-messaging-fetch-lifecycle-scheduling/specs/fetch-scheduler/spec.md",
+    "openspec/changes/e05-messaging-fetch-lifecycle-scheduling/specs/manual-fetch-triggers/spec.md",
+    "openspec/changes/e05-messaging-fetch-lifecycle-scheduling/specs/trigger-guards/spec.md",
     "frontend/node_modules/@jest/reporters/assets/jest_logo.png",
     "frontend/node_modules/istanbul-reports/lib/html/assets/sort-arrow-sprite.png",
     "frontend/node_modules/istanbul-reports/lib/html/assets/favicon.png",

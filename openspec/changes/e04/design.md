@@ -5,13 +5,15 @@ See proposal.md - Why. The `User` entity and `UserRole` enum already exist in Do
 ## Goals / Non-Goals
 
 **Goals:**
-- A password hashing service whose stored format carries algorithm parameters for future work-factor upgrades.
+
+- A password hashing service using BCrypt whose stored format carries the salt, algorithm version, and work factor for future upgrades.
 - JWT login issuing 8-hour HS256 tokens with username/role/issuer/audience claims.
 - Idempotent `.env`-driven admin seeding.
 - Auth-by-default with Admin required on `/api/admin/*`, proven by an integration matrix.
 - Hardened token validation and safe auth logging.
 
 **Non-Goals:**
+
 - No refresh tokens, logout tokens/revocation, or multi-factor (PRD MVP).
 - No per-user CRUD or password-change endpoints beyond the seed (future work).
 - No frontend auth (login page/state is E11/E12).
@@ -19,7 +21,7 @@ See proposal.md - Why. The `User` entity and `UserRole` enum already exist in Do
 
 ## Decisions
 
-- **Password KDF**: Use ASP.NET Core's `PasswordHasher<T>` (PBKDF2-based, v3 format with per-password salt and embedded algorithm/version) wrapped behind an `IPasswordHasher` application abstraction. Rationale: battle-tested, supports work-factor changes without breaking existing hashes, no extra dependency; alternative (hand-rolled PBKDF2/BCrypt via a NuGet package) adds a dependency or bespoke code with higher risk.
+- **Password KDF**: Use `BCrypt.Net-Next` wrapped behind an `IPasswordHasher` application abstraction. BCrypt generates a unique per-password salt, embeds the salt and work factor in the stored hash, and provides constant-time verification. Configure the BCrypt work factor explicitly so it can be increased as hardware improves. Rationale: BCrypt is a battle-tested password-specific KDF with a self-describing stored format and straightforward verification; using the maintained NuGet package avoids hand-rolled cryptography.
 - **JWT generation/validation**: Use `Microsoft.IdentityModel.JsonWebTokens` (`JsonWebTokenHandler`) with HS256 symmetric signing from `JWT__SECRET` (validated ≥32 bytes at startup), enforcing issuer (`JWT__ISSUER`), audience (`JWT__AUDIENCE`), a bounded clock skew, `TokenValidationParameters` `ValidAlgorithms = [SecurityAlgorithms.HmacSha256]`, and lifetime. Rationale: matches the Tech Spec's chosen library and the "custom validator" (Identity-free) requirement.
 - **Login flow**: A `Login` MediatR command/query resolving the user by username, verifying the hash in constant time, and returning `{token, username, role, expiresAt}`. Invalid credentials (unknown user OR wrong password) produce the same 401 to avoid user enumeration. Rationale: consistent with the CQRS/MediatR convention already used in Application.
 - **Admin seeding**: A startup service in Infrastructure runs once, inside a scope, and creates the admin from `.env` only when no admin exists, using the same hashing service. Deterministic failure on missing/invalid settings. Rationale: satisfies PRD "first-run admin seeded from `.env`"; guarded to be idempotent and race-safe across concurrent startup.
