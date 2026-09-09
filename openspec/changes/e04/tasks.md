@@ -1,7 +1,7 @@
 ## 1. Password hashing service
 
 - [ ] 1.1 Add `IPasswordHasher` abstraction in Application and verify it compiles
-- [ ] 1.2 Implement hashing with ASP.NET Core `PasswordHasher<T>` (v3, per-password salt) in Infrastructure and verify hash format embeds algorithm parameters
+- [ ] 1.2 Add the maintained `BCrypt.Net-Next` package and implement BCrypt hashing in Infrastructure with an explicit configurable work factor; verify the stored hash embeds the algorithm version, salt, and work factor
 - [ ] 1.3 Verify hash/verify unit tests pass: correct password succeeds, wrong password fails
 - [ ] 1.4 Verify no plaintext is logged or persisted during hashing (inspect logs and stored value)
 

@@ -3,6 +3,7 @@ using Serilog;
 using ThreatIntelligence.Application;
 using ThreatIntelligence.Infrastructure.Configuration;
 using ThreatIntelligence.Infrastructure;
+using ThreatIntelligence.Infrastructure.Persistence;
 
 EnvironmentConfiguration.LoadDotEnv();
 
@@ -54,5 +55,11 @@ app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthC
 {
     Predicate = _ => false
 });
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+    await initializer.InitializeAsync(app.Lifetime.ApplicationStopping);
+}
 
 app.Run();
