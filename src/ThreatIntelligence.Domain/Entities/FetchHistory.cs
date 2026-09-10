@@ -114,6 +114,21 @@ public class FetchHistory
         ErrorDetail = null;
     }
 
+    public void Start()
+    {
+        if (Status == FetchStatus.Running)
+        {
+            return;
+        }
+
+        if (Status != FetchStatus.Queued)
+        {
+            throw new InvalidOperationException("Only Queued history records can start.");
+        }
+
+        Status = FetchStatus.Running;
+    }
+
     public void Fail(string errorDetail, DateTime finishedAtUtc)
     {
         if (Status != FetchStatus.Queued && Status != FetchStatus.Running)

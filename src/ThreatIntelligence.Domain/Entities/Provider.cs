@@ -55,5 +55,26 @@ public class Provider
         }
 
         IntervalMinutes = intervalMinutes;
+        if (LastFetchAt.HasValue)
+        {
+            NextFetchTime = LastFetchAt.Value.AddMinutes(intervalMinutes);
+        }
     }
+
+    public void MarkFetchRunning() => LastFetchStatus = FetchStatus.Running;
+
+    public void MarkFetchSucceeded(DateTime completedAtUtc, bool updateNextFetchTime = true)
+    {
+        LastFetchStatus = FetchStatus.Success;
+        LastFetchAt = Guard.Utc(completedAtUtc, nameof(completedAtUtc));
+        if (updateNextFetchTime)
+        {
+            NextFetchTime = LastFetchAt.Value.AddMinutes(IntervalMinutes);
+        }
+    }
+
+    public void MarkFetchFailed() => LastFetchStatus = FetchStatus.Failed;
+
+    public void SetNextFetchTime(DateTime nextFetchTimeUtc) =>
+        NextFetchTime = Guard.Utc(nextFetchTimeUtc, nameof(nextFetchTimeUtc));
 }

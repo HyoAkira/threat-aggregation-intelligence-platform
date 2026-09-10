@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="MassTransit" Version="8.5.7" />
     <ProjectReference Include="..\ThreatIntelligence.Application\ThreatIntelligence.Application.csproj" />
     <ProjectReference Include="..\ThreatIntelligence.Domain\ThreatIntelligence.Domain.csproj" />
   </ItemGroup>
@@ -20,8 +21,10 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
     <PackageReference Include="Nager.PublicSuffix" Version="3.8.0" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
   </ItemGroup>
 
   <PropertyGroup>
