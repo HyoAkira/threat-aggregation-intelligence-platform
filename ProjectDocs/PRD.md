@@ -94,7 +94,7 @@ Auth is **JWT** (HS256, no refresh tokens in MVP). Login required for everything
 ### FR-001 — Authentication & Authorization (JWT)
 - `POST /api/auth/login` issues a JWT; HS256; 8 h lifetime; no refresh token (MVP).
 - First-run admin seeded from `.env` (`ADMIN__USERNAME`, `ADMIN__PASSWORD`).
-- Client routes and all API endpoints enforce roles (User / Admin).
+- Client routes and all business API endpoints enforce roles (User / Admin); operational health endpoints remain anonymous for container probes.
 
 ### FR-002 — Search an IOC
 - Search accepts IPv4, IPv6, domain, or URL. Input **auto-classified**; invalid input rejected (400) with a clear message; "not found" clearly indicated.

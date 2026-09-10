@@ -41,4 +41,13 @@ public class DependencyInjectionTests
         using var context = provider.GetRequiredService<ThreatIntelligenceDbContext>();
         Assert.NotNull(context);
     }
+
+    [Fact]
+    public void DatabaseInitializer_and_all_seed_dependencies_resolve_from_the_container()
+    {
+        using var provider = BuildProvider();
+        using var scope = provider.CreateScope();
+
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<DatabaseInitializer>());
+    }
 }

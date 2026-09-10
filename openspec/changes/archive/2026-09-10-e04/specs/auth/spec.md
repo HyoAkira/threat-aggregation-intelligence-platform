@@ -63,12 +63,17 @@ The system SHALL expose `POST /api/auth/login` that accepts `{username, password
 
 ### Requirement: Authorization policies
 
-The system SHALL require authentication for every endpoint except `POST /api/auth/login`, and SHALL require the Admin role for all `/api/admin/*` endpoints.
+The system SHALL require authentication for every business endpoint except `POST /api/auth/login`, SHALL require the Admin role for all `/api/admin/*` endpoints, and SHALL allow anonymous access to the operational `/health` and `/health/live` endpoints used by container orchestration.
 
 #### Scenario: Anonymous request rejected
 
 - **WHEN** an unauthenticated request is made to a non-login endpoint
 - **THEN** the request is rejected with 401
+
+#### Scenario: Operational health probe allowed
+
+- **WHEN** an unauthenticated request is made to `/health` or `/health/live`
+- **THEN** authorization does not block the health response
 
 #### Scenario: User denied admin endpoint
 

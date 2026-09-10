@@ -153,18 +153,18 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 ### E04 — Authentication and authorization
 
-**Goal:** Protect every non-login endpoint and enforce User/Admin roles server-side.
+**Goal:** Protect every non-login business endpoint, keep operational health probes anonymous, and enforce User/Admin roles server-side.
 
-- [ ] **TI-040 — Implement password hashing service** · P0 · M
+- [x] **TI-040 — Implement password hashing service** · P0 · M
   - Use a current password KDF with per-password salt, work-factor configuration, constant-time verification, and upgrade path.
   - **Acceptance:** hash/verify and invalid-input tests pass; stored format carries algorithm parameters.
-- [ ] **TI-041 — Implement login command and endpoint** · P0 · M
+- [x] **TI-041 — Implement login command and endpoint** · P0 · M
   - Issue 8-hour HS256 JWTs with username, role, expiry, issuer, and audience.
   - **Acceptance:** valid login returns the contract; invalid credentials return indistinguishable 401 responses.
-- [ ] **TI-042 — Configure authorization policies** · P0 · S
-  - Require authentication by default and Admin role for `/api/admin/*`.
-  - **Acceptance:** integration matrix proves anonymous=401, User-on-admin=403, Admin=success.
-- [ ] **TI-043 — Harden token handling** · P1 · M
+- [x] **TI-042 — Configure authorization policies** · P0 · S
+  - Require authentication by default and Admin role for `/api/admin/*`; allow anonymous `/health` and `/health/live` probes.
+  - **Acceptance:** integration matrix proves anonymous business request=401, anonymous health probe=success, User-on-admin=403, and Admin=success.
+- [x] **TI-043 — Harden token handling** · P1 · M
   - Validate secret length, clock skew, algorithms, issuer/audience, expiration, and safe auth logging.
   - **Acceptance:** expired, tampered, wrong-algorithm, wrong-issuer, and wrong-audience tokens are rejected.
 

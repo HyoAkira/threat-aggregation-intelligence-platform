@@ -262,7 +262,7 @@ Base path `/api`. All JSON. Errors return **ProblemDetails** (RFC 7807). List re
 { "items": [ ... ], "page": 1, "pageSize": 20, "totalCount": 123 }
 ```
 
-Auth: `Authorization: Bearer <jwt>` (required except login).
+Auth: `Authorization: Bearer <jwt>` (required for business endpoints except login; `/health` and `/health/live` remain anonymous).
 
 ### Public
 | Method + Path                | Auth | Description                                                          |

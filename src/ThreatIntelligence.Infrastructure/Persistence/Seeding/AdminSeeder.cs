@@ -16,16 +16,11 @@ namespace ThreatIntelligence.Infrastructure.Persistence.Seeding;
 public sealed class AdminSeeder(
     ThreatIntelligenceDbContext dbContext,
     AdminSeedOptions options,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IPasswordHasher hasher)
 {
-    public async Task SeedAsync(IPasswordHasher? hasher, CancellationToken cancellationToken)
+    public async Task SeedAsync(CancellationToken cancellationToken)
     {
-        if (hasher is null)
-        {
-            throw new InvalidOperationException(
-                "First-admin seeding requires a registered password hasher, but none is available.");
-        }
-
         if (string.IsNullOrWhiteSpace(options.Username) || string.IsNullOrWhiteSpace(options.Password))
         {
             throw new InvalidOperationException(

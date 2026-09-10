@@ -1,10 +1,15 @@
 namespace ThreatIntelligence.Application.Abstractions.Authentication;
 
 /// <summary>
-/// Hashes a plaintext password for storage. The production KDF (PBKDF2/BCrypt) and startup
-/// activation are provided by E04; E02 implements the seeding workflow against this abstraction.
+/// Hashes and verifies plaintext passwords without exposing implementation details to the application.
 /// </summary>
 public interface IPasswordHasher
 {
     string HashPassword(string password);
+
+    /// <summary>
+    /// Verifies a password against a stored hash. A null hash represents an unknown account and
+    /// must still perform comparable KDF work so callers do not expose account existence by timing.
+    /// </summary>
+    bool VerifyPassword(string password, string? passwordHash);
 }
