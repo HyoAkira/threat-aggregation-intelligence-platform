@@ -9,6 +9,7 @@ public sealed record ThreatIntelligenceOptions(
     JwtOptions Jwt,
     PasswordHashOptions PasswordHash,
     ThreatFoxOptions ThreatFox,
+    PhishTankOptions PhishTank,
     AdminSeedOptions AdminSeed,
     LoggingOptions Logging)
 {
@@ -29,6 +30,7 @@ public sealed record ThreatIntelligenceOptions(
                 IntegerOrDefault(configuration, "Jwt:ExpiryMinutes", 480)),
             new PasswordHashOptions(IntegerOrDefault(configuration, "Auth:PasswordWorkFactor", 12)),
             new ThreatFoxOptions(Required(configuration, "ThreatFox:ApiKey")),
+            new PhishTankOptions(Optional(configuration, "PhishTank:AppKey")),
             new AdminSeedOptions(
                 Required(configuration, "Admin:Username"),
                 Required(configuration, "Admin:Password")),
@@ -42,6 +44,9 @@ public sealed record ThreatIntelligenceOptions(
         configuration[key] is { Length: > 0 } value
             ? value
             : throw new InvalidOperationException($"Required configuration value '{key}' is missing.");
+
+    private static string? Optional(IConfiguration configuration, string key) =>
+        configuration[key] is { Length: > 0 } value ? value : null;
 
     private static int IntegerOrDefault(IConfiguration configuration, string key, int defaultValue) =>
         configuration[key] is not { Length: > 0 } value

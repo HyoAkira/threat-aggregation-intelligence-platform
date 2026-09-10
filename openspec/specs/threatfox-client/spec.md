@@ -1,11 +1,13 @@
+# threatfox-client Specification
+
 ## Purpose
 
 Provides the authenticated ThreatFox HTTP client that streams recent and full export data without logging the API key, honoring timeouts and cancellation, with retry ownership delegated to the messaging layer.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Export URL construction by mode
-The client SHALL build the recent export URL from the configured ThreatFox base URL and API key when requesting `Recent`, and the full `.csv.zip` export URL when requesting `Full`. The mode-to-URL mapping SHALL be deterministic and the selected URL SHALL be observable for verification.
+The client SHALL build the recent export URL from the configured ThreatFox base URL and API key when requesting `Recent`, and the full `.json.zip` export URL when requesting `Full`. The mode-to-URL mapping SHALL be deterministic and the selected URL SHALL be observable for verification.
 
 #### Scenario: Recent export URL
 - **WHEN** the client is asked to fetch the ThreatFox recent export
@@ -13,7 +15,7 @@ The client SHALL build the recent export URL from the configured ThreatFox base 
 
 #### Scenario: Full export URL
 - **WHEN** the client is asked to fetch the ThreatFox full export
-- **THEN** it requests the configured full `.csv.zip` endpoint containing the API key
+- **THEN** it requests the configured full `.json.zip` endpoint containing the API key
 
 #### Scenario: Base URL reused
 - **WHEN** the client constructs either export URL
