@@ -12,13 +12,13 @@ public static class EnvironmentConfiguration
             var candidate = Path.Combine(directory.FullName, ".env");
             if (File.Exists(candidate))
             {
-                Env.Load(candidate);
+                Env.Load(candidate, LoadOptions.NoClobber());
                 return;
             }
 
             directory = directory.Parent;
         }
 
-        Env.Load();
+        Env.Load(options: LoadOptions.NoClobber());
     }
 }

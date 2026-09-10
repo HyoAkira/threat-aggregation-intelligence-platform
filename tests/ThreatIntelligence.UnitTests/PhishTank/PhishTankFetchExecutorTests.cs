@@ -1,6 +1,6 @@
-using System.IO.Compression;
-using System.Text;
-using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Net.Http;
+using ThreatIntelligence.Application.BatchWriter;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Application.ProviderRecords;
 using ThreatIntelligence.Domain.Enums;
@@ -14,15 +14,14 @@ public sealed class PhishTankFetchExecutorTests
     [Fact]
     public async Task Rate_limit_throws_terminal_fetch_exception()
     {
-        var handler = new StubHttpMessageHandler(System.Net.HttpStatusCode.TooManyRequests);
+        var handler = new StubHttpMessageHandler(HttpStatusCode.TooManyRequests);
         var client = PhishTankTestClient.Create(handler);
         var mapper = new PhishTankRecordMapper();
         var parser = new PhishTankFeedParser(mapper);
         var validator = ProviderValidationFactory.CreateValidator(new PhishTankProviderValidator());
-        var hasher = new Infrastructure.Hashing.Sha256ValueHasher();
-        var contextFactory = new FakeDbContextFactory();
+        var batchWriter = new StubBatchWriter();
 
-        var executor = new PhishTankFetchExecutor(client, parser, validator, hasher, contextFactory);
+        var executor = new PhishTankFetchExecutor(client, parser, validator, batchWriter);
 
         var job = new FetchJob(Guid.NewGuid(), PhishTankProviderValidator.PhishTankProviderId, FetchTrigger.Manual, FetchMode.Full, 1);
 
@@ -33,15 +32,14 @@ public sealed class PhishTankFetchExecutorTests
     [Fact]
     public async Task Wrong_provider_id_throws_terminal()
     {
-        var handler = new StubHttpMessageHandler(System.Net.HttpStatusCode.OK, "[]");
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
         var client = PhishTankTestClient.Create(handler);
         var mapper = new PhishTankRecordMapper();
         var parser = new PhishTankFeedParser(mapper);
         var validator = ProviderValidationFactory.CreateValidator(new PhishTankProviderValidator());
-        var hasher = new Infrastructure.Hashing.Sha256ValueHasher();
-        var contextFactory = new FakeDbContextFactory();
+        var batchWriter = new StubBatchWriter();
 
-        var executor = new PhishTankFetchExecutor(client, parser, validator, hasher, contextFactory);
+        var executor = new PhishTankFetchExecutor(client, parser, validator, batchWriter);
 
         var job = new FetchJob(Guid.NewGuid(), 99, FetchTrigger.Manual, FetchMode.Full, 1);
 
@@ -52,15 +50,14 @@ public sealed class PhishTankFetchExecutorTests
     [Fact]
     public async Task Wrong_mode_throws_terminal()
     {
-        var handler = new StubHttpMessageHandler(System.Net.HttpStatusCode.OK, "[]");
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
         var client = PhishTankTestClient.Create(handler);
         var mapper = new PhishTankRecordMapper();
         var parser = new PhishTankFeedParser(mapper);
         var validator = ProviderValidationFactory.CreateValidator(new PhishTankProviderValidator());
-        var hasher = new Infrastructure.Hashing.Sha256ValueHasher();
-        var contextFactory = new FakeDbContextFactory();
+        var batchWriter = new StubBatchWriter();
 
-        var executor = new PhishTankFetchExecutor(client, parser, validator, hasher, contextFactory);
+        var executor = new PhishTankFetchExecutor(client, parser, validator, batchWriter);
 
         var job = new FetchJob(Guid.NewGuid(), PhishTankProviderValidator.PhishTankProviderId, FetchTrigger.Manual, FetchMode.Recent, 1);
 
@@ -71,15 +68,14 @@ public sealed class PhishTankFetchExecutorTests
     [Fact]
     public async Task Authentication_failure_throws_terminal()
     {
-        var handler = new StubHttpMessageHandler(System.Net.HttpStatusCode.Unauthorized);
+        var handler = new StubHttpMessageHandler(HttpStatusCode.Unauthorized);
         var client = PhishTankTestClient.Create(handler);
         var mapper = new PhishTankRecordMapper();
         var parser = new PhishTankFeedParser(mapper);
         var validator = ProviderValidationFactory.CreateValidator(new PhishTankProviderValidator());
-        var hasher = new Infrastructure.Hashing.Sha256ValueHasher();
-        var contextFactory = new FakeDbContextFactory();
+        var batchWriter = new StubBatchWriter();
 
-        var executor = new PhishTankFetchExecutor(client, parser, validator, hasher, contextFactory);
+        var executor = new PhishTankFetchExecutor(client, parser, validator, batchWriter);
 
         var job = new FetchJob(Guid.NewGuid(), PhishTankProviderValidator.PhishTankProviderId, FetchTrigger.Manual, FetchMode.Full, 1);
 
@@ -90,29 +86,31 @@ public sealed class PhishTankFetchExecutorTests
     [Fact]
     public async Task Server_error_throws_transient()
     {
-        var handler = new StubHttpMessageHandler(System.Net.HttpStatusCode.BadGateway);
+        var handler = new StubHttpMessageHandler(HttpStatusCode.BadGateway);
         var client = PhishTankTestClient.Create(handler);
         var mapper = new PhishTankRecordMapper();
         var parser = new PhishTankFeedParser(mapper);
         var validator = ProviderValidationFactory.CreateValidator(new PhishTankProviderValidator());
-        var hasher = new Infrastructure.Hashing.Sha256ValueHasher();
-        var contextFactory = new FakeDbContextFactory();
+        var batchWriter = new StubBatchWriter();
 
-        var executor = new PhishTankFetchExecutor(client, parser, validator, hasher, contextFactory);
+        var executor = new PhishTankFetchExecutor(client, parser, validator, batchWriter);
 
         var job = new FetchJob(Guid.NewGuid(), PhishTankProviderValidator.PhishTankProviderId, FetchTrigger.Manual, FetchMode.Full, 1);
 
-        var ex = await Assert.ThrowsAsync<Application.Fetches.ProviderFetchHttpException>(() => executor.ExecuteAsync(job, CancellationToken.None));
-        Assert.Equal(System.Net.HttpStatusCode.BadGateway, ex.StatusCode);
+        var ex = await Assert.ThrowsAsync<ProviderFetchHttpException>(() => executor.ExecuteAsync(job, CancellationToken.None));
+        Assert.Equal(HttpStatusCode.BadGateway, ex.StatusCode);
         Assert.True(FetchErrorClassifier.IsTransient(ex));
     }
 }
 
-internal sealed class FakeDbContextFactory : IDbContextFactory<Infrastructure.Persistence.ThreatIntelligenceDbContext>
+internal sealed class StubBatchWriter : IIocBatchWriter
 {
-    public Infrastructure.Persistence.ThreatIntelligenceDbContext CreateDbContext()
-        => throw new NotSupportedException("Fake — used only for unit tests that never reach the database.");
+    public Func<IReadOnlyList<NormalizedProviderRecord>, int, CancellationToken, Task<IocBatchResult>>? Behavior { get; init; }
 
-    public Task<Infrastructure.Persistence.ThreatIntelligenceDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("Fake — used only for unit tests that never reach the database.");
+    public Task<IocBatchResult> ApplyAsync(
+        IReadOnlyList<NormalizedProviderRecord> records,
+        int providerId,
+        CancellationToken cancellationToken)
+        => Behavior?.Invoke(records, providerId, cancellationToken)
+           ?? Task.FromResult(new IocBatchResult(0, 0));
 }
