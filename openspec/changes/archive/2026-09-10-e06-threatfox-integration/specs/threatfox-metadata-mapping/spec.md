@@ -8,15 +8,15 @@ Maps ThreatFox source fields into the canonical provider record so every applica
 The system SHALL map the ThreatFox native record ID, provider details link, timestamps, threat/malware fields, confidence level, booleans, reporter, tags, and explicit port into the corresponding canonical provider-record fields.
 
 #### Scenario: All fields mapped
-- **WHEN** a ThreatFox row carries every applicable field
+- **WHEN** a ThreatFox record carries every applicable field
 - **THEN** each field is retained in the provider record at its canonical location
 
 #### Scenario: Native ID and details link
-- **WHEN** a ThreatFox row supplies a native ID and details link
+- **WHEN** a ThreatFox record supplies a native ID and details link
 - **THEN** both are retained in the provider record
 
 #### Scenario: Timestamps
-- **WHEN** a ThreatFox row supplies first-seen and last-seen times
+- **WHEN** a ThreatFox record supplies first-seen and last-seen times
 - **THEN** they are retained as UTC first-seen and last-seen values
 
 ### Requirement: Value fidelity including false and zero
@@ -35,16 +35,16 @@ The system SHALL distinguish valid `false`, `0`, and empty values from absent va
 - **THEN** the record retains it according to the mapping rule
 
 #### Scenario: Absent remains null
-- **WHEN** a ThreatFox field is not present in the row
+- **WHEN** a ThreatFox field is not present in the record
 - **THEN** the corresponding record field remains null
 
 ### Requirement: Tags and port mapping
 The system SHALL normalize the ThreatFox tag collection into the provider record's tag set and store an explicit `ip:port` endpoint's port separately from the normalized IOC value.
 
 #### Scenario: Tags normalized
-- **WHEN** a ThreatFox row supplies tags
+- **WHEN** a ThreatFox record supplies tags
 - **THEN** the tags are trimmed, lowercased, and de-duplicated into the record's tag set
 
 #### Scenario: Port stored separately
-- **WHEN** a ThreatFox row is an `ip:port` endpoint
+- **WHEN** a ThreatFox record is an `ip:port` endpoint
 - **THEN** the port is stored separately from the normalized address

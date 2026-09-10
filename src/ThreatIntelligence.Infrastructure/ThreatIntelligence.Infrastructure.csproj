@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="MassTransit" Version="8.5.7" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
     <ProjectReference Include="..\ThreatIntelligence.Application\ThreatIntelligence.Application.csproj" />
     <ProjectReference Include="..\ThreatIntelligence.Domain\ThreatIntelligence.Domain.csproj" />
   </ItemGroup>
