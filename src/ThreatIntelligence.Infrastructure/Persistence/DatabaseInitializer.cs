@@ -8,11 +8,13 @@ namespace ThreatIntelligence.Infrastructure.Persistence;
 /// </summary>
 public sealed class DatabaseInitializer(
     ThreatIntelligenceDbContext dbContext,
-    Seeding.ProviderSeeder providerSeeder)
+    Seeding.ProviderSeeder providerSeeder,
+    Seeding.AdminSeeder adminSeeder)
 {
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         await dbContext.Database.MigrateAsync(cancellationToken);
         await providerSeeder.SeedAsync(cancellationToken);
+        await adminSeeder.SeedAsync(cancellationToken);
     }
 }

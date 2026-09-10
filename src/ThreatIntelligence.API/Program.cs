@@ -1,6 +1,11 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
 using ThreatIntelligence.Application;
+using ThreatIntelligence.API.Authorization;
 using ThreatIntelligence.Infrastructure.Configuration;
 using ThreatIntelligence.Infrastructure;
 using ThreatIntelligence.Infrastructure.Persistence;
@@ -17,25 +22,53 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) => loggerConfig
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Conventions.Add(new AdminControllerConvention()));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+var jwt = ThreatIntelligenceOptions.BindAndValidate(builder.Configuration).Jwt;
 builder.Services.AddApplicationServices()
-                .AddInfrastructureServices(builder.Configuration);
+                 .AddInfrastructureServices(builder.Configuration);
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret));
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = signingKey,
+        ValidateIssuer = true,
+        ValidIssuer = jwt.Issuer,
+        ValidateAudience = true,
+        ValidAudience = jwt.Audience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(2),
+        ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+        NameClaimType = System.Security.Claims.ClaimTypes.Name,
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role
+    });
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+});
 var app = builder.Build();
+
+app.Use((httpContext, next) =>
+{
+    var correlationId = httpContext.Request.Headers.TryGetValue("X-Correlation-ID", out var header)
+        && !string.IsNullOrWhiteSpace(header)
+        ? header.ToString()
+        : httpContext.TraceIdentifier;
+
+    httpContext.Response.Headers["X-Correlation-ID"] = correlationId;
+    httpContext.Items["CorrelationId"] = correlationId;
+    return next();
+});
 
 app.UseSerilogRequestLogging(options =>
 {
     options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
-    {
-        var correlationId = httpContext.Request.Headers.TryGetValue("X-Correlation-ID", out var header)
-            && !string.IsNullOrWhiteSpace(header)
-            ? header.ToString()
-            : httpContext.TraceIdentifier;
-
-        httpContext.Response.Headers["X-Correlation-ID"] = correlationId;
-        diagnosticContext.Set("CorrelationId", correlationId);
-    };
+        diagnosticContext.Set("CorrelationId", httpContext.Items["CorrelationId"]);
 });
 
 // Configure the HTTP request pipeline.
@@ -47,14 +80,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health").AllowAnonymous();
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = _ => false
-});
+}).AllowAnonymous();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
@@ -63,3 +97,5 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 app.Run();
+
+public partial class Program;

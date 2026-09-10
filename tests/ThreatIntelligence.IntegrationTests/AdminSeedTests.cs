@@ -18,6 +18,9 @@ public sealed class TestPasswordHasher : IPasswordHasher
 {
     public string HashPassword(string password) =>
         "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(password)));
+
+    public bool VerifyPassword(string password, string? passwordHash) =>
+        passwordHash is not null && HashPassword(password) == passwordHash;
 }
 
 [Collection("sqlserver")]
@@ -26,19 +29,10 @@ public class AdminSeedTests(SqlServerFixture fixture)
     private static readonly DateTime Utc = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     private readonly TestPasswordHasher _hasher = new();
 
-    [Fact]
-    public void E02_contains_no_production_password_kdf_implementation()
-    {
-        var implementations = typeof(ThreatIntelligenceDbContext).Assembly.GetTypes()
-            .Where(t => typeof(IPasswordHasher).IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false });
-
-        Assert.Empty(implementations);
-    }
-
     private AdminSeeder CreateSeeder(string username = "admin", string password = "S3cret-Pass!")
     {
         var context = fixture.CreateContext();
-        return new AdminSeeder(context, new AdminSeedOptions(username, password), new FixedTimeProvider(Utc));
+        return new AdminSeeder(context, new AdminSeedOptions(username, password), new FixedTimeProvider(Utc), _hasher);
     }
 
     private async Task ClearUsersAsync()
@@ -53,7 +47,7 @@ public class AdminSeedTests(SqlServerFixture fixture)
         await ClearUsersAsync();
         await using var context = fixture.CreateContext();
         var seeder = CreateSeeder(username: "admin", password: "S3cret-Pass!");
-        await seeder.SeedAsync(_hasher, CancellationToken.None);
+        await seeder.SeedAsync(CancellationToken.None);
 
         var admin = await context.Users.SingleAsync(u => u.Username == "admin");
         Assert.Equal(UserRole.Admin, admin.Role);
@@ -69,7 +63,7 @@ public class AdminSeedTests(SqlServerFixture fixture)
         const string password = "S3cret-Pass!";
         await using var context = fixture.CreateContext();
         var seeder = CreateSeeder(password: password);
-        await seeder.SeedAsync(_hasher, CancellationToken.None);
+        await seeder.SeedAsync(CancellationToken.None);
 
         var rows = await context.Users
             .Select(u => new { u.Username, u.PasswordHash })
@@ -88,11 +82,11 @@ public class AdminSeedTests(SqlServerFixture fixture)
         await ClearUsersAsync();
         await using var context = fixture.CreateContext();
         var seeder = CreateSeeder();
-        await seeder.SeedAsync(_hasher, CancellationToken.None);
+        await seeder.SeedAsync(CancellationToken.None);
 
         var originalHash = (await context.Users.SingleAsync(u => u.Username == "admin")).PasswordHash;
 
-        await seeder.SeedAsync(_hasher, CancellationToken.None);
+        await seeder.SeedAsync(CancellationToken.None);
 
         var after = await context.Users.SingleAsync(u => u.Username == "admin");
         Assert.Equal(originalHash, after.PasswordHash);
@@ -110,7 +104,7 @@ public class AdminSeedTests(SqlServerFixture fixture)
 
         var seeder = CreateSeeder();
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => seeder.SeedAsync(_hasher, CancellationToken.None));
+            () => seeder.SeedAsync(CancellationToken.None));
 
         var unchanged = await context.Users.SingleAsync(u => u.Username == "admin");
         Assert.Equal(UserRole.User, unchanged.Role);
@@ -123,12 +117,12 @@ public class AdminSeedTests(SqlServerFixture fixture)
         await ClearUsersAsync();
         var contextA = fixture.CreateContext();
         var contextB = fixture.CreateContext();
-        var seederA = new AdminSeeder(contextA, new AdminSeedOptions("admin", "S3cret-Pass!"), new FixedTimeProvider(Utc));
-        var seederB = new AdminSeeder(contextB, new AdminSeedOptions("admin", "S3cret-Pass!"), new FixedTimeProvider(Utc));
+        var seederA = new AdminSeeder(contextA, new AdminSeedOptions("admin", "S3cret-Pass!"), new FixedTimeProvider(Utc), _hasher);
+        var seederB = new AdminSeeder(contextB, new AdminSeedOptions("admin", "S3cret-Pass!"), new FixedTimeProvider(Utc), _hasher);
 
         await Task.WhenAll(
-            seederA.SeedAsync(_hasher, CancellationToken.None),
-            seederB.SeedAsync(_hasher, CancellationToken.None));
+            seederA.SeedAsync(CancellationToken.None),
+            seederB.SeedAsync(CancellationToken.None));
 
         await using var context = fixture.CreateContext();
         var admins = await context.Users.Where(u => u.Username == "admin").ToListAsync();
@@ -141,20 +135,9 @@ public class AdminSeedTests(SqlServerFixture fixture)
     {
         await ClearUsersAsync();
         await using var context = fixture.CreateContext();
-        var seeder = new AdminSeeder(context, new AdminSeedOptions("", ""), new FixedTimeProvider(Utc));
+        var seeder = new AdminSeeder(context, new AdminSeedOptions("", ""), new FixedTimeProvider(Utc), _hasher);
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => seeder.SeedAsync(_hasher, CancellationToken.None));
-        Assert.Equal(0, await context.Users.CountAsync());
-    }
-
-    [Fact]
-    public async Task Unavailable_hasher_fails_and_creates_no_user()
-    {
-        await ClearUsersAsync();
-        await using var context = fixture.CreateContext();
-        var seeder = CreateSeeder();
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => seeder.SeedAsync(null, CancellationToken.None));
+            () => seeder.SeedAsync(CancellationToken.None));
         Assert.Equal(0, await context.Users.CountAsync());
     }
 

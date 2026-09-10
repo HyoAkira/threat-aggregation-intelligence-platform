@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using System.Text;
 
 namespace ThreatIntelligence.Infrastructure.Configuration;
 
@@ -6,6 +7,7 @@ public sealed record ThreatIntelligenceOptions(
     DatabaseOptions Database,
     RabbitMqOptions RabbitMq,
     JwtOptions Jwt,
+    PasswordHashOptions PasswordHash,
     ThreatFoxOptions ThreatFox,
     AdminSeedOptions AdminSeed,
     LoggingOptions Logging)
@@ -25,6 +27,7 @@ public sealed record ThreatIntelligenceOptions(
                 Required(configuration, "Jwt:Issuer"),
                 Required(configuration, "Jwt:Audience"),
                 IntegerOrDefault(configuration, "Jwt:ExpiryMinutes", 480)),
+            new PasswordHashOptions(IntegerOrDefault(configuration, "Auth:PasswordWorkFactor", 12)),
             new ThreatFoxOptions(Required(configuration, "ThreatFox:ApiKey")),
             new AdminSeedOptions(
                 Required(configuration, "Admin:Username"),
@@ -54,14 +57,19 @@ public sealed record ThreatIntelligenceOptions(
             throw new InvalidOperationException("RabbitMq:Port must be between 1 and 65535.");
         }
 
-        if (Jwt.Secret.Length < 32)
+        if (Encoding.UTF8.GetByteCount(Jwt.Secret) < 32)
         {
-            throw new InvalidOperationException("Jwt:Secret must contain at least 32 characters.");
+            throw new InvalidOperationException("Jwt:Secret must contain at least 32 UTF-8 bytes.");
         }
 
-        if (Jwt.ExpiryMinutes <= 0)
+        if (Jwt.ExpiryMinutes != 480)
         {
-            throw new InvalidOperationException("Jwt:ExpiryMinutes must be greater than zero.");
+            throw new InvalidOperationException("Jwt:ExpiryMinutes must be fixed at 480 minutes.");
+        }
+
+        if (PasswordHash.WorkFactor is < 4 or > 31)
+        {
+            throw new InvalidOperationException("Auth:PasswordWorkFactor must be between 4 and 31.");
         }
     }
 }
@@ -71,6 +79,8 @@ public sealed record DatabaseOptions(string ConnectionString);
 public sealed record RabbitMqOptions(string Host, int Port, string User, string Password, string Exchange);
 
 public sealed record JwtOptions(string Secret, string Issuer, string Audience, int ExpiryMinutes);
+
+public sealed record PasswordHashOptions(int WorkFactor);
 
 public sealed record ThreatFoxOptions(string ApiKey);
 
