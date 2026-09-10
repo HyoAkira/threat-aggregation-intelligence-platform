@@ -3,12 +3,14 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using ThreatIntelligence.Application.BatchWriter;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Application.Normalization;
 using ThreatIntelligence.Application.ProviderRecords;
 using ThreatIntelligence.Domain.Enums;
 using ThreatIntelligence.Infrastructure.Hashing;
 using ThreatIntelligence.Infrastructure.PhishTank;
+using ThreatIntelligence.Infrastructure.Pipeline;
 using ThreatIntelligence.Infrastructure.Persistence;
 using ThreatIntelligence.Infrastructure.PublicSuffix;
 
@@ -75,8 +77,14 @@ public sealed class PhishTankFetchExecutorTests : IAsyncLifetime
                 [PhishTankProviderValidator.PhishTankProviderId] = new PhishTankProviderValidator()
             });
         var hasher = new Sha256ValueHasher();
-        var contextFactory = _fixture.CreateContextFactory();
-        return new PhishTankFetchExecutor(client, parser, mapper, validator, hasher, contextFactory);
+        var context = _fixture.CreateContext();
+        var upsertMapper = new PhishTankUpsertFieldsMapper(hasher, TimeProvider.System);
+        var mappers = new Dictionary<int, IIocUpsertFieldsMapper>
+        {
+            [PhishTankProviderValidator.PhishTankProviderId] = upsertMapper
+        };
+        var batchWriter = new IocBatchWriter(context, mappers);
+        return new PhishTankFetchExecutor(client, parser, validator, batchWriter);
     }
 
     [Fact]

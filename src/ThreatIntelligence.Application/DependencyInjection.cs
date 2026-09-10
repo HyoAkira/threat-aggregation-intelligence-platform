@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using ThreatIntelligence.Application.Features.Iocs.Queries.SearchIocs;
 using ThreatIntelligence.Application.Normalization;
+using ThreatIntelligence.Application.ProviderRecords;
 
 namespace ThreatIntelligence.Application;
 
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddSingleton<IUrlNormalizer, UrlNormalizer>();
         services.AddSingleton<IDomainNormalizer, DomainNormalizer>();
         services.AddSingleton<IIocClassifier, IocClassifier>();
+        services.AddSingleton<ProviderRecordValidator>();
 
         return services;
     }

@@ -3,6 +3,36 @@ using ThreatIntelligence.Domain.Enums;
 
 namespace ThreatIntelligence.Domain.Entities;
 
+/// <summary>
+/// Mutable provider fields applied to an existing IOC row by an upsert. Immutable fields
+/// (<see cref="IoC.CreatedAt"/> and stored <see cref="IoC.FirstSeenUtc"/>) are intentionally absent.
+/// </summary>
+public sealed record IocUpsertFields(
+    string ProviderRecordId,
+    string IocValue,
+    byte[] IocValueHash,
+    IocType IocType,
+    int? Port,
+    string? ProviderDetailsLink,
+    DateTime UpdatedAtUtc,
+    DateTime FirstSeenUtc,
+    DateTime? LastSeenUtc,
+    IReadOnlyList<string> Tags,
+    string? ThreatType,
+    string? Malware,
+    string? MalwareAlias,
+    string? MalwarePrintable,
+    bool? IsCompromised,
+    string? Reporter,
+    bool? Anonymous,
+    bool? IsVerified,
+    string? Target,
+    string? PhishTankDetails,
+    bool? PhishTankOnline,
+    string? UrlHost,
+    string? ParentDomain,
+    byte? ThreatFoxConfidenceLevel);
+
 public class IoC
 {
     private IoC()
@@ -112,4 +142,36 @@ public class IoC
     public byte? ThreatFoxConfidenceLevel { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
+
+    /// <summary>
+    /// Applies a provider upsert to an existing row. Immutable fields (<see cref="CreatedAt"/> and
+    /// the stored <see cref="FirstSeenUtc"/>) are preserved; the provider's normalized identity,
+    /// metadata, and timestamps are refreshed from the incoming fields.
+    /// </summary>
+    public void ApplyProviderUpsert(IocUpsertFields fields)
+    {
+        ProviderRecordId = Guard.Required(fields.ProviderRecordId, 100, nameof(fields.ProviderRecordId));
+        IocValue = Guard.Required(fields.IocValue, 2048, nameof(fields.IocValue));
+        IocValueHash = Guard.ExactBytes(fields.IocValueHash, 32, nameof(fields.IocValueHash));
+        IocType = Guard.Defined(fields.IocType, nameof(fields.IocType));
+        Port = ValidatePort(fields.Port);
+        ThreatFoxConfidenceLevel = ValidateConfidence(fields.ThreatFoxConfidenceLevel);
+
+        ProviderDetailsLink = fields.ProviderDetailsLink;
+        LastSeenUtc = Guard.UtcOrNull(fields.LastSeenUtc, nameof(fields.LastSeenUtc));
+        UpdatedAt = Guard.Utc(fields.UpdatedAtUtc, nameof(fields.UpdatedAtUtc));
+        ThreatType = fields.ThreatType;
+        Malware = fields.Malware;
+        MalwareAlias = fields.MalwareAlias;
+        MalwarePrintable = fields.MalwarePrintable;
+        IsCompromised = fields.IsCompromised;
+        Reporter = fields.Reporter;
+        Anonymous = fields.Anonymous;
+        IsVerified = fields.IsVerified;
+        Target = fields.Target;
+        PhishTankDetails = fields.PhishTankDetails;
+        PhishTankOnline = fields.PhishTankOnline;
+        UrlHost = fields.UrlHost;
+        ParentDomain = fields.ParentDomain;
+    }
 }

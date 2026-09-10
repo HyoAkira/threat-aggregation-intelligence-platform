@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ThreatIntelligence.Application.Abstractions.Authentication;
 using ThreatIntelligence.Application.Abstractions.Hashing;
 using ThreatIntelligence.Application.Abstractions.Persistence;
+using ThreatIntelligence.Application.BatchWriter;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Application.Normalization;
 using ThreatIntelligence.Application.ProviderRecords;
@@ -15,6 +16,7 @@ using ThreatIntelligence.Infrastructure.HealthChecks;
 using ThreatIntelligence.Infrastructure.Persistence;
 using ThreatIntelligence.Infrastructure.Persistence.Repositories;
 using ThreatIntelligence.Infrastructure.Persistence.Seeding;
+using ThreatIntelligence.Infrastructure.Pipeline;
 using ThreatIntelligence.Infrastructure.PublicSuffix;
 using ThreatIntelligence.Infrastructure.PhishTank;
 using ThreatIntelligence.Infrastructure.ThreatFox;
@@ -55,6 +57,8 @@ public static class DependencyInjection
         services.AddScoped<IUserAuthenticationReader, UserAuthenticationReader>();
         services.AddScoped<IFetchHistoryRepository, FetchHistoryRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IIocBatchWriter, IocBatchWriter>();
+        services.AddSingleton<FalsePositiveEvaluator>();
         services.AddScoped<IFetchGuard, FetchGuard>();
         services.AddScoped<IFetchLifecycle, FetchLifecycle>();
         services.AddScoped<IFetchJobPublisher, MassTransitFetchJobPublisher>();
@@ -99,6 +103,16 @@ public static class DependencyInjection
         services.AddSingleton<PhishTankRecordMapper>();
         services.AddSingleton<PhishTankFeedParser>();
         services.AddSingleton<PhishTankProviderValidator>();
+        services.AddSingleton<PhishTankUpsertFieldsMapper>();
+
+        services.AddSingleton<IReadOnlyDictionary<int, IIocUpsertFieldsMapper>>(sp =>
+        {
+            var phishTankMapper = sp.GetRequiredService<PhishTankUpsertFieldsMapper>();
+            return new Dictionary<int, IIocUpsertFieldsMapper>
+            {
+                [PhishTankProviderValidator.PhishTankProviderId] = phishTankMapper
+            };
+        });
 
         services.AddSingleton<IReadOnlyDictionary<int, IProviderValidator>>(sp =>
         {
