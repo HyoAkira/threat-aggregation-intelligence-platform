@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using ThreatIntelligence.Application.Abstractions.Authentication;
 using ThreatIntelligence.Application.Abstractions.Hashing;
 using ThreatIntelligence.Application.Abstractions.Persistence;
+using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Application.Normalization;
 using ThreatIntelligence.Infrastructure.Configuration;
+using ThreatIntelligence.Infrastructure.Fetches;
 using ThreatIntelligence.Infrastructure.Authentication;
 using ThreatIntelligence.Infrastructure.Hashing;
 using ThreatIntelligence.Infrastructure.HealthChecks;
@@ -33,8 +35,10 @@ public static class DependencyInjection
         services.AddSingleton(options.AdminSeed);
         services.AddSingleton(options.Logging);
 
-        services.AddDbContext<ThreatIntelligenceDbContext>(db =>
-            db.UseSqlServer(options.Database.ConnectionString));
+        services.AddDbContext<ThreatIntelligenceDbContext>(
+            db => db.UseSqlServer(options.Database.ConnectionString),
+            contextLifetime: ServiceLifetime.Scoped,
+            optionsLifetime: ServiceLifetime.Singleton);
         services.AddDbContextFactory<ThreatIntelligenceDbContext>(db =>
             db.UseSqlServer(options.Database.ConnectionString));
 
@@ -43,9 +47,16 @@ public static class DependencyInjection
         services.AddScoped<AdminSeeder>();
 
         services.AddScoped<IIocRepository, IocRepository>();
+        services.AddScoped<IIocSearchReader, IocSearchReader>();
         services.AddScoped<IUserAuthenticationReader, UserAuthenticationReader>();
         services.AddScoped<IFetchHistoryRepository, FetchHistoryRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IFetchGuard, FetchGuard>();
+        services.AddScoped<IFetchLifecycle, FetchLifecycle>();
+        services.AddScoped<IFetchJobPublisher, MassTransitFetchJobPublisher>();
+        services.AddSingleton<FetchSchedulerService>();
+        services.AddScoped<IProviderFetchExecutor, UnavailableProviderFetchExecutor>();
+        services.AddHostedService<RuntimeLogLevelWatcher>();
 
         services.AddSingleton<IValueHasher, Sha256ValueHasher>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();

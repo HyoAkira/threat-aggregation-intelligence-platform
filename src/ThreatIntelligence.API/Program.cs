@@ -1,4 +1,6 @@
 using System.Text;
+using MassTransit;
+using Serilog.Core;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -13,9 +15,11 @@ using ThreatIntelligence.Infrastructure.Persistence;
 EnvironmentConfiguration.LoadDotEnv();
 
 var builder = WebApplication.CreateBuilder(args);
+var logLevelSwitch = new LoggingLevelSwitch();
 
 builder.Host.UseSerilog((context, services, loggerConfiguration) => loggerConfiguration
     .ReadFrom.Configuration(context.Configuration)
+    .MinimumLevel.ControlledBy(logLevelSwitch)
     .ReadFrom.Services(services)
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Service", "ThreatIntelligence.API"));
@@ -23,11 +27,26 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) => loggerConfig
 // Add services to the container.
 
 builder.Services.AddControllers(options => options.Conventions.Add(new AdminControllerConvention()));
+builder.Services.AddSingleton(logLevelSwitch);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 var jwt = ThreatIntelligenceOptions.BindAndValidate(builder.Configuration).Jwt;
 builder.Services.AddApplicationServices()
-                 .AddInfrastructureServices(builder.Configuration);
+                  .AddInfrastructureServices(builder.Configuration);
+var rabbitMq = ThreatIntelligenceOptions.BindAndValidate(builder.Configuration).RabbitMq;
+builder.Services.AddMassTransit(configurator =>
+{
+    configurator.UsingRabbitMq((context, bus) =>
+    {
+        bus.Message<ThreatIntelligence.Application.Fetches.FetchJob>(message =>
+            message.SetEntityName(rabbitMq.Exchange));
+        bus.Host(new Uri($"rabbitmq://{rabbitMq.Host}:{rabbitMq.Port}/"), host =>
+        {
+            host.Username(rabbitMq.User);
+            host.Password(rabbitMq.Password);
+        });
+    });
+});
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
@@ -74,8 +93,8 @@ app.UseSerilogRequestLogging(options =>
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapOpenApi().AllowAnonymous();
+    app.MapScalarApiReference().AllowAnonymous();
 }
 
 app.UseHttpsRedirection();

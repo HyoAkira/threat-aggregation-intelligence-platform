@@ -19,4 +19,10 @@ public class Settings
     public string Key { get; private set; } = string.Empty;
     public string Value { get; private set; } = string.Empty;
     public DateTime UpdatedAt { get; private set; }
+
+    public void Update(string value, DateTime updatedAt)
+    {
+        Value = Guard.Required(value, nameof(value));
+        UpdatedAt = Guard.Utc(updatedAt, nameof(updatedAt));
+    }
 }

@@ -29,11 +29,10 @@ public sealed class SqlServerFixture : IAsyncLifetime
         else
         {
             var host = Environment.GetEnvironmentVariable("TEST_SQLSERVER_HOST") ?? "localhost";
-            var port = Environment.GetEnvironmentVariable("TEST_SQLSERVER_PORT") ?? "1433";
-            var password = Environment.GetEnvironmentVariable("SA_PASSWORD")
-                ?? Environment.GetEnvironmentVariable("TEST_SQLSERVER_PASSWORD")
+            var port = Environment.GetEnvironmentVariable("TEST_SQLSERVER_PORT") ?? "1432";
+            var password = Environment.GetEnvironmentVariable("TEST_SQLSERVER_PASSWORD")
                 ?? throw new InvalidOperationException(
-                    "SA_PASSWORD or TEST_SQLSERVER_PASSWORD must be set in .env for integration tests.");
+                    "TEST_SQLSERVER_PASSWORD must be set in .env for integration tests.");
 
             var masterConnection = $"Server={host},{port};Database=master;User Id=sa;Password={password};TrustServerCertificate=True;Encrypt=False";
             ConnectionString = $"Server={host},{port};Database={DatabaseName};User Id=sa;Password={password};TrustServerCertificate=True;Encrypt=False";
@@ -76,6 +75,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
         await using var context = CreateContext();
         await context.Database.ExecuteSqlRawAsync(
             "DELETE FROM iocTags; DELETE FROM iocs; DELETE FROM fetchHistory; DELETE FROM tags; DELETE FROM users; DELETE FROM settings;");
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE providers SET nextFetchTime = NULL, lastFetchAt = NULL, lastFetchStatus = NULL, isEnabled = 1, " +
+            "intervalMinutes = CASE WHEN id = 1 THEN 5 ELSE 480 END;");
     }
 
     private static string FindEnvPath()
