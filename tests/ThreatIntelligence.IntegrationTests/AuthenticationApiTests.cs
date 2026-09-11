@@ -15,6 +15,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using ThreatIntelligence.API.Errors;
 using ThreatIntelligence.Domain.Entities;
 using ThreatIntelligence.Domain.Enums;
 using ThreatIntelligence.Infrastructure.Authentication;
@@ -74,15 +75,21 @@ public sealed class AuthenticationApiTests(SqlServerFixture fixture) : IAsyncLif
         using var anonymousBusiness = await _client.GetAsync("/api/test/protected");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousBusiness.StatusCode);
 
-        using var unknownResponse = await PostLoginAsync("missing-user", "wrong-password");
+        using var unknownResponse = await PostLoginAsync("missing-user", "wrong-password", "login-401");
         using var wrongPasswordResponse = await PostLoginAsync(AdminUsername, "wrong-password");
         Assert.Equal(HttpStatusCode.Unauthorized, unknownResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, wrongPasswordResponse.StatusCode);
-        var unknownProblem = (await unknownResponse.Content.ReadFromJsonAsync<ProblemDetails>())!;
-        var wrongPasswordProblem = (await wrongPasswordResponse.Content.ReadFromJsonAsync<ProblemDetails>())!;
+        Assert.Equal("login-401", unknownResponse.Headers.GetValues("X-Correlation-ID").Single());
+        Assert.Equal("application/problem+json", unknownResponse.Content.Headers.ContentType?.MediaType);
+        var unknownProblem = (await unknownResponse.Content.ReadFromJsonAsync<ApiProblemDetails>())!;
+        var wrongPasswordProblem = (await wrongPasswordResponse.Content.ReadFromJsonAsync<ApiProblemDetails>())!;
         Assert.Equal(unknownProblem.Status, wrongPasswordProblem.Status);
         Assert.Equal(unknownProblem.Title, wrongPasswordProblem.Title);
         Assert.Equal(unknownProblem.Type, wrongPasswordProblem.Type);
+        Assert.Equal(401, unknownProblem.Status);
+        Assert.Equal("unauthenticated", unknownProblem.Code);
+        Assert.Equal("urn:threat-intelligence:problem:unauthenticated", unknownProblem.Type);
+        Assert.Equal("login-401", unknownProblem.CorrelationId);
         var invalidBodies = await unknownResponse.Content.ReadAsStringAsync()
             + await wrongPasswordResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain("missing-user", invalidBodies, StringComparison.Ordinal);
@@ -145,8 +152,19 @@ public sealed class AuthenticationApiTests(SqlServerFixture fixture) : IAsyncLif
         return (await response.Content.ReadFromJsonAsync<LoginResponse>())!;
     }
 
-    private Task<HttpResponseMessage> PostLoginAsync(string username, string password) =>
-        _client.PostAsJsonAsync("/api/auth/login", new { username, password });
+    private Task<HttpResponseMessage> PostLoginAsync(string username, string password, string? correlationId = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+        {
+            Content = JsonContent.Create(new { username, password })
+        };
+        if (correlationId is not null)
+        {
+            request.Headers.Add("X-Correlation-ID", correlationId);
+        }
+
+        return _client.SendAsync(request);
+    }
 
     private static HttpRequestMessage AuthorizedGet(string path, string token)
     {

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ThreatIntelligence.API.Controllers;
+using ThreatIntelligence.API.Errors;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Domain.Enums;
 
@@ -33,7 +34,8 @@ public sealed class AdminProviderFetchControllerTests
 
         var result = await controller.Fetch(99, CancellationToken.None);
 
-        Assert.IsType<NotFoundResult>(result.Result);
+        var problem = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal("provider_not_found", Assert.IsType<ApiProblemDetails>(problem.Value).Code);
         Assert.Null(publisher.Job);
     }
 
@@ -46,7 +48,8 @@ public sealed class AdminProviderFetchControllerTests
 
         var result = await controller.Fetch(1, CancellationToken.None);
 
-        Assert.IsType<ConflictObjectResult>(result.Result);
+        var problem = Assert.IsType<ConflictObjectResult>(result.Result);
+        Assert.Equal("fetch_guarded", Assert.IsType<ApiProblemDetails>(problem.Value).Code);
         Assert.Null(publisher.Job);
     }
 
@@ -75,7 +78,8 @@ public sealed class AdminProviderFetchControllerTests
 
         var result = await controller.Fetch(2, CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result.Result);
+        var problem = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("unsupported_fetch_mode", Assert.IsType<ApiProblemDetails>(problem.Value).Code);
         Assert.Null(publisher.Job);
     }
 
@@ -91,6 +95,7 @@ public sealed class AdminProviderFetchControllerTests
 
         var problem = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(503, problem.StatusCode);
+        Assert.Equal("fetch_publish_failed", Assert.IsType<ApiProblemDetails>(problem.Value).Code);
         Assert.Equal(jobId, lifecycle.FailedJobId);
         Assert.Contains("broker unavailable", lifecycle.ErrorDetail, StringComparison.Ordinal);
     }

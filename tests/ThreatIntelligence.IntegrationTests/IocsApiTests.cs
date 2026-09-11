@@ -68,7 +68,9 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("corr-401", response.Headers.GetValues("X-Correlation-ID").Single());
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         var problem = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("urn:threat-intelligence:problem:unauthenticated", (string)problem["type"]!);
         Assert.Equal("unauthenticated", (string)problem["code"]!);
         Assert.Equal("corr-401", (string)problem["correlationId"]!);
         Assert.Equal(401, (int)problem["status"]!);
@@ -95,8 +97,10 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
 
         using var absent = await GetAuthorized("/api/iocs/search?q=absent.example");
         Assert.Equal(HttpStatusCode.NotFound, absent.StatusCode);
+        Assert.Equal("application/problem+json", absent.Content.Headers.ContentType?.MediaType);
         var absentProblem = (await absent.Content.ReadFromJsonAsync<JsonObject>())!;
         Assert.Equal("ioc_not_found", (string)absentProblem["code"]!);
+        Assert.Equal((string)absentProblem["correlationId"]!, absent.Headers.GetValues("X-Correlation-ID").Single());
     }
 
     [Fact]

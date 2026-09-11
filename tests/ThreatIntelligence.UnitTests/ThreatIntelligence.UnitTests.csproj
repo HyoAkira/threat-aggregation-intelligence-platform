@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\ThreatIntelligence.API\ThreatIntelligence.API.csproj" />
     <ProjectReference Include="..\..\src\ThreatIntelligence.Domain\ThreatIntelligence.Domain.csproj" />
     <ProjectReference Include="..\..\src\ThreatIntelligence.Application\ThreatIntelligence.Application.csproj" />
     <ProjectReference Include="..\..\src\ThreatIntelligence.Infrastructure\ThreatIntelligence.Infrastructure.csproj" />

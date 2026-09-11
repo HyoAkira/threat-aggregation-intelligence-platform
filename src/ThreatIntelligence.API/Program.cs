@@ -48,17 +48,22 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
             detail = "One or more request values are invalid.";
         }
 
-        return new BadRequestObjectResult(ApiProblemFactory.Create(
+        return ApiProblemFactory.Result(
             context.HttpContext,
             StatusCodes.Status400BadRequest,
             ApiProblemFactory.ValidationCode,
             "Validation failed",
-            detail));
+            detail);
     };
 });
 builder.Services.AddSingleton(logLevelSwitch);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BearerSecuritySchemeDocumentTransformer>();
+    options.AddOperationTransformer<AnonymousSecurityOperationTransformer>();
+    options.AddOperationTransformer<ApiProblemOpenApiTransformer>();
+});
 var jwt = ThreatIntelligenceOptions.BindAndValidate(builder.Configuration).Jwt;
 builder.Services.AddApplicationServices()
                   .AddInfrastructureServices(builder.Configuration);
@@ -100,22 +105,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 challengeContext.HandleResponse();
                 challengeContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await challengeContext.Response.WriteAsJsonAsync(ApiProblemFactory.Create(
+                await ApiProblemFactory.WriteAsync(challengeContext.Response, ApiProblemFactory.Create(
                     challengeContext.HttpContext,
                     StatusCodes.Status401Unauthorized,
                     ApiProblemFactory.UnauthenticatedCode,
                     "Unauthorized",
-                    "Authentication is required to access this resource."));
+                    "Authentication is required to access this resource."), challengeContext.HttpContext.RequestAborted);
             },
             OnForbidden = async forbiddenContext =>
             {
                 forbiddenContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await forbiddenContext.Response.WriteAsJsonAsync(ApiProblemFactory.Create(
+                await ApiProblemFactory.WriteAsync(forbiddenContext.Response, ApiProblemFactory.Create(
                     forbiddenContext.HttpContext,
                     StatusCodes.Status403Forbidden,
                     ApiProblemFactory.ForbiddenCode,
                     "Forbidden",
-                    "You do not have permission to perform this action."));
+                    "You do not have permission to perform this action."), forbiddenContext.HttpContext.RequestAborted);
             }
         };
     });
@@ -147,9 +152,10 @@ app.UseSerilogRequestLogging(options =>
 });
 
 app.UseMiddleware<ApiExceptionHandlingMiddleware>();
+app.UseStatusCodePages(ApiProblemStatusCodePages.HandleAsync);
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     app.MapOpenApi().AllowAnonymous();
     app.MapScalarApiReference().AllowAnonymous();

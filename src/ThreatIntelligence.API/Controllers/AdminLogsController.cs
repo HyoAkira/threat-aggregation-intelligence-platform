@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ThreatIntelligence.Application.Abstractions.Persistence;
+using ThreatIntelligence.API.Errors;
 using ThreatIntelligence.Application.Admin;
 
 namespace ThreatIntelligence.API.Controllers;
@@ -25,20 +26,22 @@ public sealed class AdminLogsController(IAdminLogReader reader) : ControllerBase
         var resolvedCount = count ?? DefaultCount;
         if (resolvedCount is < 1 or > MaxCount)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid log query.",
-                Detail = $"The count must be between 1 and {MaxCount}."
-            });
+            return ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status400BadRequest,
+                "invalid_log_query",
+                "Invalid log query",
+                $"The count must be between 1 and {MaxCount}.");
         }
 
         if (!string.IsNullOrWhiteSpace(level) && !Levels.Contains(level))
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid log query.",
-                Detail = "The level must be one of Verbose, Debug, Information, Warning, Error, or Fatal."
-            });
+            return ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status400BadRequest,
+                "invalid_log_query",
+                "Invalid log query",
+                "The level must be one of Verbose, Debug, Information, Warning, Error, or Fatal.");
         }
 
         return Ok(await reader.ReadAsync(
