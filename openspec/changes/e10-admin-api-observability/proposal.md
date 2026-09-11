@@ -19,7 +19,7 @@ Administrators need one protected API surface to operate providers, inspect fetc
 
 ### Modified Capabilities
 
-- None.
+- `fetch-job-contract`: the `FetchJob` message gains a correlation identifier (defaulting to the job identifier) so the API and Worker lifecycle events for one job share a trace.
 
 ## Impact
 

@@ -8,6 +8,7 @@ using ThreatIntelligence.Application.BatchWriter;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Application.Normalization;
 using ThreatIntelligence.Application.ProviderRecords;
+using ThreatIntelligence.Infrastructure.Admin;
 using ThreatIntelligence.Infrastructure.Configuration;
 using ThreatIntelligence.Infrastructure.Fetches;
 using ThreatIntelligence.Infrastructure.Authentication;
@@ -53,7 +54,13 @@ public static class DependencyInjection
         services.AddScoped<AdminSeeder>();
 
         services.AddScoped<IIocRepository, IocRepository>();
-        services.AddScoped<IIocSearchReader, IocSearchReader>();
+        services.AddScoped<IIocQueryReader, IocQueryReader>();
+        services.AddScoped<IAdminProviderOperationsReader, AdminProviderOperationsReader>();
+        services.AddScoped<IAdminSummaryReader, AdminSummaryReader>();
+        services.AddSingleton(new AdminLogOptions(
+            configuration["Admin:LogDirectory"] is { Length: > 0 } logDirectory ? logDirectory : "logs",
+            configuration["Admin:LogFilePrefix"] is { Length: > 0 } logPrefix ? logPrefix : "api-"));
+        services.AddSingleton<IAdminLogReader, AdminLogReader>();
         services.AddScoped<IUserAuthenticationReader, UserAuthenticationReader>();
         services.AddScoped<IFetchHistoryRepository, FetchHistoryRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -61,6 +68,7 @@ public static class DependencyInjection
         services.AddSingleton<FalsePositiveEvaluator>();
         services.AddScoped<IFetchGuard, FetchGuard>();
         services.AddScoped<IFetchLifecycle, FetchLifecycle>();
+        services.AddSingleton<IFetchLifecycleEventSink, LoggerFetchLifecycleEventSink>();
         services.AddScoped<IFetchJobPublisher, MassTransitFetchJobPublisher>();
         services.AddSingleton<FetchSchedulerService>();
         services.AddScoped<UnavailableProviderFetchExecutor>();
@@ -74,6 +82,7 @@ public static class DependencyInjection
 
         AddThreatFoxAdapter(services);
         AddPhishTankAdapter(services);
+        RegisterProviderMaps(services);
         RegisterExecutorRouter(services);
 
         services.AddHealthChecks()
@@ -89,13 +98,20 @@ public static class DependencyInjection
         services.AddSingleton<ThreatFoxRecentParser>();
         services.AddSingleton<ThreatFoxFullParser>();
         services.AddSingleton<ThreatFoxProviderValidator>();
+        services.AddSingleton<ThreatFoxUpsertFieldsMapper>();
+
+        services.AddScoped<ThreatFoxFetchExecutor>();
 
         services.AddHttpClient<IThreatFoxExportClient, ThreatFoxExportClient>(configureClient: static client =>
         {
             // Explicit transport timeout; E05 owns retry policy, so the handler-level wiring never retries.
             // The ThreatFoxExportClient constructor sets the descriptive user agent.
             client.Timeout = TimeSpan.FromSeconds(100);
-        });
+        })
+        // The default HttpClient pipeline logs the absolute request URI, which contains the ThreatFox
+        // API key. Remove those loggers so the key never reaches application logs; the client emits its
+        // own key-free request/response logs.
+        .RemoveAllLoggers();
     }
 
     private static void AddPhishTankAdapter(IServiceCollection services)
@@ -104,12 +120,29 @@ public static class DependencyInjection
         services.AddSingleton<PhishTankFeedParser>();
         services.AddSingleton<PhishTankProviderValidator>();
         services.AddSingleton<PhishTankUpsertFieldsMapper>();
+        services.AddScoped<PhishTankFetchExecutor>();
 
+        services.AddHttpClient<IPhishTankClient, PhishTankClient>(configureClient: static client =>
+        {
+            // Explicit transport timeout; E05 owns retry policy, so the handler-level wiring never retries.
+            // The PhishTankClient constructor sets the descriptive user agent.
+            client.Timeout = TimeSpan.FromMinutes(30);
+        })
+        // The default HttpClient pipeline logs the absolute request URI, which contains the PhishTank
+        // application key when configured. Remove those loggers so the key never reaches application
+        // logs; the client emits its own key-free request/response logs.
+        .RemoveAllLoggers();
+    }
+
+    private static void RegisterProviderMaps(IServiceCollection services)
+    {
         services.AddSingleton<IReadOnlyDictionary<int, IIocUpsertFieldsMapper>>(sp =>
         {
+            var threatFoxMapper = sp.GetRequiredService<ThreatFoxUpsertFieldsMapper>();
             var phishTankMapper = sp.GetRequiredService<PhishTankUpsertFieldsMapper>();
             return new Dictionary<int, IIocUpsertFieldsMapper>
             {
+                [ThreatFoxRecordMapper.ThreatFoxProviderId] = threatFoxMapper,
                 [PhishTankProviderValidator.PhishTankProviderId] = phishTankMapper
             };
         });
@@ -124,25 +157,18 @@ public static class DependencyInjection
                 [phishTankValidator.ProviderId] = phishTankValidator
             };
         });
-
-        services.AddScoped<PhishTankFetchExecutor>();
-
-        services.AddHttpClient<IPhishTankClient, PhishTankClient>(configureClient: static client =>
-        {
-            // Explicit transport timeout; E05 owns retry policy, so the handler-level wiring never retries.
-            // The PhishTankClient constructor sets the descriptive user agent.
-            client.Timeout = TimeSpan.FromMinutes(30);
-        });
     }
 
     private static void RegisterExecutorRouter(IServiceCollection services)
     {
         services.AddScoped<IProviderFetchExecutor>(sp =>
         {
+            var threatFox = sp.GetRequiredService<ThreatFoxFetchExecutor>();
             var phishTank = sp.GetRequiredService<PhishTankFetchExecutor>();
             var fallback = sp.GetRequiredService<UnavailableProviderFetchExecutor>();
             var executors = new Dictionary<int, IProviderFetchExecutor>
             {
+                [ThreatFoxRecordMapper.ThreatFoxProviderId] = threatFox,
                 [PhishTankProviderValidator.PhishTankProviderId] = phishTank
             };
             return new ProviderFetchExecutorRouter(executors, fallback);

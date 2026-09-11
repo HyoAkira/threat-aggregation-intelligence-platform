@@ -332,6 +332,27 @@ public sealed class IocBatchWriterTests(SqlServerFixture fixture) : IAsyncLifeti
         Assert.All(rows, row => Assert.Contains(tag.Id, context.IoCTags.Where(t => t.IocId == row.Id).Select(t => t.TagId).ToHashSet()));
     }
 
+    [Fact]
+    public async Task Records_resolving_to_one_ioc_do_not_duplicate_the_tag_association()
+    {
+        var writer = CreateWriter();
+        var result = await writer.ApplyAsync(
+            new[]
+            {
+                Rec("r1", "1.2.3.4", tags: new[] { "shared" }),
+                Rec("r2", "1.2.3.4", tags: new[] { "shared" })
+            },
+            PhishTankProviderValidator.PhishTankProviderId,
+            CancellationToken.None);
+
+        Assert.Equal((1, 1), (result.Added, result.Updated));
+
+        await using var context = fixture.CreateContext();
+        var row = Assert.Single(await context.Iocs.Where(i => i.ProviderId == 2).ToListAsync());
+        var tag = Assert.Single(await context.Tags.Where(t => t.Name == "shared").ToListAsync());
+        Assert.Equal(1, await context.IoCTags.CountAsync(t => t.IocId == row.Id && t.TagId == tag.Id));
+    }
+
     // --- TI-083 / FR-009 Whole-batch transaction ----------------------------------
 
     [Fact]

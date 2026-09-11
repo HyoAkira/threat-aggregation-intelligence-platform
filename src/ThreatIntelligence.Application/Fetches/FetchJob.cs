@@ -8,7 +8,13 @@ namespace ThreatIntelligence.Application.Fetches;
 /// </summary>
 public sealed record FetchJob
 {
-    public FetchJob(Guid jobId, int providerId, FetchTrigger trigger, FetchMode mode, int attempt)
+    public FetchJob(
+        Guid jobId,
+        int providerId,
+        FetchTrigger trigger,
+        FetchMode mode,
+        int attempt,
+        string? correlationId = null)
     {
         if (jobId == Guid.Empty)
         {
@@ -40,6 +46,7 @@ public sealed record FetchJob
         Trigger = trigger;
         Mode = mode;
         Attempt = attempt;
+        CorrelationId = string.IsNullOrWhiteSpace(correlationId) ? jobId.ToString("N") : correlationId;
     }
 
     public Guid JobId { get; }
@@ -50,4 +57,10 @@ public sealed record FetchJob
     [JsonConverter(typeof(JsonStringEnumConverter<FetchMode>))]
     public FetchMode Mode { get; }
     public int Attempt { get; }
+
+    /// <summary>
+    /// Correlation id threaded from the triggering API request (or generated for scheduled jobs) so
+    /// API, broker, and Worker lifecycle events for one job share a trace. Defaults to the job id.
+    /// </summary>
+    public string CorrelationId { get; }
 }

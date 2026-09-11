@@ -34,10 +34,10 @@ public sealed class ThreatFoxRecordMapper
         }
 
         var id = Require(record.Id, "id", recordIndex);
-        var ioc = Require(record.Ioc, "ioc", recordIndex);
+        var ioc = Require(record.Ioc ?? record.IocValue, "ioc", recordIndex);
         var type = MapIocType(record.IocType, recordIndex);
-        var firstSeen = ParseTimestamp(record.FirstSeen, "first_seen", recordIndex);
-        var lastSeen = ParseOptionalTimestamp(record.LastSeen, "last_seen", recordIndex);
+        var firstSeen = ParseTimestamp(record.FirstSeen ?? record.FirstSeenUtc, "first_seen", recordIndex);
+        var lastSeen = ParseOptionalTimestamp(record.LastSeen ?? record.LastSeenUtc, "last_seen", recordIndex);
 
         return new ProviderRecordInput(
             ProviderId: ThreatFoxProviderId,

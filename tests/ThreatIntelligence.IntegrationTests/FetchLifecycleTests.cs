@@ -25,7 +25,7 @@ public sealed class FetchLifecycleTests(SqlServerFixture fixture) : IAsyncLifeti
 
         Assert.True(await lifecycle.TryStartAsync(job, false, CancellationToken.None));
         Assert.True(await lifecycle.TryStartAsync(job, false, CancellationToken.None));
-        await lifecycle.SucceedAsync(job.JobId, 2, 3, CancellationToken.None);
+        await lifecycle.SucceedAsync(job, 2, 3, CancellationToken.None);
 
         await using var context = fixture.CreateContext();
         var history = await context.FetchHistory.SingleAsync();
@@ -48,7 +48,7 @@ public sealed class FetchLifecycleTests(SqlServerFixture fixture) : IAsyncLifeti
         var job = new FetchJob(reservation.JobId!.Value, 1, FetchTrigger.Manual, FetchMode.Recent, 1);
 
         Assert.True(await lifecycle.TryStartAsync(job, false, CancellationToken.None));
-        await lifecycle.FailAsync(job.JobId, "invalid provider record", CancellationToken.None);
+        await lifecycle.FailAsync(job, "invalid provider record", CancellationToken.None);
 
         await using var context = fixture.CreateContext();
         var history = await context.FetchHistory.SingleAsync();
