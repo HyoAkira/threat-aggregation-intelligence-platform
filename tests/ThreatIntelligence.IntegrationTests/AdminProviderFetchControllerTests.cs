@@ -51,13 +51,29 @@ public sealed class AdminProviderFetchControllerTests
     }
 
     [Fact]
-    public async Task Full_fetch_shortcut_rejects_non_threatfox_provider()
+    public async Task Full_fetch_shortcut_queues_full_mode_for_any_provider_the_guard_admits()
     {
         var publisher = new CapturingPublisher();
         var controller = new AdminProviderFetchController(
             new StubGuard(FetchReservation.Allow(Guid.NewGuid())), publisher, new StubLifecycle());
 
         var result = await controller.FetchFull(2, CancellationToken.None);
+
+        var accepted = Assert.IsType<AcceptedResult>(result.Result);
+        var response = Assert.IsType<FetchQueuedResponse>(accepted.Value);
+        Assert.Equal("queued", response.Status);
+        Assert.Equal(response.JobId, publisher.Job!.JobId);
+        Assert.Equal(FetchMode.Full, publisher.Job.Mode);
+    }
+
+    [Fact]
+    public async Task Recent_fetch_for_a_full_only_provider_returns_400_without_publishing()
+    {
+        var publisher = new CapturingPublisher();
+        var controller = new AdminProviderFetchController(
+            new StubGuard(FetchReservation.Reject(FetchReservationRejection.UnsupportedMode)), publisher, new StubLifecycle());
+
+        var result = await controller.Fetch(2, CancellationToken.None);
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Null(publisher.Job);
@@ -108,9 +124,9 @@ public sealed class AdminProviderFetchControllerTests
     {
         public Task<bool> TryStartAsync(FetchJob job, bool isRetry, CancellationToken cancellationToken) => Task.FromResult(true);
 
-        public Task SucceedAsync(Guid jobId, int recordsAdded, int recordsUpdated, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SucceedAsync(FetchJob job, int recordsAdded, int recordsUpdated, CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public Task FailAsync(Guid jobId, string errorDetail, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task FailAsync(FetchJob job, string errorDetail, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class CapturingLifecycle : IFetchLifecycle
@@ -119,11 +135,11 @@ public sealed class AdminProviderFetchControllerTests
         public string ErrorDetail { get; private set; } = string.Empty;
 
         public Task<bool> TryStartAsync(FetchJob job, bool isRetry, CancellationToken cancellationToken) => Task.FromResult(true);
-        public Task SucceedAsync(Guid jobId, int recordsAdded, int recordsUpdated, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SucceedAsync(FetchJob job, int recordsAdded, int recordsUpdated, CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public Task FailAsync(Guid jobId, string errorDetail, CancellationToken cancellationToken)
+        public Task FailAsync(FetchJob job, string errorDetail, CancellationToken cancellationToken)
         {
-            FailedJobId = jobId;
+            FailedJobId = job.JobId;
             ErrorDetail = errorDetail;
             return Task.CompletedTask;
         }

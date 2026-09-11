@@ -41,7 +41,7 @@ public sealed class FetchGuardTests(SqlServerFixture fixture) : IAsyncLifetime
         var job = new FetchJob(reservation.JobId!.Value, 1, FetchTrigger.Manual, FetchMode.Recent, 1);
 
         Assert.True(await guard.CanExecuteAsync(job, CancellationToken.None));
-        await lifecycle.FailAsync(job.JobId, "publish failed", CancellationToken.None);
+        await lifecycle.FailAsync(job, "publish failed", CancellationToken.None);
 
         var blocked = await guard.ReserveAsync(1, FetchTrigger.Manual, FetchMode.Recent, CancellationToken.None);
         Assert.Equal(FetchReservationRejection.Cooldown, blocked.Rejection);

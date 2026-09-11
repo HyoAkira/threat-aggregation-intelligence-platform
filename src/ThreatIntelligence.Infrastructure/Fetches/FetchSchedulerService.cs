@@ -14,8 +14,11 @@ namespace ThreatIntelligence.Infrastructure.Fetches;
 public sealed class FetchSchedulerService(
     IDbContextFactory<ThreatIntelligenceDbContext> contextFactory,
     IServiceScopeFactory scopeFactory,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IFetchLifecycleEventSink? eventSink = null)
 {
+    private readonly IFetchLifecycleEventSink _eventSink = eventSink ?? NullFetchLifecycleEventSink.Instance;
+
     public async Task<int> TickAsync(CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -33,14 +36,24 @@ public sealed class FetchSchedulerService(
             var publisher = scope.ServiceProvider.GetRequiredService<IFetchJobPublisher>();
             var lifecycle = scope.ServiceProvider.GetRequiredService<IFetchLifecycle>();
             var mode = provider.Name == "ThreatFox" ? FetchMode.Recent : FetchMode.Full;
+            var correlationId = Guid.NewGuid().ToString("N");
             var reservation = await guard.ReserveAsync(provider.Id, FetchTrigger.Scheduled, mode, cancellationToken);
             if (!reservation.IsAllowed)
             {
                 // Guarded (e.g. cooldown): defer to a later tick without a publish storm.
+                Emit(
+                    FetchLifecycleEventNames.GuardRejection,
+                    null,
+                    provider.Id,
+                    mode,
+                    FetchTrigger.Scheduled,
+                    correlationId,
+                    reservation.Rejection?.ToString());
                 continue;
             }
 
-            var job = new FetchJob(reservation.JobId!.Value, provider.Id, FetchTrigger.Scheduled, mode, 1);
+            var job = new FetchJob(reservation.JobId!.Value, provider.Id, FetchTrigger.Scheduled, mode, 1, correlationId);
+            Emit(FetchLifecycleEventNames.Reservation, job);
             try
             {
                 await publisher.PublishAsync(job, cancellationToken);
@@ -48,7 +61,7 @@ public sealed class FetchSchedulerService(
             }
             catch (Exception exception)
             {
-                await lifecycle.FailAsync(job.JobId, $"Unable to publish scheduled fetch job: {exception.Message}", cancellationToken);
+                await lifecycle.FailAsync(job, $"Unable to publish scheduled fetch job: {exception.Message}", cancellationToken);
             }
 
             // Advance regardless so a failed publish or run waits for the next interval.
@@ -64,6 +77,32 @@ public sealed class FetchSchedulerService(
 
         return published;
     }
+
+    private void Emit(
+        string eventName,
+        FetchJob? job,
+        int providerId,
+        FetchMode mode,
+        FetchTrigger trigger,
+        string correlationId,
+        string? reason = null) =>
+        _eventSink.Emit(new FetchLifecycleEvent(
+            eventName,
+            job?.JobId,
+            providerId,
+            FetchTokens.Mode(mode),
+            FetchTokens.Trigger(trigger),
+            job?.CorrelationId ?? correlationId,
+            Reason: reason));
+
+    private void Emit(string eventName, FetchJob job) =>
+        _eventSink.Emit(new FetchLifecycleEvent(
+            eventName,
+            job.JobId,
+            job.ProviderId,
+            FetchTokens.Mode(job.Mode),
+            FetchTokens.Trigger(job.Trigger),
+            job.CorrelationId));
 
     private sealed record ScheduledProvider(int Id, string Name, int IntervalMinutes);
 }

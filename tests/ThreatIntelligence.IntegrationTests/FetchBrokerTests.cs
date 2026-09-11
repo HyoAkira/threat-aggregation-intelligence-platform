@@ -128,15 +128,15 @@ public sealed class FetchBrokerTests(RabbitMqFixture fixture)
     {
         public Task<bool> TryStartAsync(FetchJob job, bool isRetry, CancellationToken cancellationToken) => Task.FromResult(true);
 
-        public Task SucceedAsync(Guid jobId, int recordsAdded, int recordsUpdated, CancellationToken cancellationToken)
+        public Task SucceedAsync(FetchJob job, int recordsAdded, int recordsUpdated, CancellationToken cancellationToken)
         {
-            probe.RecordSuccess(jobId);
+            probe.RecordSuccess(job.JobId);
             return Task.CompletedTask;
         }
 
-        public Task FailAsync(Guid jobId, string errorDetail, CancellationToken cancellationToken)
+        public Task FailAsync(FetchJob job, string errorDetail, CancellationToken cancellationToken)
         {
-            probe.RecordFailure(jobId, errorDetail);
+            probe.RecordFailure(job.JobId, errorDetail);
             return Task.CompletedTask;
         }
     }

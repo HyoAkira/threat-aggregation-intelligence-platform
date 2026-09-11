@@ -2,7 +2,12 @@ using System.Text.Json.Serialization;
 
 namespace ThreatIntelligence.Infrastructure.ThreatFox;
 
-/// <summary>A single record in the ThreatFox JSON export (recent files or the full archive entry).</summary>
+/// <summary>
+/// A single record in the ThreatFox JSON export (recent files or the full archive entry).
+/// The export uses the keyed field names (<c>ioc_value</c>, <c>first_seen_utc</c>, ...) while the
+/// community API uses the short names (<c>ioc</c>, <c>first_seen</c>, ...); both are accepted and
+/// the caller resolves whichever is present.
+/// </summary>
 public sealed record ThreatFoxJsonRecord
 {
     [JsonPropertyName("id")]
@@ -10,6 +15,9 @@ public sealed record ThreatFoxJsonRecord
 
     [JsonPropertyName("ioc")]
     public string? Ioc { get; init; }
+
+    [JsonPropertyName("ioc_value")]
+    public string? IocValue { get; init; }
 
     [JsonPropertyName("ioc_type")]
     public string? IocType { get; init; }
@@ -41,8 +49,14 @@ public sealed record ThreatFoxJsonRecord
     [JsonPropertyName("first_seen")]
     public string? FirstSeen { get; init; }
 
+    [JsonPropertyName("first_seen_utc")]
+    public string? FirstSeenUtc { get; init; }
+
     [JsonPropertyName("last_seen")]
     public string? LastSeen { get; init; }
+
+    [JsonPropertyName("last_seen_utc")]
+    public string? LastSeenUtc { get; init; }
 
     [JsonPropertyName("reference")]
     public string? Reference { get; init; }
@@ -50,10 +64,14 @@ public sealed record ThreatFoxJsonRecord
     [JsonPropertyName("reporter")]
     public string? Reporter { get; init; }
 
+    [JsonPropertyName("anonymous")]
+    public int? Anonymous { get; init; }
+
     [JsonPropertyName("is_compromised")]
     public bool? IsCompromised { get; init; }
 
     [JsonPropertyName("tags")]
+    [JsonConverter(typeof(FlexibleStringListConverter))]
     public IReadOnlyList<string>? Tags { get; init; }
 
     [JsonPropertyName("malware_samples")]

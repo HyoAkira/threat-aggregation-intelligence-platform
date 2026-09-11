@@ -96,7 +96,7 @@ public sealed class FetchSchedulerTests(SqlServerFixture fixture) : IAsyncLifeti
         Assert.Equal(1, await scheduler.TickAsync(CancellationToken.None));
 
         var lifecycle = new FetchLifecycle(fixture.CreateContextFactory(), _clock);
-        await lifecycle.FailAsync(publisher.Jobs[0].JobId, "upstream failure", CancellationToken.None);
+        await lifecycle.FailAsync(publisher.Jobs[0], "upstream failure", CancellationToken.None);
 
         Assert.Equal(0, await scheduler.TickAsync(CancellationToken.None));
         Assert.Single(publisher.Jobs);

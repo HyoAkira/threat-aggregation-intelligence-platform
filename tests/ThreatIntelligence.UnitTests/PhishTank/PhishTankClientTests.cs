@@ -25,6 +25,49 @@ public sealed class PhishTankClientTests
     }
 
     [Fact]
+    public async Task Feed_request_uses_the_documented_data_path()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "fake-gzip-data", "application/gzip");
+        var client = PhishTankTestClient.Create(handler);
+
+        var result = await client.FetchFeedAsync(CancellationToken.None);
+        await using (result.Content)
+        {
+            Assert.Equal(
+                "https://data.phishtank.com/data/online-valid.json.gz",
+                handler.LastRequest!.RequestUri!.AbsoluteUri);
+        }
+    }
+
+    [Fact]
+    public async Task Feed_request_with_key_uses_the_documented_data_path()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "fake-gzip-data", "application/gzip");
+        var client = PhishTankTestClient.Create(handler, appKey: PhishTankTestClient.AppKey);
+
+        var result = await client.FetchFeedAsync(CancellationToken.None);
+        await using (result.Content)
+        {
+            Assert.Equal(
+                $"https://data.phishtank.com/data/{PhishTankTestClient.AppKey}/online-valid.json.gz",
+                handler.LastRequest!.RequestUri!.AbsoluteUri);
+        }
+    }
+
+    [Fact]
+    public async Task Redirect_is_reported_as_a_terminal_failure_naming_the_redirect()
+    {
+        var client = PhishTankTestClient.Create(new StubHttpMessageHandler(HttpStatusCode.MovedPermanently));
+
+        var ex = await Assert.ThrowsAsync<ProviderFetchHttpException>(() =>
+            client.FetchFeedAsync(CancellationToken.None));
+
+        Assert.Equal(HttpStatusCode.MovedPermanently, ex.StatusCode);
+        Assert.Contains("redirect", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(FetchErrorClassifier.IsTransient(ex));
+    }
+
+    [Fact]
     public async Task Feed_request_includes_app_key_when_configured()
     {
         var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "fake-gzip-data", "application/gzip");

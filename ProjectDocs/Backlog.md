@@ -36,7 +36,7 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 **Goal:** Remove contradictions that would otherwise produce rework.
 
-- [ ] **TI-001 — Reconcile runtime and Compose versions** · P0 · S
+- [x] **TI-001 — Reconcile runtime and Compose versions** · P0 · S
   - Choose SQL Server 2022 or 2025 and use it consistently.
   - Remove or isolate the test database host-port collision (`1433:1433` on both services).
   - Add the missing RabbitMQ and worker services to the implementation plan.
@@ -129,25 +129,25 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 **Goal:** Give ingestion and query paths one shared, rigorously tested normalization service.
 
-- [ ] **TI-030 — Implement strict IPv4 normalization** · P0 · M
+- [x] **TI-030 — Implement strict IPv4 normalization** · P0 · M
   - Reject leading-zero/ambiguous input; support optional valid port.
   - **Acceptance:** canonical, invalid, boundary-port, and whitespace cases pass table-driven tests.
-- [ ] **TI-031 — Implement strict IPv6 normalization** · P0 · M
+- [x] **TI-031 — Implement strict IPv6 normalization** · P0 · M
   - Produce compressed canonical addresses; parse bracketed port syntax without confusing address colons.
   - **Acceptance:** expanded/compressed equivalents normalize identically and invalid brackets/ports fail clearly.
-- [ ] **TI-032 — Implement domain normalization** · P0 · L
+- [x] **TI-032 — Implement domain normalization** · P0 · L
   - Lowercase, remove one root dot, validate labels/length, reject schemes/paths/ports/whitespace, and preserve IDN form.
   - **Acceptance:** specification examples and edge cases pass.
-- [ ] **TI-033 — Integrate Public Suffix List resolution** · P0 · M
+- [x] **TI-033 — Integrate Public Suffix List resolution** · P0 · M
   - Select a library/data update strategy; calculate registrable domains for domain and URL hosts.
   - **Acceptance:** apex, subdomain, multi-level suffix, IP host, localhost-like, and unknown-suffix cases are defined and tested.
-- [ ] **TI-034 — Implement URL normalization** · P0 · L
+- [x] **TI-034 — Implement URL normalization** · P0 · L
   - Normalize scheme/host, canonicalize IP hosts, strip fragment/default port/root slash, preserve path/query, and retain explicit port separately.
   - **Acceptance:** all rules in §5.1 have positive and negative tests, including URL length.
-- [ ] **TI-035 — Implement query auto-classification** · P0 · M
+- [x] **TI-035 — Implement query auto-classification** · P0 · M
   - Apply IP → URL → domain precedence and return descriptive validation failures.
   - **Acceptance:** ambiguous and malformed examples classify or fail consistently in API and ingestion paths.
-- [ ] **TI-036 — Build provider-record validation pipeline** · P0 · M
+- [x] **TI-036 — Build provider-record validation pipeline** · P0 · M
   - Validate required fields, dates, ranges, normalized values, provider IDs, and provider-specific payloads.
   - **Acceptance:** failure identifies the first offending provider record and reason without exposing secrets.
 
@@ -172,74 +172,81 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 **Goal:** Reliably move guarded fetch requests from API/scheduler to a bounded worker.
 
-- [ ] **TI-050 — Define and version `FetchJob` contract** · P0 · S
+- [x] **TI-050 — Define and version `FetchJob` contract** · P0 · S
   - Include the persisted logical job/history ID, provider, trigger, mode, and attempt with strict serialization validation.
   - **Acceptance:** API and worker contract tests share golden messages.
-- [ ] **TI-051 — Provision durable RabbitMQ topology** · P0 · M
+- [x] **TI-051 — Provision durable RabbitMQ topology** · P0 · M
   - Let MassTransit declare the durable exchange/work queue, default `_error` queue, persistent messages, publisher confirmation, prefetch one, and consumer concurrency one.
   - **Acceptance:** topology survives broker restart and an exhausted message arrives in `_error`.
-- [ ] **TI-052 — Implement trigger guard service** · P0 · L
+- [x] **TI-052 — Implement trigger guard service** · P0 · L
   - Atomically reserve an allowed logical fetch, then enforce enabled state, queued/running state, and ThreatFox mode cooldowns before publish and re-check at consume time.
   - **Acceptance:** boundary-time, simultaneous request/tick, publish-failure, and duplicate-consume tests return consistent allow/409/skip decisions without two reservations.
-- [ ] **TI-053 — Implement manual fetch publisher endpoints** · P0 · M
+- [x] **TI-053 — Implement manual fetch publisher endpoints** · P0 · M
   - Support default mode and ThreatFox full mode; validate provider capabilities; return 202 only after confirmed publication.
   - **Acceptance:** correct jobs publish once; unsupported modes return 400; guarded triggers return 409.
-- [ ] **TI-054 — Implement scheduler loop** · P0 · L
+- [x] **TI-054 — Implement scheduler loop** · P0 · L
   - Poll enabled/due providers, apply guards, publish, and advance each provider's configured interval safely.
   - Define initial `nextFetchTime`, restart behavior, failed scheduled-run cadence, and recomputation after enable/disable or interval shorten/lengthen.
   - **Acceptance:** injectable-clock tests cover first start, restart, due/not-due/disabled, settings changes, failure, cooldown cases, and duplicate ticks.
-- [ ] **TI-055 — Enforce one-at-a-time fetch execution** · P0 · S
+- [x] **TI-055 — Enforce one-at-a-time fetch execution** · P0 · S
   - Configure MassTransit prefetch and consumer concurrency to one and recheck job/provider guards before execution.
   - **Acceptance:** only one fetch executes at a time and obsolete duplicate messages do not start another fetch.
-- [ ] **TI-056 — Implement fetch history lifecycle** · P0 · L
+- [x] **TI-056 — Implement fetch history lifecycle** · P0 · L
   - Persist one uniquely keyed logical history row across queue reservation and attempts, then transition Queued/Running → Success/Failed with counter/error details (adding a Queued status or equivalent explicit reservation state).
   - **Acceptance:** publish-failure, crash, stale recovery, retry, redelivery, and DLQ tests produce one coherent history record addressable by the message's logical ID.
-- [ ] **TI-057 — Implement error classification and retries** · P0 · L
+- [x] **TI-057 — Implement error classification and retries** · P0 · L
   - Classify transient, 429/quota, invalid-record, integration-conflict, and terminal errors; cap attempts and route terminal jobs to DLQ.
   - **Acceptance:** automated tests prove exactly the decided attempt count and no retry for deterministic failures.
-- [ ] **TI-058 — Add configurable fetch concurrency if needed** · P2 · M
+- [x] **TI-058 — Add configurable fetch concurrency if needed** · P2 · M
   - Deferred beyond the MVP; if added, introduce the distributed provider locking required for multiple simultaneous consumers.
 
 ### E06 — ThreatFox integration
 
 **Goal:** Fetch and map supported ThreatFox domains, URLs, and IP endpoints.
 
-- [ ] **TI-060 — Implement authenticated ThreatFox HTTP client** · P0 · M
+- [x] **TI-060 — Implement authenticated ThreatFox HTTP client** · P0 · M
   - Construct recent/full export URLs without logging the key; use descriptive user agent, timeouts, streaming, and cancellation.
   - **Acceptance:** mocked requests prove URL/mode selection and secret redaction.
-- [ ] **TI-061 — Implement recent-export ingestion** · P0 · L
+- [x] **TI-061 — Implement recent-export ingestion** · P0 · L
   - Stream, parse, validate, and return normalized provider records for supported domains, URLs, and IP-port records; do not write the database here.
   - **Acceptance:** canned fixtures map all supported types and reject malformed rows with record context.
-- [ ] **TI-062 — Implement zipped full-export ingestion** · P0 · L
+- [x] **TI-062 — Implement zipped full-export ingestion** · P0 · L
   - Stream decompression and return provider records without loading the whole archive in memory; validate expected archive entries.
   - **Acceptance:** fixture and corrupt/truncated/archive-bomb guard tests pass.
-- [ ] **TI-063 — Map ThreatFox metadata and tags** · P0 · L
+- [x] **TI-063 — Map ThreatFox metadata and tags** · P0 · L
   - Map native ID, details link, timestamps, threat/malware fields, confidence, booleans, reporter, tags, and port.
   - **Acceptance:** a golden provider row retains every applicable value including `false` and `0`.
-- [ ] **TI-064 — Verify ThreatFox cadence and failure behavior** · P0 · M
+- [x] **TI-064 — Verify ThreatFox cadence and failure behavior** · P0 · M
   - Cover 5-minute recent and 60-minute full cooldowns, upstream 429/5xx/timeouts, and cancellation.
   - **Acceptance:** integration tests exercise each classification and history outcome.
-- [ ] **TI-065 — Integrate ThreatFox adapter with atomic pipeline** · P0 · M · Depends on TI-080–TI-084
+- [x] **TI-065 — Integrate ThreatFox adapter with atomic pipeline** · P0 · M · Depends on TI-080–TI-084
   - Execute recent/full adapter output through the shared transaction and history lifecycle.
   - **Acceptance:** an end-to-end fixture fetch commits valid data once and rolls back the entire batch on a bad final record.
+- [ ] **TI-066 — Stream keyed-object ThreatFox exports without buffering** · P2 · M
+  - `System.Text.Json` cannot stream a root-level JSON object, so keyed recent/full exports are
+    currently buffered up to `ThreatFoxRecentParser.MaxBufferedObjectBytes` (256 MiB). Replace the
+    buffered `JsonDocument` path with a streaming `Utf8JsonReader`/`PipeReader` reader so large full
+    dumps are not held in memory.
+  - **Acceptance:** a keyed-export fixture larger than the current buffering guard parses without
+    buffering the whole body and without unbounded memory growth.
 
 ### E07 — PhishTank integration
 
 **Goal:** Fetch the full PhishTank database while preserving URL and evidence metadata.
 
-- [ ] **TI-070 — Implement PhishTank HTTP client** · P0 · M
+- [x] **TI-070 — Implement PhishTank HTTP client** · P0 · M
   - Use a descriptive user agent, stream `online-valid.json.gz`, support optional future app-key URL, and set safe timeouts.
   - **Acceptance:** requests identify the application and never log an optional key.
-- [ ] **TI-071 — Stream and parse the full JSON feed** · P0 · L
+- [x] **TI-071 — Stream and parse the full JSON feed** · P0 · L
   - Avoid whole-file buffering; distinguish transport, decompression, JSON, and record-validation failures.
   - **Acceptance:** a fixture at least twice the current sampled full-feed size uses no more than 256 MiB additional resident memory; corrupt input fails cleanly. Recalibrate this threshold with recorded evidence if the actual feed requires it.
-- [ ] **TI-072 — Map PhishTank records and complete details** · P0 · L
+- [x] **TI-072 — Map PhishTank records and complete details** · P0 · L
   - Map phish ID/link, URL, submission/verification time, verified, online, target, and all network detail objects.
   - **Acceptance:** validated stored JSON round-trips every detail field and contextual IPs do not become standalone IOCs.
-- [ ] **TI-074 — Implement PhishTank 429 behavior** · P0 · S
+- [x] **TI-074 — Implement PhishTank 429 behavior** · P0 · S
   - Fail immediately without retry and record a clear operational reason.
   - **Acceptance:** a simulated 429 results in one attempt, Failed status, and zero IOC writes.
-- [ ] **TI-075 — Integrate PhishTank adapter with atomic pipeline** · P0 · M · Depends on TI-080–TI-084
+- [x] **TI-075 — Integrate PhishTank adapter with atomic pipeline** · P0 · M · Depends on TI-080–TI-084
   - Execute parsed provider records through the shared transaction and history lifecycle.
   - **Acceptance:** an end-to-end fixture fetch preserves complete details, commits once, and rolls back entirely on a bad final record.
 
@@ -247,26 +254,26 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 **Goal:** Commit valid batches exactly once while preserving provider attribution.
 
-- [ ] **TI-080 — Implement identity resolution** · P0 · L
+- [x] **TI-080 — Implement identity resolution** · P0 · L
   - Resolve provider/native ID and provider/type/hash/port; compare normalized value after hash lookup.
   - **Acceptance:** new, repeat, cross-provider, port variant, and conflict cases follow the documented policy.
-- [ ] **TI-081 — Implement provider-row upsert** · P0 · L
+- [x] **TI-081 — Implement provider-row upsert** · P0 · L
   - Preserve `createdAt` and stored `firstSeenUtc`; refresh `updatedAt`; replace provider metadata and incoming `lastSeenUtc`.
   - **Acceptance:** a re-fetch changes only the fields allowed by the specification.
-- [ ] **TI-082 — Implement normalized tag replacement** · P0 · M
+- [x] **TI-082 — Implement normalized tag replacement** · P0 · M
   - Trim/lowercase/deduplicate tags and replace associations for each upserted provider row. Cache
     only normalized tag-name/ID pairs across chunks and reference tags by scalar ID.
   - **Acceptance:** removed provider tags disappear, shared tag rows remain, tags retain source attribution,
     and a tag first created in one chunk is reused without error by later chunks.
-- [ ] **TI-083 — Implement whole-batch transaction** · P0 · L
+- [x] **TI-083 — Implement whole-batch transaction** · P0 · L
   - Process approximately 2,000 records at a time, save each chunk, and clear EF tracking while
     retaining one outer transaction; history remains outside it.
   - **Acceptance:** tracked entity count stays bounded, tags are not duplicated across chunks, and an
     invalid final record rolls back all IOC/tag changes and leaves Failed history with zero committed rows.
-- [ ] **TI-084 — Make redelivery idempotent** · P0 · L
+- [x] **TI-084 — Make redelivery idempotent** · P0 · L
   - Handle unique-key races and replay without duplicates or false success counts.
   - **Acceptance:** repeated and concurrent delivery produces the same final dataset as one delivery.
-- [ ] **TI-085 — Calculate false-positive state at query time** · P1 · S
+- [x] **TI-085 — Calculate false-positive state at query time** · P1 · S
   - Compare `updatedAt` with exactly 180 days using the shared UTC clock.
   - **Acceptance:** before/on/after boundary tests pass and reappearance clears the calculated state.
 
@@ -274,25 +281,25 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 **Goal:** Provide index-backed grouped search, detail, relations, and browse APIs.
 
-- [ ] **TI-090 — Define source-attributed response DTOs** · P0 · M
+- [x] **TI-090 — Define source-attributed response DTOs** · P0 · M
   - Omit null provider-inapplicable properties while retaining valid false/zero/empty values.
   - **Acceptance:** golden JSON contract tests match the documented response.
-- [ ] **TI-091 — Implement exact IOC search** · P0 · L
+- [x] **TI-091 — Implement exact IOC search** · P0 · L
   - Normalize/classify query; group by type/value; handle port-bearing versus bare IP semantics.
   - **Acceptance:** valid match, invalid=400, not-found behavior, cross-provider grouping, and port cases pass.
-- [ ] **TI-092 — Implement tag search** · P1 · L
+- [x] **TI-092 — Implement tag search** · P1 · L
   - Implement the tag search and pagination behavior fixed by TI-009 while returning complete, source-attributed group details.
   - **Acceptance:** response identifies which source supplied each tag without flattening attribution.
-- [ ] **TI-093 — Implement IOC detail endpoint** · P0 · L
+- [x] **TI-093 — Implement IOC detail endpoint** · P0 · L
   - Resolve a row ID to its group, aggregate MIN first-seen/MAX last-seen, and return every source entry.
   - **Acceptance:** missing=404 and separate same-provider port rows remain separate sources.
-- [ ] **TI-094 — Implement related host/parent-domain/URL queries** · P1 · L
+- [x] **TI-094 — Implement related host/parent-domain/URL queries** · P1 · L
   - Query exact `urlHost` and `parentDomain`; use the pagination contract fixed by TI-009 to prevent unbounded payloads.
   - **Acceptance:** apex/subdomain/IP-host cases return defined relations using indexes.
-- [ ] **TI-095 — Implement grouped browse endpoint** · P0 · L
+- [x] **TI-095 — Implement grouped browse endpoint** · P0 · L
   - Add type/provider/tag filters, the aggregate null/tie ordering fixed by TI-009, page bounds, and total count.
   - **Acceptance:** filters compose correctly, pagination is deterministic, and `pageSize` cannot exceed 100.
-- [ ] **TI-096 — Add RFC 7807 error handling** · P0 · M
+- [x] **TI-096 — Add RFC 7807 error handling** · P0 · M
   - Map validation, not found, conflict, auth, and unexpected errors with correlation IDs.
   - **Acceptance:** API failures share a safe, consistent ProblemDetails shape.
 
@@ -300,22 +307,22 @@ This backlog turns the PRD and Technical Specification into an implementation se
 
 **Goal:** Give administrators accurate operational controls and diagnostics.
 
-- [ ] **TI-100 — Implement provider dashboard endpoint** · P0 · M
+- [x] **TI-100 — Implement provider dashboard endpoint** · P0 · M
   - Return status/times, enabled/interval, available modes, and base metadata.
   - **Acceptance:** running/success/failed and never-run providers serialize correctly.
-- [ ] **TI-101 — Implement paginated fetch history endpoint** · P0 · M
+- [x] **TI-101 — Implement paginated fetch history endpoint** · P0 · M
   - Order newest first and expose safe terminal error details.
   - **Acceptance:** pagination, role gate, and large-error handling tests pass.
-- [ ] **TI-102 — Implement grouped database summary** · P0 · M
+- [x] **TI-102 — Implement grouped database summary** · P0 · M
   - Count distinct normalized type/value groups total and per type, consistent with query grouping.
   - **Acceptance:** shared cross-provider IOCs count once and port variants remain source rows inside the same type/value group.
-- [ ] **TI-103 — Implement runtime settings read/update** · P0 · L
+- [x] **TI-103 — Implement runtime settings read/update** · P0 · L
   - Validate provider enabled/interval and log level; invalidate caches/apply within 30 seconds.
   - **Acceptance:** invalid updates are atomic 400s; valid updates affect running services without restart.
-- [ ] **TI-105 — Implement log-tail endpoint** · P0 · L
+- [x] **TI-105 — Implement log-tail endpoint** · P0 · L
   - Parse structured rolling logs, filter by level, enforce count ≤500, newest first, and tolerate rotation/partial lines.
   - **Acceptance:** malformed entries do not fail the request and path traversal is impossible.
-- [ ] **TI-106 — Add fetch lifecycle structured events** · P0 · M
+- [x] **TI-106 — Add fetch lifecycle structured events** · P0 · M
   - Log start, guard rejection, success, retry, terminal failure, counts, job/provider/mode/trigger, and duration.
   - **Acceptance:** an operator can correlate one fetch across API, broker, and worker without secret or full IOC leakage.
 

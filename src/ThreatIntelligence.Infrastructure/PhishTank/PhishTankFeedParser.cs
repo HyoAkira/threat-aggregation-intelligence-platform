@@ -1,15 +1,23 @@
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ThreatIntelligence.Application.ProviderRecords;
 
 namespace ThreatIntelligence.Infrastructure.PhishTank;
 
-public sealed class PhishTankFeedParser(PhishTankRecordMapper mapper)
+public sealed class PhishTankFeedParser(
+    PhishTankRecordMapper mapper,
+    ILogger<PhishTankFeedParser>? logger = null)
 {
+    private readonly ILogger<PhishTankFeedParser> _logger =
+        logger ?? NullLogger<PhishTankFeedParser>.Instance;
+
     public async IAsyncEnumerable<ProviderRecordInput> ParseAsync(
         Stream gzipStream,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken,
+        bool skipMalformedRecords = false)
     {
         await using var decompressed = OpenDecompressedStream(gzipStream);
 
@@ -18,8 +26,25 @@ public sealed class PhishTankFeedParser(PhishTankRecordMapper mapper)
         {
             cancellationToken.ThrowIfCancellationRequested();
             recordIndex++;
-            if (record is null) throw new PhishTankRecordParseException(recordIndex, "record", "Empty record in feed.");
-            yield return mapper.Map(record, recordIndex);
+
+            ProviderRecordInput mapped;
+            try
+            {
+                if (record is null) throw new PhishTankRecordParseException(recordIndex, "record", "Empty record in feed.");
+                mapped = mapper.Map(record, recordIndex);
+            }
+            catch (PhishTankRecordParseException ex) when (skipMalformedRecords)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "PhishTank record skipped RecordIndex={RecordIndex} Field={Field} Reason={Reason}",
+                    ex.RecordIndex,
+                    ex.Field,
+                    ex.Reason);
+                continue;
+            }
+
+            yield return mapped;
         }
     }
 

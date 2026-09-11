@@ -21,20 +21,45 @@ public sealed class FetchJobConsumer(
         try
         {
             var result = await executor.ExecuteAsync(job, context.CancellationToken);
-            await fetchLifecycle.SucceedAsync(job.JobId, result.RecordsAdded, result.RecordsUpdated, context.CancellationToken);
+            await fetchLifecycle.SucceedAsync(job, result.RecordsAdded, result.RecordsUpdated, context.CancellationToken);
         }
         catch (Exception exception)
         {
+            var attempt = context.GetRetryAttempt();
             var classified = FetchErrorClassifier.Classify(exception);
             if (classified is TerminalFetchException)
             {
-                await fetchLifecycle.FailAsync(job.JobId, classified.Message, context.CancellationToken);
+                logger.LogError(
+                    exception,
+                    "Fetch job {JobId} for provider {ProviderId} mode {Mode} hit a terminal failure on attempt {Attempt}",
+                    job.JobId,
+                    job.ProviderId,
+                    job.Mode,
+                    attempt + 1);
+                await fetchLifecycle.FailAsync(job, classified.Message, context.CancellationToken);
                 return;
             }
 
-            if (context.GetRetryAttempt() >= 3)
+            if (attempt >= 3)
             {
-                await fetchLifecycle.FailAsync(job.JobId, classified.Message, context.CancellationToken);
+                logger.LogError(
+                    exception,
+                    "Fetch job {JobId} for provider {ProviderId} mode {Mode} exhausted retries at attempt {Attempt}",
+                    job.JobId,
+                    job.ProviderId,
+                    job.Mode,
+                    attempt);
+                await fetchLifecycle.FailAsync(job, classified.Message, context.CancellationToken);
+            }
+            else
+            {
+                logger.LogWarning(
+                    exception,
+                    "Fetch job {JobId} for provider {ProviderId} mode {Mode} hit a transient failure on attempt {Attempt}; will retry",
+                    job.JobId,
+                    job.ProviderId,
+                    job.Mode,
+                    attempt);
             }
 
             throw classified;

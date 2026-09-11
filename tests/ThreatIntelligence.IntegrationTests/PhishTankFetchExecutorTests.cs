@@ -142,7 +142,7 @@ public sealed class PhishTankFetchExecutorTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Bad_final_record_rolls_back_entire_batch()
+    public async Task Malformed_final_record_is_skipped_and_valid_records_persist()
     {
         var json = FeedJson(ValidRecord(1, "http://evil.example/phish/1"), ValidRecord(2, "http://evil.example/phish/2"), new { phish_id = (int?)null, url = "http://bad.example" });
         var executor = CreateExecutor((_, _) =>
@@ -157,11 +157,12 @@ public sealed class PhishTankFetchExecutorTests : IAsyncLifetime
 
         var job = new FetchJob(Guid.NewGuid(), 2, FetchTrigger.Manual, FetchMode.Full, 1);
 
-        await Assert.ThrowsAsync<TerminalFetchException>(() => executor.ExecuteAsync(job, CancellationToken.None));
+        var result = await executor.ExecuteAsync(job, CancellationToken.None);
 
+        Assert.Equal(2, result.RecordsAdded);
         await using var context = _fixture.CreateContext();
         var iocs = await context.Iocs.Where(i => i.ProviderId == 2).ToListAsync();
-        Assert.Empty(iocs);
+        Assert.Equal(2, iocs.Count);
     }
 
     [Fact]

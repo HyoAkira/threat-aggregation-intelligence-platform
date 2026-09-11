@@ -4,3 +4,4 @@ logs/
 **/obj/
 frontend/node_modules/
 frontend/dist/
+graphify-out

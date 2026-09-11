@@ -1,6 +1,8 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ThreatIntelligence.Application.BatchWriter;
 using ThreatIntelligence.Application.ProviderRecords;
 using ThreatIntelligence.Domain.Entities;
@@ -17,9 +19,12 @@ namespace ThreatIntelligence.Infrastructure.Pipeline;
 /// </summary>
 public sealed class IocBatchWriter(
     ThreatIntelligenceDbContext dbContext,
-    IReadOnlyDictionary<int, IIocUpsertFieldsMapper> mappers) : IIocBatchWriter
+    IReadOnlyDictionary<int, IIocUpsertFieldsMapper> mappers,
+    ILogger<IocBatchWriter>? logger = null) : IIocBatchWriter
 {
     public const int ChunkSize = 2000;
+
+    private readonly ILogger<IocBatchWriter> _logger = logger ?? NullLogger<IocBatchWriter>.Instance;
 
     public async Task<IocBatchResult> ApplyAsync(
         IReadOnlyList<NormalizedProviderRecord> records,
@@ -28,6 +33,7 @@ public sealed class IocBatchWriter(
     {
         if (records is null || records.Count == 0)
         {
+            _logger.LogInformation("IOC batch apply skipped ProviderId={ProviderId} Reason={Reason}", providerId, "empty batch");
             return new IocBatchResult(0, 0);
         }
 
@@ -35,6 +41,11 @@ public sealed class IocBatchWriter(
         {
             throw new IocBatchWriteException($"No upsert mapper registered for provider {providerId}.");
         }
+
+        _logger.LogInformation(
+            "IOC batch apply starting ProviderId={ProviderId} RecordCount={RecordCount}",
+            providerId,
+            records.Count);
 
         // A concurrent insert may lose a unique-key race. Under the E05 prefetch=1 consumer that
         // cannot co-occur, but as a safety net we re-resolve once in a fresh transaction so the
@@ -44,11 +55,21 @@ public sealed class IocBatchWriter(
         {
             try
             {
-                return await ApplyBatchAsync(records, providerId, mapper, cancellationToken);
+                var result = await ApplyBatchAsync(records, providerId, mapper, cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation(
+                    "IOC batch apply committed ProviderId={ProviderId} Added={Added} Updated={Updated}",
+                    providerId,
+                    result.Added,
+                    result.Updated);
+                return result;
             }
             catch (DbUpdateException exception) when (IsUniqueViolation(exception) && attempts == 0)
             {
                 attempts++;
+                _logger.LogWarning(
+                    exception,
+                    "IOC batch apply hit a unique-key race ProviderId={ProviderId}; retrying once",
+                    providerId);
             }
         }
     }
@@ -156,11 +177,20 @@ public sealed class IocBatchWriter(
             dbContext.IoCTags.RemoveRange(existingTags);
         }
 
-        foreach (var (ioc, tagNames, isNew) in pending)
+        // Several input records can resolve to the same IOC row (same provider id, or same
+        // endpoint under different ids), so the same (IocId, TagId) association may be produced
+        // more than once. Track the pairs already staged and add each only once, otherwise EF
+        // rejects the duplicate key in its identity map.
+        var stagedAssociations = new HashSet<(int IocId, int TagId)>();
+        foreach (var (ioc, tagNames, _) in pending)
         {
             foreach (var name in tagNames)
             {
-                dbContext.IoCTags.Add(new IoCTag(ioc.Id, tagCache[name]));
+                var tagId = tagCache[name];
+                if (tagId > 0 && stagedAssociations.Add((ioc.Id, tagId)))
+                {
+                    dbContext.IoCTags.Add(new IoCTag(ioc.Id, tagId));
+                }
             }
         }
 

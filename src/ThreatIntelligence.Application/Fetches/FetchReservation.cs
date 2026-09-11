@@ -45,9 +45,9 @@ public interface IFetchLifecycle
     /// </summary>
     Task<bool> TryStartAsync(FetchJob job, bool isRetry, CancellationToken cancellationToken);
 
-    Task SucceedAsync(Guid jobId, int recordsAdded, int recordsUpdated, CancellationToken cancellationToken);
+    Task SucceedAsync(FetchJob job, int recordsAdded, int recordsUpdated, CancellationToken cancellationToken);
 
-    Task FailAsync(Guid jobId, string errorDetail, CancellationToken cancellationToken);
+    Task FailAsync(FetchJob job, string errorDetail, CancellationToken cancellationToken);
 }
 
 public interface IProviderFetchExecutor
