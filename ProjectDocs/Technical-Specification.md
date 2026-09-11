@@ -256,7 +256,7 @@ Textbook: `domain.com` is a Domain; `http://domain.com` is a **different** URL I
 
 ## 6. API Specification
 
-Base path `/api`. All JSON. Errors return **ProblemDetails** (RFC 7807). List responses use an envelope:
+Base path `/api`. All JSON. Errors return **ProblemDetails** (RFC 9457) as `application/problem+json`, with `type` set to `urn:threat-intelligence:problem:{code}` and the `correlationId` threaded through from `X-Correlation-ID`. List responses use an envelope:
 
 ```json
 { "items": [ ... ], "page": 1, "pageSize": 20, "totalCount": 123 }

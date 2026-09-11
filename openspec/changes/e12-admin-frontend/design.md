@@ -1,6 +1,6 @@
 ## Context
 
-See proposal.md. The current frontend is a TanStack Start starter; E11 owns its shell, session-backed auth, typed RFC 7807 client, query-cache lifecycle, route guards, and browser-capable component-test setup. E12 consumes E04/E05/E10/E11. E10 must expose server-authoritative `defaultMode`, per-mode trigger states (`canTrigger`, `blockedReason`, `availableAt`), and `minimumIntervalMinutes`; deriving those values from history in the browser would duplicate guard logic and become stale.
+See proposal.md. The current frontend is a TanStack Start starter; E11 owns its shell, session-backed auth, typed RFC 9457 client, query-cache lifecycle, route guards, and browser-capable component-test setup. E12 consumes E04/E05/E10/E11. E10 must expose server-authoritative `defaultMode`, per-mode trigger states (`canTrigger`, `blockedReason`, `availableAt`), and `minimumIntervalMinutes`; deriving those values from history in the browser would duplicate guard logic and become stale.
 
 ## Goals / Non-Goals
 

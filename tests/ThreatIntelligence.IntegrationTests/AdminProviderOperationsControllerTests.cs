@@ -92,7 +92,7 @@ public sealed class AdminProviderOperationsControllerTests(SqlServerFixture fixt
 
         Assert.IsType<BadRequestObjectResult>((await controller.History(1, 0, null, CancellationToken.None)).Result);
         Assert.IsType<BadRequestObjectResult>((await controller.History(1, null, 101, CancellationToken.None)).Result);
-        Assert.IsType<NotFoundResult>((await controller.History(999, null, null, CancellationToken.None)).Result);
+        Assert.IsType<NotFoundObjectResult>((await controller.History(999, null, null, CancellationToken.None)).Result);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public sealed class AdminProviderOperationsControllerTests(SqlServerFixture fixt
         var item = Assert.IsType<AdminFetchHistoryItem>(ok.Value);
         Assert.Equal("running", item.Status);
 
-        Assert.IsType<NotFoundResult>((await controller.Job(Guid.NewGuid(), CancellationToken.None)).Result);
+        Assert.IsType<NotFoundObjectResult>((await controller.Job(Guid.NewGuid(), CancellationToken.None)).Result);
     }
 
     private AdminProviderOperationsController CreateController() =>

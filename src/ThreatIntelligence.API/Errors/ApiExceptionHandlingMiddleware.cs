@@ -3,7 +3,7 @@ using ThreatIntelligence.Application.Features.Iocs.Queries;
 namespace ThreatIntelligence.API.Errors;
 
 /// <summary>
-/// Maps application and API exceptions to safe RFC 7807 problem details carrying the request's
+/// Maps application and API exceptions to safe RFC 9457 problem details carrying the request's
 /// correlation id. Unexpected exceptions become a generic 500 that never leaks stack traces or
 /// internal state.
 /// </summary>
@@ -46,11 +46,18 @@ public sealed class ApiExceptionHandlingMiddleware(
                     context.Items["CorrelationId"]);
             }
 
+            var correlationId = context.Items["CorrelationId"] as string;
             context.Response.Clear();
             context.Response.StatusCode = status;
-            context.Response.ContentType = "application/problem+json";
-            await context.Response.WriteAsJsonAsync(
-                ApiProblemFactory.Create(context, status, code, title, detail));
+            if (correlationId is not null)
+            {
+                context.Response.Headers["X-Correlation-ID"] = correlationId;
+            }
+
+            await ApiProblemFactory.WriteAsync(
+                context.Response,
+                ApiProblemFactory.Create(context, status, code, title, detail),
+                context.RequestAborted);
         }
     }
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ThreatIntelligence.Application.Abstractions.Persistence;
 using ThreatIntelligence.Application.Admin;
+using ThreatIntelligence.API.Errors;
 
 namespace ThreatIntelligence.API.Controllers;
 
@@ -31,21 +32,36 @@ public sealed class AdminProviderOperationsController(IAdminProviderOperationsRe
         var resolvedPageSize = pageSize ?? DefaultPageSize;
         if (resolvedPage < 1 || resolvedPageSize is < 1 or > MaxPageSize)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid paging.",
-                Detail = $"The page must be at least 1 and pageSize must be between 1 and {MaxPageSize}."
-            });
+            return ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status400BadRequest,
+                "invalid_paging",
+                "Invalid paging",
+                $"The page must be at least 1 and pageSize must be between 1 and {MaxPageSize}.");
         }
 
         var result = await reader.GetProviderHistoryAsync(providerId, resolvedPage, resolvedPageSize, cancellationToken);
-        return result is null ? NotFound() : Ok(result);
+        return result is null
+            ? ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status404NotFound,
+                "provider_not_found",
+                "Provider not found",
+                "The requested provider could not be found.")
+            : Ok(result);
     }
 
     [HttpGet("fetch-history/{jobId:guid}")]
     public async Task<ActionResult<AdminFetchHistoryItem>> Job(Guid jobId, CancellationToken cancellationToken)
     {
         var result = await reader.GetFetchHistoryAsync(jobId, cancellationToken);
-        return result is null ? NotFound() : Ok(result);
+        return result is null
+            ? ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status404NotFound,
+                "fetch_job_not_found",
+                "Fetch job not found",
+                "The requested fetch job could not be found.")
+            : Ok(result);
     }
 }

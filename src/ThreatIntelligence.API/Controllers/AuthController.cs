@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ThreatIntelligence.Application.Features.Auth.Login;
+using ThreatIntelligence.API.Errors;
 
 namespace ThreatIntelligence.API.Controllers;
 
@@ -15,7 +16,12 @@ public sealed class AuthController(ISender sender) : ControllerBase
     {
         var result = await sender.Send(new LoginCommand(request.Username, request.Password), cancellationToken);
         return result is null
-            ? Unauthorized()
+            ? ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status401Unauthorized,
+                ApiProblemFactory.UnauthenticatedCode,
+                "Unauthorized",
+                "Authentication is required to access this resource.")
             : Ok(new LoginResponse(result.Token, result.Username, result.Role, result.ExpiresAt));
     }
 }

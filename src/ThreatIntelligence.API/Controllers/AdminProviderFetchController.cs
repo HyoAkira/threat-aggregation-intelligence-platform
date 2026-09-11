@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ThreatIntelligence.API.Errors;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Domain.Enums;
 using ThreatIntelligence.Infrastructure.Fetches;
@@ -40,11 +41,27 @@ public sealed class AdminProviderFetchController(
                 FetchTrigger.Manual,
                 correlationId,
                 reservation.Rejection?.ToString());
-            return reservation.Rejection == FetchReservationRejection.ProviderNotFound
-                ? NotFound()
-                : reservation.Rejection == FetchReservationRejection.UnsupportedMode
-                    ? BadRequest(new ProblemDetails { Title = "The provider does not support the requested fetch mode." })
-                    : Conflict(new ProblemDetails { Title = "The fetch is currently guarded.", Detail = reservation.Rejection.ToString() });
+            return reservation.Rejection switch
+            {
+                FetchReservationRejection.ProviderNotFound => ApiProblemFactory.Result(
+                    HttpContext,
+                    StatusCodes.Status404NotFound,
+                    "provider_not_found",
+                    "Provider not found",
+                    "The requested provider could not be found."),
+                FetchReservationRejection.UnsupportedMode => ApiProblemFactory.Result(
+                    HttpContext,
+                    StatusCodes.Status400BadRequest,
+                    "unsupported_fetch_mode",
+                    "Unsupported fetch mode",
+                    "The provider does not support the requested fetch mode."),
+                _ => ApiProblemFactory.Result(
+                    HttpContext,
+                    StatusCodes.Status409Conflict,
+                    "fetch_guarded",
+                    "Fetch unavailable",
+                    "The fetch is currently unavailable because an execution guard is active.")
+            };
         }
 
         var job = new FetchJob(reservation.JobId!.Value, providerId, FetchTrigger.Manual, mode, 1, correlationId);
@@ -56,7 +73,12 @@ public sealed class AdminProviderFetchController(
         catch (Exception exception)
         {
             await fetchLifecycle.FailAsync(job, $"Unable to publish fetch job: {exception.Message}", cancellationToken);
-            return Problem(title: "Unable to publish fetch job.", statusCode: StatusCodes.Status503ServiceUnavailable);
+            return ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status503ServiceUnavailable,
+                "fetch_publish_failed",
+                "Fetch unavailable",
+                "The fetch job could not be queued at this time.");
         }
 
         return Accepted(new FetchQueuedResponse(job.JobId, "queued"));
