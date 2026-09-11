@@ -75,18 +75,18 @@ More information about DNS RPZ can be found on [dnsrpz.info](https://dnsrpz.info
 
 The following data exports exists in JSON format:
 
-- Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/recent.json "Recent additions"))
-- Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/full.json.zip "Full data dump") - zip compressed)
-- URLs: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/urls_recent.json "URLs: Recent additions"))
-- URLs: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/urls_full.json.zip "URLs: Full data dump") - zip compressed)
-- Domains: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/domains_recent.json "Domains: Recent additions"))
-- Domains: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/domains_full.json.zip "Domains: Full data dump") - zip compressed)
-- IP-port: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/ip_port_recent.json "IP-port: Recent additions"))
-- IP-port: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/ip_port_full.json.zip "IP-port: Full data dump") - zip compressed)
-- MD5 hashes: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/md5_recent.json "MD5 hashes: Recent additions"))
-- MD5 hashes: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/md5_full.json.zip "SMD5 hashes: Full data dump") - zip compressed)
-- SHA256 hashes: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/sha256_recent.json "SHA256 hashes: Recent additions"))
-- SHA256 hashes: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/sha256_full.json.zip "SHA256 hashes: Full data dump") - zip compressed)
+- Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/recent.json "Recent additions"))
+- Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/full.json.zip "Full data dump") - zip compressed)
+- URLs: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/urls_recent.json "URLs: Recent additions"))
+- URLs: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/urls_full.json.zip "URLs: Full data dump") - zip compressed)
+- Domains: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/domains_recent.json "Domains: Recent additions"))
+- Domains: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/domains_full.json.zip "Domains: Full data dump") - zip compressed)
+- IP-port: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/ip_port_recent.json "IP-port: Recent additions"))
+- IP-port: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/ip_port_full.json.zip "IP-port: Full data dump") - zip compressed)
+- MD5 hashes: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/md5_recent.json "MD5 hashes: Recent additions"))
+- MD5 hashes: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/md5_full.json.zip "SMD5 hashes: Full data dump") - zip compressed)
+- SHA256 hashes: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/sha256_recent.json "SHA256 hashes: Recent additions"))
+- SHA256 hashes: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/sha256_full.json.zip "SHA256 hashes: Full data dump") - zip compressed)
 
 > [!info] Note
 > **Recent** datasets ("recent additions") include IOCs for the last 48 hours (`first_seen` or `last_seen` within the past 48 hours) and are being generated every **5 minutes**. Please do not fetch them more often than that.  
@@ -98,18 +98,18 @@ The following data exports exists in JSON format:
 
 The following data exports exists in CSV format:
 
-- Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/recent.csv "Recent additions"))
-- Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/full.csv.zip "Full data dump") - zip compressed)
-- URLs: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/urls_recent.csv "URLs: Recent additions"))
-- URLs: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/urls_full.csv.zip "URLs: Full data dump") - zip compressed)
-- Domains: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/domains_recent.csv "Domains: Recent additions"))
-- Domains: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/domains_full.csv.zip "Domains: Full data dump") - zip compressed)
-- IP-port: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/ip_port_recent.csv "IP-port: Recent additions"))
-- IP-port: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/ip_port_full.csv.zip "IP-port: Full data dump") - zip compressed)
-- MD5 hashes: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/md5_recent.csv "MD5 hashes: Recent additions"))
-- MD5 hashes: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/md5_full.csv.zip "SMD5 hashes: Full data dump") - zip compressed)
-- SHA256 hashes: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/sha256_recent.csv "SHA256 hashes: Recent additions"))
-- SHA256 hashes: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/a9dd3775075108c74acfa49393c2bb0bfbd1aa52c7c5ae23/sha256_full.csv.zip "SHA256 hashes: Full data dump") - zip compressed)
+- Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/recent.csv "Recent additions"))
+- Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/full.csv.zip "Full data dump") - zip compressed)
+- URLs: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/urls_recent.csv "URLs: Recent additions"))
+- URLs: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/urls_full.csv.zip "URLs: Full data dump") - zip compressed)
+- Domains: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/domains_recent.csv "Domains: Recent additions"))
+- Domains: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/domains_full.csv.zip "Domains: Full data dump") - zip compressed)
+- IP-port: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/ip_port_recent.csv "IP-port: Recent additions"))
+- IP-port: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/ip_port_full.csv.zip "IP-port: Full data dump") - zip compressed)
+- MD5 hashes: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/md5_recent.csv "MD5 hashes: Recent additions"))
+- MD5 hashes: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/md5_full.csv.zip "SMD5 hashes: Full data dump") - zip compressed)
+- SHA256 hashes: Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/sha256_recent.csv "SHA256 hashes: Recent additions"))
+- SHA256 hashes: Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/sha256_full.csv.zip "SHA256 hashes: Full data dump") - zip compressed)
 
 > [!info] Note
 > **Recent** datasets ("recent additions") include IOCs for the last 48 hours (`first_seen` or `last_seen` within the past 48 hours) and are being generated every **5 minutes**. Please do not fetch them more often than that.  

@@ -1,0 +1,79 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ThreatIntelligence.Domain.Entities;
+using ThreatIntelligence.Infrastructure.Persistence;
+
+namespace ThreatIntelligence.API.Controllers;
+
+[ApiController]
+[Route("api/admin/settings")]
+public sealed class AdminSettingsController(ThreatIntelligenceDbContext dbContext, TimeProvider timeProvider) : ControllerBase
+{
+    private static readonly HashSet<string> LogLevels = ["Verbose", "Debug", "Information", "Warning", "Error", "Fatal"];
+
+    [HttpGet]
+    public async Task<ActionResult<SettingsResponse>> Get(CancellationToken cancellationToken)
+    {
+        var logLevel = await dbContext.Settings.AsNoTracking()
+            .Where(setting => setting.Key == "Logging:MinimumLevel")
+            .Select(setting => setting.Value)
+            .SingleOrDefaultAsync(cancellationToken) ?? "Information";
+        var providers = await dbContext.Providers.AsNoTracking()
+            .OrderBy(provider => provider.Id)
+            .Select(provider => new ProviderSettingResponse(provider.Id, provider.Name, provider.IsEnabled, provider.IntervalMinutes))
+            .ToListAsync(cancellationToken);
+        return Ok(new SettingsResponse(logLevel, providers));
+    }
+
+    [HttpPut]
+    public async Task<IActionResult> Put(SettingsRequest request, CancellationToken cancellationToken)
+    {
+        if (!LogLevels.Contains(request.LogLevel) || request.Providers.Count == 0)
+        {
+            return BadRequest(new ProblemDetails { Title = "Invalid runtime settings." });
+        }
+
+        var providers = await dbContext.Providers.Where(provider => request.Providers.Select(input => input.Id).Contains(provider.Id))
+            .ToListAsync(cancellationToken);
+        if (providers.Count != request.Providers.Count || request.Providers.Select(provider => provider.Id).Distinct().Count() != request.Providers.Count ||
+            request.Providers.Any(input => input.IntervalMinutes < MinimumInterval(providers.SingleOrDefault(provider => provider.Id == input.Id)?.Name)))
+        {
+            return BadRequest(new ProblemDetails { Title = "Invalid provider settings." });
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        foreach (var input in request.Providers)
+        {
+            var provider = providers.Single(provider => provider.Id == input.Id);
+            provider.SetEnabled(input.IsEnabled);
+            provider.SetIntervalMinutes(input.IntervalMinutes);
+        }
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var logSetting = await dbContext.Settings.SingleOrDefaultAsync(setting => setting.Key == "Logging:MinimumLevel", cancellationToken);
+        if (logSetting is null)
+        {
+            dbContext.Settings.Add(new Settings("Logging:MinimumLevel", request.LogLevel, now));
+        }
+        else
+        {
+            logSetting.Update(request.LogLevel, now);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return NoContent();
+    }
+
+    private static int MinimumInterval(string? providerName) => providerName switch
+    {
+        "ThreatFox" => 5,
+        "PhishTank" => 480,
+        _ => int.MaxValue
+    };
+}
+
+public sealed record SettingsRequest(string LogLevel, List<ProviderSettingRequest> Providers);
+public sealed record ProviderSettingRequest(int Id, bool IsEnabled, int IntervalMinutes);
+public sealed record SettingsResponse(string LogLevel, IReadOnlyList<ProviderSettingResponse> Providers);
+public sealed record ProviderSettingResponse(int Id, string Name, bool IsEnabled, int IntervalMinutes);
