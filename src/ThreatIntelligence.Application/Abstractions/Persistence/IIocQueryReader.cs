@@ -12,12 +12,15 @@ namespace ThreatIntelligence.Application.Abstractions.Persistence;
 public interface IIocQueryReader
 {
     /// <summary>
-    /// Resolves the exact group for a normalized indicator and narrows its sources by the optional
-    /// filter. Returns null when no row matches the indicator or the filter removes every source.
+    /// Resolves groups for a normalized indicator and narrows their sources by the optional filter.
+    /// IP and URL inputs match their exact normalized identity. Domain inputs additionally match
+    /// rows whose URL host or parent domain equals the normalized domain.
     /// </summary>
-    Task<IocGroupResult?> SearchGroupAsync(
+    Task<PagedResult<IocGroupResult>> SearchGroupsAsync(
         NormalizationResult identity,
         IocSourceFilter filter,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken);
 
     /// <summary>

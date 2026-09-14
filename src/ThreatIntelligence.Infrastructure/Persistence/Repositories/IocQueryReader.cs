@@ -20,20 +20,30 @@ public sealed class IocQueryReader(
     IValueHasher hasher,
     FalsePositiveEvaluator falsePositiveEvaluator) : IIocQueryReader
 {
-    public async Task<IocGroupResult?> SearchGroupAsync(
+    public async Task<PagedResult<IocGroupResult>> SearchGroupsAsync(
         NormalizationResult identity,
         IocSourceFilter filter,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken)
     {
         var hash = hasher.Hash(identity.IocValue);
-        var query = dbContext.Iocs.AsNoTracking()
-            .Where(i => i.IocType == identity.Type
+        var query = dbContext.Iocs.AsNoTracking().AsQueryable();
+
+        query = identity.Type == IocType.Domain
+            ? query.Where(i =>
+                (i.IocType == IocType.Domain
+                    && i.IocValueHash == hash
+                    && i.IocValue == identity.IocValue)
+                || i.UrlHost == identity.IocValue
+                || i.ParentDomain == identity.IocValue)
+            : query.Where(i => i.IocType == identity.Type
                 && i.IocValueHash == hash
                 && i.IocValue == identity.IocValue);
 
-        // A bare IP query groups every explicit port; a port-bearing IP, URL, or domain query keeps
-        // the canonical port (including a null port for domains).
-        if (!IsIp(identity.Type) || identity.Port is not null)
+        // A bare IP query groups every explicit port and a URL query keeps its canonical port.
+        // Domain relation searches must not discard matching URLs that use a non-default port.
+        if (identity.Type == IocType.Url || (IsIp(identity.Type) && identity.Port is not null))
         {
             query = query.Where(i => i.Port == identity.Port);
         }
@@ -52,20 +62,41 @@ public sealed class IocQueryReader(
                 .FirstOrDefaultAsync(cancellationToken);
             if (tagId is null)
             {
-                return null;
+                return PagedResult<IocGroupResult>.Empty(page, pageSize);
             }
 
             query = query.Where(i => dbContext.IoCTags.Any(it => it.IocId == i.Id && it.TagId == tagId));
         }
 
-        var rows = await query.ToListAsync(cancellationToken);
-        if (rows.Count == 0)
+        var grouped = query.GroupBy(i => new { i.IocType, i.IocValue });
+        var totalCount = await grouped.CountAsync(cancellationToken);
+        if (totalCount == 0)
         {
-            return null;
+            return PagedResult<IocGroupResult>.Empty(page, pageSize);
         }
 
+        var pageKeyRows = await grouped
+            .OrderByDescending(g => g.Key.IocType == identity.Type && g.Key.IocValue == identity.IocValue)
+            .ThenBy(g => g.Max(i => i.LastSeenUtc) == null ? 1 : 0)
+            .ThenByDescending(g => g.Max(i => i.LastSeenUtc))
+            .ThenBy(g => g.Key.IocType)
+            .ThenBy(g => g.Key.IocValue)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(g => new { g.Key.IocType, g.Key.IocValue })
+            .ToListAsync(cancellationToken);
+
+        var pageKeys = pageKeyRows.Select(row => new GroupKey(row.IocType, row.IocValue)).ToList();
+        var pageValues = pageKeys.Select(key => key.IocValue).Distinct().ToList();
+        var rows = await query.Where(i => pageValues.Contains(i.IocValue)).ToListAsync(cancellationToken);
+        var wanted = pageKeys.ToHashSet();
+        rows = rows.Where(row => wanted.Contains(new GroupKey(row.IocType, row.IocValue))).ToList();
         var groups = await BuildGroupsAsync(rows, cancellationToken);
-        return groups[(identity.Type, identity.IocValue)];
+        var items = pageKeys
+            .Where(key => groups.ContainsKey((key.IocType, key.IocValue)))
+            .Select(key => groups[(key.IocType, key.IocValue)])
+            .ToList();
+        return new PagedResult<IocGroupResult>(items, page, pageSize, totalCount);
     }
 
     public async Task<IocGroupResult?> GetDetailGroupAsync(int id, CancellationToken cancellationToken)

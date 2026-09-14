@@ -64,7 +64,7 @@ export const iocGroupSchema = z.object({
 
 export type IocGroup = z.infer<typeof iocGroupSchema>
 
-/** Shared envelope for the multi-item browse and relations endpoints. */
+/** Shared envelope for the multi-item search, browse, and relations endpoints. */
 export const pagedIocGroupsSchema = z.object({
   items: z.array(iocGroupSchema),
   page: z.number().int(),

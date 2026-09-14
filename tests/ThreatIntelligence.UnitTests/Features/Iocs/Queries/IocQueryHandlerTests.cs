@@ -129,9 +129,11 @@ public sealed class IocQueryHandlerTests
         public int RelationId { get; private set; }
         public IocRelationKind Relation { get; private set; }
 
-        public Task<IocGroupResult?> SearchGroupAsync(
+        public Task<PagedResult<IocGroupResult>> SearchGroupsAsync(
             NormalizationResult identity,
             IocSourceFilter filter,
+            int page,
+            int pageSize,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<IocGroupResult?> GetDetailGroupAsync(int id, CancellationToken cancellationToken)

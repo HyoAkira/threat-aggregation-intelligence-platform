@@ -6,9 +6,12 @@ namespace ThreatIntelligence.Application.Features.Iocs.Queries.SearchIocs;
 
 public sealed class SearchIocsHandler(
     IIocClassifier classifier,
-    IIocQueryReader reader) : IRequestHandler<SearchIocsQuery, IocGroupResult>
+    IIocQueryReader reader) : IRequestHandler<SearchIocsQuery, PagedResult<IocGroupResult>>
 {
-    public async Task<IocGroupResult> Handle(
+    public const int DefaultPageSize = 20;
+    public const int MaxPageSize = 100;
+
+    public async Task<PagedResult<IocGroupResult>> Handle(
         SearchIocsQuery request,
         CancellationToken cancellationToken)
     {
@@ -27,19 +30,37 @@ public sealed class SearchIocsHandler(
                 "The provider filter must be a positive provider id.");
         }
 
+        var page = request.Page ?? 1;
+        var pageSize = request.PageSize ?? DefaultPageSize;
+        if (page < 1)
+        {
+            throw new IocQueryValidationException(
+                IocErrorCodes.InvalidInput,
+                "The page must be at least 1.");
+        }
+
+        if (pageSize is < 1 or > MaxPageSize)
+        {
+            throw new IocQueryValidationException(
+                IocErrorCodes.InvalidInput,
+                $"The pageSize must be between 1 and {MaxPageSize}.");
+        }
+
         var identity = classification.OrThrow();
-        var group = await reader.SearchGroupAsync(
+        var result = await reader.SearchGroupsAsync(
             identity,
             new IocSourceFilter(request.Tag, request.ProviderId),
+            page,
+            pageSize,
             cancellationToken);
 
-        if (group is null)
+        if (result.TotalCount == 0)
         {
             throw new IocNotFoundException(
                 IocErrorCodes.NotFound,
                 $"No {IocTypeToken.ToToken(identity.Type)} IOC matches '{identity.IocValue}'.");
         }
 
-        return group;
+        return result;
     }
 }

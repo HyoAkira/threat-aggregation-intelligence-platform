@@ -75,7 +75,8 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
 
         using var search = await _client.GetAsync("/api/iocs/search?q=1.2.3.4");
         Assert.Equal(HttpStatusCode.OK, search.StatusCode);
-        var group = (await search.Content.ReadFromJsonAsync<JsonObject>())!;
+        var searchEnvelope = (await search.Content.ReadFromJsonAsync<JsonObject>())!;
+        var group = searchEnvelope["items"]!.AsArray().Single()!.AsObject();
         Assert.Equal("ipv4", (string)group["iocType"]!);
         Assert.True((int)group["id"]! > 0);
     }
@@ -86,9 +87,23 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
         using var response = await GetAuthorized("/api/iocs/search?q=1.2.3.4");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var group = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        var envelope = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        var group = envelope["items"]!.AsArray().Single()!.AsObject();
         Assert.Equal("ipv4", (string)group["iocType"]!);
         Assert.Equal(2, group["sources"]!.AsArray().Count);
+    }
+
+    [Fact]
+    public async Task Search_domain_returns_url_host_matches()
+    {
+        using var response = await GetAuthorized("/api/iocs/search?q=evil.example");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var envelope = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(1, (int)envelope["totalCount"]!);
+        var group = envelope["items"]!.AsArray().Single()!.AsObject();
+        Assert.Equal("https://evil.example/x", (string)group["iocValue"]!);
+        Assert.Equal("evil.example", (string)group["urlHost"]!);
     }
 
     [Fact]

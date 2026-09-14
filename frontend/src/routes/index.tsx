@@ -15,6 +15,7 @@ import {
   threatLabel,
 } from '../lib/iocPresentation'
 import { IocGroupCard } from '../components/IocGroupCard'
+import { Pagination } from '../components/Pagination'
 import { EmptyState, ErrorState, LoadingState } from '../components/uiStates'
 import { BrowseErrorState } from './browse'
 import { SearchErrorState, validateSearchSubmission } from './search'
@@ -49,6 +50,7 @@ const focusRing =
   'rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 const RECENT_PAGE_SIZE = 10
+const SEARCH_PAGE_SIZE = 20
 
 const QUICK_QUERIES = [
   '185.220.101.5',
@@ -68,11 +70,18 @@ function HomePage() {
   const [q, setQ] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submission, setSubmission] = useState<SearchSubmission | null>(null)
+  const [searchPage, setSearchPage] = useState(1)
   const [tableType, setTableType] = useState<IocTypeToken | null>(null)
 
+  const pagedSubmission = submission
+    ? { ...submission, page: searchPage, pageSize: SEARCH_PAGE_SIZE }
+    : null
+
   const searchQuery = useQuery({
-    queryKey: iocSearchKey(submission ?? { q: '', tag: null, provider: null }),
-    queryFn: ({ signal }) => searchIocs(submission!, signal),
+    queryKey: iocSearchKey(
+      pagedSubmission ?? { q: '', tag: null, provider: null },
+    ),
+    queryFn: ({ signal }) => searchIocs(pagedSubmission!, signal),
     enabled: submission !== null,
   })
 
@@ -153,6 +162,7 @@ function HomePage() {
     event.preventDefault()
     const validation = validateSearchSubmission({ q, tag: '', provider: '' })
     setFormError(validation.error)
+    setSearchPage(1)
     setSubmission(validation.submission)
   }
 
@@ -346,11 +356,29 @@ function HomePage() {
       {searchQuery.data ? (
         <section aria-label="Search result" className="mt-8">
           <h2 className="flex flex-wrap items-baseline gap-x-2 text-lg font-semibold text-on-surface">
-            Result for{' '}
-            <span className="font-mono">{searchQuery.data.iocValue}</span>
+            {searchQuery.data.totalCount === 1 ? 'Result' : 'Results'} for{' '}
+            <span className="font-mono">{submission?.q}</span>
+            <span className="font-mono text-sm text-outline">
+              ({searchQuery.data.totalCount})
+            </span>
           </h2>
-          <div className="mt-3">
-            <IocGroupCard group={searchQuery.data} linkToDetail />
+          <div className="mt-3 space-y-3">
+            {searchQuery.data.items.map((group) => (
+              <IocGroupCard
+                key={`${group.iocType}:${group.iocValue}`}
+                group={group}
+                linkToDetail
+              />
+            ))}
+            {searchQuery.data.totalCount > SEARCH_PAGE_SIZE ? (
+              <Pagination
+                page={searchQuery.data.page}
+                pageSize={searchQuery.data.pageSize}
+                totalCount={searchQuery.data.totalCount}
+                onPage={setSearchPage}
+                pageLabel="Search page"
+              />
+            ) : null}
           </div>
         </section>
       ) : null}
