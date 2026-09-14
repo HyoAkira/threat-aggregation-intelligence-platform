@@ -1,5 +1,59 @@
 @import 'tailwindcss';
 
+/*
+ * Design tokens from the approved ThreatLedger hub design: a Material-style
+ * tonal palette plus the Geist/JetBrains Mono type pairing. Pages opt into
+ * these utilities; existing slate/sky utilities keep working unchanged.
+ */
+@theme {
+  --color-primary: #003ec7;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #0052ff;
+  --color-surface: #f8f9ff;
+  --color-surface-tint: #004ced;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-high: #dce9ff;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #434656;
+  --color-outline: #737688;
+  --color-outline-variant: #c3c5d9;
+  --color-tertiary: #005b33;
+  --color-tertiary-fixed: #72fcac;
+  --color-error: #ba1a1a;
+  --color-inverse-surface: #213145;
+  --color-inverse-on-surface: #eaf1ff;
+
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Google Material Symbols icon font (loaded per-route where icons are used).
+ * Layered below utilities so size/color utilities can override it. */
+@layer components {
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

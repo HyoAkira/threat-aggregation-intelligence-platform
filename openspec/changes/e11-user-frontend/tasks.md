@@ -8,3 +8,4 @@
 - [x] 1.6 Build on-demand paginated host/parent-domain relations and verify bounded and IP-no-relation states (TI-115).
 - [x] 1.7 Build URL-driven grouped browse and verify filters, sorting, pagination, reload, Back, and Forward (TI-116).
 - [x] 1.8 Verify formatting, lint, tests, production build, and a basic accessibility audit pass.
+- [x] 1.9 Restyle the entry route as the approved ThreatLedger search-hub design: hero search with type hint, type-filtered recent ingest table, and per-type totals from the E09 browse contract.

@@ -95,12 +95,13 @@ describe('route guards through the real router', () => {
     expect(result.to).toBe('/search')
   })
 
-  it('the entry route redirects to search', async () => {
+  it('the entry route renders the public search hub instead of redirecting', async () => {
     const result = await loadAppRoute('/')
 
-    expect(result.type).toBe('redirect')
-    if (result.type !== 'redirect') return
-    expect(result.to).toBe('/search')
+    expect(result.type).toBe('render')
+
+    const markup = await renderAppRoute('/')
+    expect(markup).toContain('Inspect Any Indicator of Compromise.')
   })
 })
 

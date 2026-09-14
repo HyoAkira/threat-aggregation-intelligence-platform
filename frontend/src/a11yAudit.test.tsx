@@ -2,7 +2,7 @@ import { queryClient } from './lib/queryClient'
 import { browseKey, iocDetailKey, iocRelationsKey } from './lib/queryKeys'
 import { defaultBrowseParams } from './lib/browseParams'
 import { renderAppRoute, resetClientState } from './test/renderApp'
-import { makePaged, urlGroup } from './test/fixtures'
+import { ipv4Group, makePaged, urlGroup } from './test/fixtures'
 
 /**
  * Basic accessibility audit over the server-rendered application markup:
@@ -85,6 +85,15 @@ function auditPage(markup: string, name: string) {
 describe('basic accessibility audit', () => {
   beforeEach(() => resetClientState())
   afterEach(() => resetClientState())
+
+  it('home page with results passes', async () => {
+    queryClient.setQueryData(
+      browseKey({ ...defaultBrowseParams, pageSize: 10 }),
+      makePaged([ipv4Group, urlGroup], 1, 10, 45),
+    )
+    const issues = auditPage(await renderAppRoute('/'), 'home')
+    expect(issues).toEqual([])
+  })
 
   it('search page passes', async () => {
     const issues = auditPage(await renderAppRoute('/search'), 'search')
