@@ -36,7 +36,11 @@ export function ShellNav({ session }: { session: ShellSession }) {
         Browse
       </Link>
       {session?.role === 'Admin' ? (
-        <Link to="/admin" className={navLinkClass} aria-label="Admin area">
+        <Link
+          to="/admin/providers"
+          className={navLinkClass}
+          aria-label="Admin area"
+        >
           Admin
         </Link>
       ) : null}
