@@ -9,8 +9,7 @@ using ThreatIntelligence.Infrastructure.Configuration;
 namespace ThreatIntelligence.Infrastructure.ThreatFox;
 
 /// <summary>
-/// Streams ThreatFox JSON exports. Recent mode maps to three per-type JSON files
-/// (<c>domains_recent.json</c>, <c>urls_recent.json</c>, <c>ip_port_recent.json</c>);
+/// Streams ThreatFox JSON exports. Recent mode maps to the combined <c>recent.json</c> file;
 /// full mode maps to <c>full.json.zip</c>. The API key lives only in the constructed URL for
 /// the upstream request and is never placed into log or exception output.
 /// </summary>
@@ -18,9 +17,7 @@ public sealed class ThreatFoxExportClient : IThreatFoxExportClient
 {
     public const string DefaultBaseUrl = "https://threatfox-api.abuse.ch";
 
-    private const string DomainsRecentFileName = "domains_recent.json";
-    private const string UrlsRecentFileName = "urls_recent.json";
-    private const string IpPortRecentFileName = "ip_port_recent.json";
+    private const string RecentExportFileName = "recent.json";
     private const string FullExportFileName = "full.json.zip";
 
     private readonly HttpClient _httpClient;
@@ -47,18 +44,8 @@ public sealed class ThreatFoxExportClient : IThreatFoxExportClient
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ThreatIntelligence.Worker/1.0");
     }
 
-    public Task<ThreatFoxExportStream> FetchRecentAsync(ThreatFoxRecentKind kind, CancellationToken cancellationToken)
-    {
-        var fileName = kind switch
-        {
-            ThreatFoxRecentKind.Domains => DomainsRecentFileName,
-            ThreatFoxRecentKind.Urls => UrlsRecentFileName,
-            ThreatFoxRecentKind.IpPort => IpPortRecentFileName,
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
-        };
-
-        return FetchAsync(fileName, cancellationToken);
-    }
+    public Task<ThreatFoxExportStream> FetchRecentAsync(CancellationToken cancellationToken)
+        => FetchAsync(RecentExportFileName, cancellationToken);
 
     public Task<ThreatFoxExportStream> FetchFullAsync(CancellationToken cancellationToken)
         => FetchAsync(FullExportFileName, cancellationToken);

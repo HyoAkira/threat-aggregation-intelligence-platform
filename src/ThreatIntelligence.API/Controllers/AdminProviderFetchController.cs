@@ -18,7 +18,7 @@ public sealed class AdminProviderFetchController(
 
     [HttpPost("{providerId:int}/fetch")]
     public Task<ActionResult<FetchQueuedResponse>> Fetch(int providerId, CancellationToken cancellationToken) =>
-        QueueAsync(providerId, FetchMode.Recent, cancellationToken);
+        QueueAsync(providerId, null, cancellationToken);
 
     [HttpPost("{providerId:int}/fetch/full")]
     public Task<ActionResult<FetchQueuedResponse>> FetchFull(int providerId, CancellationToken cancellationToken) =>
@@ -26,7 +26,7 @@ public sealed class AdminProviderFetchController(
 
     private async Task<ActionResult<FetchQueuedResponse>> QueueAsync(
         int providerId,
-        FetchMode mode,
+        FetchMode? mode,
         CancellationToken cancellationToken)
     {
         var correlationId = HttpContext?.Items["CorrelationId"] as string;
@@ -37,7 +37,7 @@ public sealed class AdminProviderFetchController(
                 FetchLifecycleEventNames.GuardRejection,
                 null,
                 providerId,
-                mode,
+                mode ?? FetchMode.Recent,
                 FetchTrigger.Manual,
                 correlationId,
                 reservation.Rejection?.ToString());
@@ -64,7 +64,7 @@ public sealed class AdminProviderFetchController(
             };
         }
 
-        var job = new FetchJob(reservation.JobId!.Value, providerId, FetchTrigger.Manual, mode, 1, correlationId);
+        var job = new FetchJob(reservation.JobId!.Value, providerId, FetchTrigger.Manual, reservation.Mode!.Value, 1, correlationId);
         Emit(FetchLifecycleEventNames.Reservation, job);
         try
         {

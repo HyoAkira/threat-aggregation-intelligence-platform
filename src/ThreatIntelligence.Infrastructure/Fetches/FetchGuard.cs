@@ -14,7 +14,7 @@ public sealed class FetchGuard(
     public async Task<FetchReservation> ReserveAsync(
         int providerId,
         FetchTrigger trigger,
-        FetchMode mode,
+        FetchMode? mode,
         CancellationToken cancellationToken)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -23,8 +23,14 @@ public sealed class FetchGuard(
         var provider = await context.Providers
             .FromSqlInterpolated($"SELECT * FROM providers WITH (UPDLOCK, HOLDLOCK) WHERE id = {providerId}")
             .SingleOrDefaultAsync(cancellationToken);
+        if (provider is null)
+        {
+            return FetchReservation.Reject(FetchReservationRejection.ProviderNotFound);
+        }
+
+        var resolvedMode = mode ?? provider.DefaultMode;
         var rejection = await FetchGuardEvaluator.GetRejectionAsync(
-            context, provider, null, mode, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+            context, provider, null, resolvedMode, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
         if (rejection is not null)
         {
             return FetchReservation.Reject(rejection.Value);
@@ -32,10 +38,10 @@ public sealed class FetchGuard(
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var jobId = Guid.NewGuid();
-        context.FetchHistory.Add(new FetchHistory(jobId, providerId, trigger, mode, FetchStatus.Queued, now));
+        context.FetchHistory.Add(new FetchHistory(jobId, providerId, trigger, resolvedMode, FetchStatus.Queued, now));
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return FetchReservation.Allow(jobId);
+        return FetchReservation.Allow(jobId, resolvedMode);
     }
 
     public async Task<bool> CanExecuteAsync(FetchJob job, CancellationToken cancellationToken)

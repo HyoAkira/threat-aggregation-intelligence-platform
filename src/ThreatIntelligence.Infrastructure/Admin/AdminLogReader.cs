@@ -8,9 +8,9 @@ namespace ThreatIntelligence.Infrastructure.Admin;
 
 /// <summary>
 /// Reads the newest entries from the configured Serilog rolling files, newest file first and newest
-/// line first. Missing/rotated files and malformed partial lines are skipped so a concurrent
-/// rotation never fails the request. Results are capped before they are returned and every message
-/// and exception is redacted.
+/// line first. Message templates are rendered from their captured properties. Missing/rotated files
+/// and malformed partial lines are skipped so a concurrent rotation never fails the request. Results
+/// are capped before they are returned and every message and exception is redacted.
 /// </summary>
 public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
 {
@@ -98,15 +98,31 @@ public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
                     timestamp.GetString(),
                     CultureInfo.InvariantCulture,
                     DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                    out var parsedTimestamp)
-                || !root.TryGetProperty("@l", out var level)
-                || level.ValueKind != JsonValueKind.String
-                || string.IsNullOrEmpty(level.GetString()))
+                    out var parsedTimestamp))
             {
                 return false;
             }
 
-            var message = ReadString(root, "@m") ?? ReadString(root, "@mt");
+            // CLEF omits @l when the level is the default (Information).
+            string entryLevel;
+            if (root.TryGetProperty("@l", out var level))
+            {
+                if (level.ValueKind != JsonValueKind.String || string.IsNullOrEmpty(level.GetString()))
+                {
+                    return false;
+                }
+
+                entryLevel = level.GetString()!;
+            }
+            else
+            {
+                entryLevel = "Information";
+            }
+
+            // CLEF omits @m unless the formatter pre-rendered the message; otherwise @mt is the
+            // template and must be filled in from the properties on the same line.
+            var template = ReadString(root, "@mt");
+            var message = ReadString(root, "@m") ?? (template is null ? null : ClefMessageRenderer.Render(root, template));
             if (string.IsNullOrEmpty(message))
             {
                 return false;
@@ -114,7 +130,8 @@ public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
 
             entry = new AdminLogEntry(
                 parsedTimestamp,
-                level.GetString()!,
+                entryLevel,
+                LogRedactor.Redact(ReadString(root, "CorrelationId")),
                 LogRedactor.Redact(message)!,
                 LogRedactor.Redact(ReadString(root, "@x")));
             return true;

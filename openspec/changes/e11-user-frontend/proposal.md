@@ -5,7 +5,7 @@ The backend query and authentication capabilities need an accessible user interf
 ## What Changes
 
 - Add a responsive application shell and accessible UI states.
-- Add JWT session handling, login, logout, expiry handling, and protected routes.
+- Add JWT session handling, login, logout, expiry handling, and role-aware guards for protected routes; IOC routes stay public (the backend IOC endpoints are anonymous).
 - Add exact IOC search with validation, tag entry, and grouped results.
 - Add IOC detail and paginated host/parent-domain relations.
 - Add a filterable, sortable, paginated browse page with URL-persisted state.

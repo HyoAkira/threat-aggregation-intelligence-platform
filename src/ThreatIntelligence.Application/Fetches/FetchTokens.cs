@@ -30,4 +30,10 @@ public static class FetchTokens
         FetchMode.Full => "full",
         _ => mode.ToString().ToLowerInvariant()
     };
+
+    /// <summary>Parses a lowercase mode token; returns null for an unknown or blank token.</summary>
+    public static FetchMode? ParseMode(string? token) =>
+        Enum.TryParse<FetchMode>(token, ignoreCase: true, out var mode) && Enum.IsDefined(mode)
+            ? mode
+            : null;
 }

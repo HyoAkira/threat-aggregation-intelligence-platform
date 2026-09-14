@@ -5,16 +5,14 @@ namespace ThreatIntelligence.UnitTests.ThreatFox;
 
 public sealed class ThreatFoxExportClientTests
 {
-    [Theory]
-    [InlineData(ThreatFoxRecentKind.Domains, "domains_recent.json")]
-    [InlineData(ThreatFoxRecentKind.Urls, "urls_recent.json")]
-    [InlineData(ThreatFoxRecentKind.IpPort, "ip_port_recent.json")]
-    public async Task Recent_requests_use_the_per_type_endpoint(ThreatFoxRecentKind kind, string expectedFileName)
+    [Fact]
+    public async Task Recent_request_uses_the_combined_recent_endpoint()
     {
+        const string expectedFileName = "recent.json";
         var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]", "application/json");
         var client = ThreatFoxTestClient.Create(handler);
 
-        var result = await client.FetchRecentAsync(kind, CancellationToken.None);
+        var result = await client.FetchRecentAsync(CancellationToken.None);
         await using (result.Content)
         {
             Assert.Equal(expectedFileName, result.Name);
@@ -46,7 +44,7 @@ public sealed class ThreatFoxExportClientTests
         var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "streamed payload", "application/json");
         var client = ThreatFoxTestClient.Create(handler);
 
-        var result = await client.FetchRecentAsync(ThreatFoxRecentKind.Domains, CancellationToken.None);
+        var result = await client.FetchRecentAsync(CancellationToken.None);
         using var reader = new StreamReader(result.Content);
 
         Assert.Equal("streamed payload", await reader.ReadToEndAsync());
@@ -65,7 +63,7 @@ public sealed class ThreatFoxExportClientTests
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            client.FetchRecentAsync(ThreatFoxRecentKind.Domains, cts.Token));
+            client.FetchRecentAsync(cts.Token));
     }
 
     [Theory]
@@ -77,7 +75,7 @@ public sealed class ThreatFoxExportClientTests
         var client = ThreatFoxTestClient.Create(new StubHttpMessageHandler(statusCode));
 
         var ex = await Assert.ThrowsAsync<ProviderFetchHttpException>(() =>
-            client.FetchRecentAsync(ThreatFoxRecentKind.Domains, CancellationToken.None));
+            client.FetchRecentAsync(CancellationToken.None));
 
         Assert.Equal(statusCode, ex.StatusCode);
         Assert.DoesNotContain(ThreatFoxTestClient.ApiKey, ex.Message);
@@ -91,7 +89,7 @@ public sealed class ThreatFoxExportClientTests
         var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
         var client = ThreatFoxTestClient.Create(handler);
 
-        await client.FetchRecentAsync(ThreatFoxRecentKind.Domains, CancellationToken.None);
+        await client.FetchRecentAsync(CancellationToken.None);
 
         foreach (var header in handler.LastRequest!.Headers)
         {
@@ -106,7 +104,7 @@ public sealed class ThreatFoxExportClientTests
         var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
         var client = ThreatFoxTestClient.Create(handler);
 
-        await client.FetchRecentAsync(ThreatFoxRecentKind.Domains, CancellationToken.None);
+        await client.FetchRecentAsync(CancellationToken.None);
 
         Assert.Contains(
             handler.LastRequest!.Headers.UserAgent,
@@ -119,7 +117,7 @@ public sealed class ThreatFoxExportClientTests
         var client = ThreatFoxTestClient.Create(new StubHttpMessageHandler(HttpStatusCode.BadGateway));
 
         var ex = await Assert.ThrowsAsync<ProviderFetchHttpException>(() =>
-            client.FetchRecentAsync(ThreatFoxRecentKind.Domains, CancellationToken.None));
+            client.FetchRecentAsync(CancellationToken.None));
 
         Assert.Equal(HttpStatusCode.BadGateway, ex.StatusCode);
         Assert.True(FetchErrorClassifier.IsTransient(ex));
@@ -131,7 +129,7 @@ public sealed class ThreatFoxExportClientTests
         var client = ThreatFoxTestClient.Create(new StubHttpMessageHandler(HttpStatusCode.TooManyRequests));
 
         var ex = await Assert.ThrowsAsync<ProviderFetchHttpException>(() =>
-            client.FetchRecentAsync(ThreatFoxRecentKind.Domains, CancellationToken.None));
+            client.FetchRecentAsync(CancellationToken.None));
 
         Assert.Equal(HttpStatusCode.TooManyRequests, ex.StatusCode);
         var classified = FetchErrorClassifier.Classify(ex);

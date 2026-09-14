@@ -133,7 +133,7 @@ builder.Services.AddAuthorization(options =>
 });
 var app = builder.Build();
 
-app.Use((httpContext, next) =>
+app.Use(async (httpContext, next) =>
 {
     var correlationId = httpContext.Request.Headers.TryGetValue("X-Correlation-ID", out var header)
         && !string.IsNullOrWhiteSpace(header)
@@ -142,14 +142,13 @@ app.Use((httpContext, next) =>
 
     httpContext.Response.Headers["X-Correlation-ID"] = correlationId;
     httpContext.Items["CorrelationId"] = correlationId;
-    return next();
+    using (Serilog.Context.LogContext.PushProperty("CorrelationId", correlationId))
+    {
+        await next();
+    }
 });
 
-app.UseSerilogRequestLogging(options =>
-{
-    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
-        diagnosticContext.Set("CorrelationId", httpContext.Items["CorrelationId"]);
-});
+app.UseSerilogRequestLogging();
 
 app.UseMiddleware<ApiExceptionHandlingMiddleware>();
 app.UseStatusCodePages(ApiProblemStatusCodePages.HandleAsync);

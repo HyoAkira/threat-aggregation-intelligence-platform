@@ -13,10 +13,12 @@ namespace ThreatIntelligence.Infrastructure.ThreatFox;
 /// <list type="bullet">
 /// <item>a top-level JSON array of records (community-style), and</item>
 /// <item>a top-level JSON object keyed by ThreatFox id whose values are arrays of records
-/// (the file exports: <c>recent.json</c>, <c>domains_recent.json</c>, <c>full.json</c>).</item>
+/// (the exports: <c>recent.json</c>, <c>full.json</c>).</item>
 /// </list>
-/// A malformed or unmappable record raises a <see cref="ThreatFoxRecordParseException"/> naming the
-/// record index; it is never silently dropped. A body that is neither shape raises a
+/// A malformed record raises a <see cref="ThreatFoxRecordParseException"/> naming the
+/// record index; it is never silently dropped. A record whose IOC type the platform does not
+/// ingest (for example a file hash) is skipped, and skipped records are counted by IOC type in
+/// one warning summary per parsed source. A body that is neither shape raises a
 /// <see cref="ThreatFoxFeedFormatException"/> carrying a capped prefix of what the endpoint returned.
 /// </summary>
 public sealed class ThreatFoxRecentParser
@@ -64,6 +66,7 @@ public sealed class ThreatFoxRecentParser
         };
 
         var recordIndex = 0;
+        var skippedByIocType = new Dictionary<string, int>();
         await foreach (var record in records.ConfigureAwait(false))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -73,7 +76,30 @@ public sealed class ThreatFoxRecentParser
                 throw new ThreatFoxRecordParseException(recordIndex, "record", "Empty record in feed.");
             }
 
-            yield return _mapper.Map(record, recordIndex);
+            var mapped = _mapper.Map(record, recordIndex);
+            if (mapped is null)
+            {
+                var skippedType = (record.IocType ?? string.Empty).Trim().ToLowerInvariant();
+                if (skippedType.Length == 0)
+                {
+                    skippedType = "<blank>";
+                }
+
+                skippedByIocType[skippedType] = skippedByIocType.GetValueOrDefault(skippedType) + 1;
+                continue;
+            }
+
+            yield return mapped;
+        }
+
+        if (skippedByIocType.Count > 0)
+        {
+            var totalSkipped = skippedByIocType.Values.Sum();
+            var breakdown = string.Join(", ", skippedByIocType.Select(pair => $"{pair.Key}={pair.Value}"));
+            _logger.LogWarning(
+                "ThreatFox export contained {SkippedCount} record(s) with unsupported IOC types; skipped: {SkippedByIocType}",
+                totalSkipped,
+                breakdown);
         }
     }
 

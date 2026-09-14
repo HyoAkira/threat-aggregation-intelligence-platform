@@ -51,6 +51,23 @@ public sealed class ThreatFoxFullParserTests
     }
 
     [Fact]
+    public async Task Unsupported_ioc_type_records_are_skipped_and_valid_records_yielded()
+    {
+        var json = """
+        [
+          {"id":"1","ioc":"a.example","ioc_type":"domain","first_seen":"2026-01-01 00:00:00 UTC"},
+          {"id":"2","ioc":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","ioc_type":"sha256_hash","first_seen":"2026-01-01 00:00:00 UTC"},
+          {"id":"3","ioc":"b.example","ioc_type":"domain","first_seen":"2026-01-02 00:00:00 UTC"}
+        ]
+        """;
+        await using var zip = ZipStream(("full.json", json));
+
+        var records = await ParseAsync(_parser, zip);
+
+        Assert.Equal(new[] { "a.example", "b.example" }, records.Select(record => record.RawIoc).ToArray());
+    }
+
+    [Fact]
     public async Task Missing_expected_entry_is_rejected_with_a_structured_archive_error()
     {
         await using var zip = ZipStream(("other.json", """[{"id":"1","ioc":"x.com","ioc_type":"domain","first_seen":"2026-01-01 00:00:00 UTC"}]"""));

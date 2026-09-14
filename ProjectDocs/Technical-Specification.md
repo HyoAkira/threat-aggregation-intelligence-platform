@@ -72,11 +72,12 @@ Example NuGet set: `Microsoft.EntityFrameworkCore.SqlServer`, `MediatR`, `Fluent
 ## 3. Enumerations
 
 ```
-IocType          : tinyint → 0 = Ipv4, 1 = Ipv6, 2 = Domain, 3 = Url
-FetchTrigger     : tinyint → 0 = Scheduled, 1 = Manual
-FetchMode        : tinyint → 0 = Recent, 1 = Full          (PhishTank only Full)
-FetchStatus      : tinyint → 0 = Queued, 1 = Running, 2 = Success, 3 = Failed
-UserRole         : tinyint → 0 = User, 1 = Admin
+IocType            : tinyint → 0 = Ipv4, 1 = Ipv6, 2 = Domain, 3 = Url
+FetchTrigger       : tinyint → 0 = Scheduled, 1 = Manual
+FetchMode          : tinyint → 0 = Recent, 1 = Full (per-provider capability, see providers.supportedModes)
+FetchStatus        : tinyint → 0 = Queued, 1 = Running, 2 = Success, 3 = Failed
+UserRole           : tinyint → 0 = User, 1 = Admin
+ProviderFetchModes : int (bitmask) → 0 = None, 1 = Recent, 2 = Full
 ```
 
 ---
@@ -86,16 +87,27 @@ UserRole         : tinyint → 0 = User, 1 = Admin
 All physical table and column names use plural lower camel case.
 
 ### `providers`
-| Column            | Type           | Notes                                                   |
-| ----------------- | -------------- | ------------------------------------------------------- |
-| id                | int PK         |                                                         |
-| name              | nvarchar(255)  | required display/integration name                       |
-| baseUrl           | nvarchar(255)  | required                                                |
-| isEnabled         | bit            | required; runtime-editable                              |
-| intervalMinutes   | int            | required; runtime-editable                              |
-| lastFetchStatus   | tinyint?       | FetchStatus summary of the latest fetch                 |
-| lastFetchAt       | datetime2?     | last completed attempt                                  |
-| nextFetchTime     | datetime2?     | NULL until the first successful manual fetch; then scheduled by the worker |
+| Column                   | Type           | Notes                                                   |
+| ------------------------ | -------------- | ------------------------------------------------------- |
+| id                       | int PK         |                                                         |
+| name                     | nvarchar(255)  | required display/integration name                       |
+| baseUrl                  | nvarchar(255)  | required                                                |
+| isEnabled                | bit            | required; runtime-editable                              |
+| intervalMinutes          | int            | required; runtime-editable                              |
+| defaultMode              | tinyint        | FetchMode used by `/fetch` and the scheduler            |
+| supportedModes           | int            | bitmask of supported FetchMode values (recent=1, full=2)|
+| recentCooldownMinutes    | int?           | null = no recent-mode cooldown                          |
+| fullCooldownMinutes      | int?           | null = no full-mode cooldown                            |
+| minimumIntervalMinutes   | int            | floor enforced by the runtime-settings interval update |
+| lastFetchStatus          | tinyint?       | FetchStatus summary of the latest fetch                 |
+| lastFetchAt              | datetime2?     | last completed attempt                                  |
+| nextFetchTime            | datetime2?     | NULL until the first successful manual fetch; then scheduled by the worker |
+
+Fetch capabilities (supported/default modes), per-mode cooldowns, and the minimum interval are
+persisted per provider row and read by the trigger guard, the scheduler, and the admin dashboard;
+they are runtime-editable through the admin provider endpoints. Adding a provider row does not add
+a parser/executor adapter: execution is routed by the provider id, and an id without a registered
+adapter keeps using the unavailable-provider fallback until code exists.
 
 ### `iocs` (one row per provider record)
 | Column                   | Type             | Notes                                                        |
@@ -197,8 +209,12 @@ identical; therefore `recordsAdded + recordsUpdated` is the number of provider r
 Worker/Api refresh settings via short-TTL cache (≤30 s). Changing `.env` connection/Rabbit/keys requires restart; **DB settings apply at runtime.**
 
 Provider seeds are deterministic: ID 1 is ThreatFox (`https://threatfox-api.abuse.ch`), enabled with
-a 5-minute interval; ID 2 is PhishTank (`https://data.phishtank.com`), enabled with an 8-hour
-interval. Both begin with `nextFetchTime = NULL` and wait for a successful manual fetch. Application
+a 5-minute interval, default mode `recent`, supported modes `recent`+`full`, a 5-minute recent
+cooldown, a 60-minute full cooldown, and a 5-minute minimum interval; ID 2 is PhishTank
+(`https://data.phishtank.com`), enabled with an 8-hour interval, default mode `full`, supported mode
+`full`, no cooldowns, and a 480-minute minimum interval. Both begin with `nextFetchTime = NULL` and
+wait for a successful manual fetch. The `AddProviderFetchConfiguration` migration backfills these
+capability defaults for already-seeded rows. Application
 time is UTC and is obtained through .NET `TimeProvider` so tests can control it.
 
 | Layer in `.env` | Keys (secret, via dotenv at startup)                         |
@@ -262,20 +278,21 @@ Base path `/api`. All JSON. Errors return **ProblemDetails** (RFC 9457) as `appl
 { "items": [ ... ], "page": 1, "pageSize": 20, "totalCount": 123 }
 ```
 
-Auth: `Authorization: Bearer <jwt>` (required for business endpoints except login; `/health` and `/health/live` remain anonymous).
+Auth: `Authorization: Bearer <jwt>` (required for admin business endpoints; anonymous: `POST /api/auth/login`, all `GET /api/iocs*` query endpoints, `/health`, and `/health/live`).
 
 ### Public
 | Method + Path                | Auth | Description                                                          |
 | ---------------------------- | ---- | -------------------------------------------------------------------- |
 | `POST /api/auth/login`       | none | Body `{username, password}` → `{token, username, role, expiresAt}`. Invalid creds → 401. |
-| `GET /api/iocs/search?q=&tag=&provider=` | any | `q` required; auto-detect/normalize and exact-match. Optional tag/provider filters narrow sources. Invalid input → 400; valid absent match → 404. |
-| `GET /api/iocs/{id}`         | any  | Resolve the row's normalized type/value and return the full grouped IOC detail without inline relations. 404 if missing. |
-| `GET /api/iocs/{id}/relations?relation=urlHost|parentDomain&page=&pageSize=` | any | Paginated related groups; default page 1/pageSize 20, maximum 100. IP groups → 400. |
-| `GET /api/iocs?type=&provider=&tag=&page=&pageSize=&orderBy=lastSeenUtc&dir=desc` | any | Browse grouped results; filters compose, pageSize ≤ 100, NULL aggregates last, stable type/value tie-break. |
+| `GET /api/iocs/search?q=&tag=&provider=` | none | `q` required; auto-detect/normalize and exact-match. Optional tag/provider filters narrow sources. Invalid input → 400; valid absent match → 404. |
+| `GET /api/iocs/{id}`         | none | Resolve the row's normalized type/value and return the full grouped IOC detail without inline relations. 404 if missing. |
+| `GET /api/iocs/{id}/relations?relation=urlHost|parentDomain&page=&pageSize=` | none | Paginated related groups; default page 1/pageSize 20, maximum 100. IP groups → 400. |
+| `GET /api/iocs?type=&provider=&tag=&page=&pageSize=&orderBy=lastSeenUtc&dir=desc` | none | Browse grouped results; filters compose, pageSize ≤ 100, NULL aggregates last, stable type/value tie-break. |
 
 **IOC detail response shape (`GET /api/iocs/{id}`):**
 ```json
 {
+  "id": 42,
   "iocValue": "https://evil.example/x?arg=1",
   "iocType": "url",
   "urlHost": "evil.example",
@@ -312,8 +329,11 @@ Auth: `Authorization: Bearer <jwt>` (required for business endpoints except logi
   ]
 }
 ```
-Null provider-inapplicable properties are omitted, while valid `false`, `0`, and empty values remain.
-Grouped `firstSeenUtc` and `lastSeenUtc` are respectively `MIN` and `MAX` across source rows. Sources
+`id` is the stored `iocs.id` of one deterministic row in the group (lowest row id), exposed on search,
+browse, detail, and relation responses so callers can link to `/api/iocs/{id}` and
+`/api/iocs/{id}/relations`. Null provider-inapplicable properties are omitted, while valid `false`,
+`0`, and empty values remain. Grouped `firstSeenUtc` and `lastSeenUtc` are respectively `MIN` and
+`MAX` across source rows. Sources
 are not merged by provider: separate port-bearing rows may repeat the same provider. Relations are
 resolved on demand through the paginated relations endpoint using stored `urlHost` and `parentDomain`;
 no relation table is used. Exact-search tag/provider filters narrow returned sources, while browse tag
@@ -322,15 +342,18 @@ filtering selects matching groups and keeps each tag under its originating sourc
 ### Admin (`/api/admin/*`, Role=Admin)
 | Method + Path                                          | Description                                                        |
 | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| `GET /api/admin/providers`                              | All providers + `{id, name, baseUrl, isEnabled, intervalMinutes, lastFetchStatus, lastFetchAt, nextFetchTime, availableModes}`. |
-| `POST /api/admin/providers/{id}/fetch`                  | Manual trigger using the provider's default mode: ThreatFox → `recent`; PhishTank → `full`. Creates Queued history, publishes `FetchJob`, then returns **202 Accepted** `{jobId,status:"queued"}` after broker confirmation. **409** if running or on cooldown. |
-| `POST /api/admin/providers/{id}/fetch/full`             | ThreatFox only; publishes `mode=full`. 400 if the adapter does not expose Full mode; **409** if already running or last fetch < 60 min cooldown. |
+| `GET /api/admin/providers`                              | All providers + `{id, name, baseUrl, isEnabled, intervalMinutes, lastFetchStatus, lastFetchAt, nextFetchTime, supportedModes, defaultMode, recentCooldownMinutes, fullCooldownMinutes, minimumIntervalMinutes}`; the configuration fields mirror the create/update body (same names) so a listed provider can be edited and PUT back without translation. |
+| `POST /api/admin/providers`                             | Create a provider from `{name, baseUrl, intervalMinutes, isEnabled, defaultMode, supportedModes[], recentCooldownMinutes?, fullCooldownMinutes?, minimumIntervalMinutes}` (modes as `recent`/`full` tokens). **201** with the created provider; **400** invalid configuration or duplicate name. |
+| `PUT /api/admin/providers/{id}`                         | Replace a provider's configuration with the same body as create. **200** with the updated provider; **400** invalid/duplicate; **404** unknown. |
+| `DELETE /api/admin/providers/{id}`                      | Delete a provider with no fetch history and no IOC rows → **204**; **409** `provider_in_use` when referenced (ingested data is never destroyed implicitly); **404** unknown. |
+| `POST /api/admin/providers/{id}/fetch`                  | Manual trigger using the provider's persisted default mode (seeded: ThreatFox → `recent`, PhishTank → `full`). Creates Queued history, publishes `FetchJob`, then returns **202 Accepted** `{jobId,status:"queued"}` after broker confirmation. **409** if running or on cooldown. |
+| `POST /api/admin/providers/{id}/fetch/full`             | Publishes `mode=full` for any provider whose supported modes include Full; **400** for providers that do not expose Full; **409** if already running or the provider's persisted full cooldown has not elapsed. |
 | `GET /api/admin/providers/{id}/history?page=&pageSize=` | `fetchHistory` for the provider.                                  |
 | `GET /api/admin/fetch-history/{jobId}`                  | Current job status, timing, added/updated counts, and terminal error. |
 | `GET /api/admin/summary`                                | Distinct grouped `{ total, ipv4, ipv6, domain, url }` counts.      |
 | `GET /api/admin/logs?level=&count=`                     | Tail newest safe log entries `[{ timestamp, level, message, exception? }]`; default count 100, maximum 500; redact credentials, tokens, keys, and credential-bearing URLs. |
 | `GET /api/admin/settings`                               | Global settings + per-provider `enabled`/`interval`. |
-| `PUT /api/admin/settings`                               | Atomically update log level + provider enabled/interval at runtime. ThreatFox scheduled interval ≥ 5 min; PhishTank ≥ 480 min. Any invalid value → 400 with no writes. |
+| `PUT /api/admin/settings`                               | Atomically update log level + provider enabled/interval at runtime. Intervals must respect each provider's persisted `minimumIntervalMinutes` (seeded: ThreatFox ≥ 5 min, PhishTank ≥ 480 min). Any invalid value → 400 with no writes. |
 
 **Status codes:** 200 OK · 202 (fetch queued) · 400 invalid input / validation · 401 unauthenticated ·
 403 forbidden (non-Admin on `/admin`) · 404 missing · 409 cooldown violated or concurrent fetch already running · 429 upstream rate-limited (surfaced as provider status, not HTTP).
@@ -366,8 +389,11 @@ Error:    tieto.fetch.jobs_error  (MassTransit default error queue after retry e
   Failed; the small crash window between the database write and broker confirmation is accepted.
 
 **Trigger guards (checked by both Api triggers and the scheduler before publishing):**
-- **Cooldown** — query the latest matching `fetchHistory.startedAt` by provider and mode: ThreatFox
-  Recent must be at least 5 minutes old and Full at least 60 minutes old. Starting an attempt consumes
+- **Capability** — the requested mode must be in the provider's persisted `supportedModes`; the
+  default `/fetch` endpoint and the scheduler resolve the provider's persisted `defaultMode`.
+- **Cooldown** — per mode from the provider row (`recentCooldownMinutes` / `fullCooldownMinutes`,
+  seeded ThreatFox defaults: recent 5 min, full 60 min; null = no cooldown), measured from the
+  latest matching `fetchHistory.startedAt`. Starting an attempt consumes
   the cooldown even when that attempt later fails; `providers.lastFetchAt` remains display-only.
 
 **Consumer (Worker):**
@@ -407,7 +433,7 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 
 | Adapter   | Endpoint(s)                                                                                  | Auth          | Parse                                                          |
 | --------- | -------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------- |
-| ThreatFox | recent: `https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/domains_recent.csv` (+ urls, ip_port); full: `.../full.csv.zip` | `{KEY}` in URL | CSV/zip; typed ThreatFox metadata; IP and port stored separately |
+| ThreatFox | recent: `https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/recent.json`; full: `.../full.json.zip` | `{KEY}` in URL | JSON/zip; typed ThreatFox metadata; IP and port stored separately |
 | PhishTank | `https://data.phishtank.com/data/online-valid.json.gz` (with key if ever provided: insert app key path) | none (quota)   | JSON.gz; URL row with typed fields and complete validated `phishTankDetails` JSON |
 
 - All HTTP uses `IHttpClientFactory` with an explicit timeout. Adapters do not perform their own
@@ -447,10 +473,10 @@ whole-batch transaction ensure redelivery cannot duplicate or partially update p
 | Route          | Page           | Guard        |
 | -------------- | -------------- | ------------ |
 | `/login`       | Login          | public       |
-| `/search`      | Search IOC + related host/URLs | User+ |
-| `/iocs/:id`    | IOC detail     | User+        |
-| `/browse`      | List + filters (type/provider), pagination | User+ |
-| `/admin/providers` | Providers dashboard (status badges, last/next fetch, trigger buttons — recent/full for ThreatFox, full for PhishTank; interval and cooldown information, history drill-down) | Admin |
+| `/search`      | Search IOC + related host/URLs | public |
+| `/iocs/:id`    | IOC detail     | public       |
+| `/browse`      | List + filters (type/provider), pagination | public |
+| `/admin/providers` | Providers dashboard (status badges, last/next fetch, trigger buttons driven by each provider's reported `supportedModes`/`defaultMode`; interval and cooldown information, history drill-down) | Admin |
 | `/admin/summary`   | Database summary (total + per-type) | Admin |
 | `/admin/logs`      | Log tail viewer | Admin       |
 | `/admin/settings`  | Global + per-provider runtime settings | Admin |
@@ -488,8 +514,13 @@ services:
 ## 13. Constraints & Known Limitations
 
 - **PhishTank cadence**: full dump is scheduled every 8 hours. 429 → immediate fail, no retry.
-- **ThreatFox cooldowns**: recent ≥ 5 min, full ≥ 60 min; **ThreatFox expiry**: IOCs older than 6 months vanish from exports (2025-05-01 behavior) — additive-only means our DB keeps them longer than the source does; acceptable per PRD, documented.
-- **ThreatFox cadence**: don't fetch recent more often than every 5 min, full more often than hourly (provider rule, enforced by interval guard).
+- **ThreatFox cooldowns**: seeded defaults are recent ≥ 5 min and full ≥ 60 min, stored per provider
+  in `providers.recentCooldownMinutes`/`fullCooldownMinutes` and runtime-editable by an Admin;
+  **ThreatFox expiry**: IOCs older than 6 months vanish from exports (2025-05-01 behavior) — additive-only means our DB keeps them longer than the source does; acceptable per PRD, documented.
+- **Provider capabilities**: supported/default modes, cooldowns, and minimum intervals live on the
+  provider row; changing them takes effect on the next guard evaluation without a restart. New
+  provider rows still require a matching parser/executor adapter (routed by provider id) before any
+  fetch can execute.
 - IPv4, IPv6, Domain, and URL are supported; URLs are capped at 2048 chars and pagination at `pageSize ≤ 100`.
 - IDNs are not converted to punycode; Unicode and punycode representations remain separate identities.
 - `parentDomain` accuracy depends on a current Public Suffix List dataset.

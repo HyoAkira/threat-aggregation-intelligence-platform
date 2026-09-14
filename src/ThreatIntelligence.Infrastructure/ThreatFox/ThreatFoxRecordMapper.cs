@@ -7,6 +7,9 @@ namespace ThreatIntelligence.Infrastructure.ThreatFox;
 /// <summary>
 /// Maps a parsed ThreatFox JSON record into the canonical E03 <see cref="ProviderRecordInput"/>,
 /// preserving valid <c>false</c>, <c>0</c>, and empty values while leaving absent values null.
+/// Returns null when the record's IOC type is not one the platform ingests (for example a file
+/// hash), so the caller can skip the record; genuinely malformed records throw
+/// <see cref="ThreatFoxRecordParseException"/>.
 /// </summary>
 public sealed class ThreatFoxRecordMapper
 {
@@ -26,16 +29,20 @@ public sealed class ThreatFoxRecordMapper
     public const string IocTypeKey = "ioc_type";
     public const string MalwareSamplesKey = "malware_samples";
 
-    public ProviderRecordInput Map(ThreatFoxJsonRecord record, int recordIndex)
+    public ProviderRecordInput? Map(ThreatFoxJsonRecord record, int recordIndex)
     {
         if (record is null)
         {
             throw new ThreatFoxRecordParseException(recordIndex, "record", "Empty record in feed.");
         }
 
+        if (!TryMapIocType(record.IocType, out var type))
+        {
+            return null;
+        }
+
         var id = Require(record.Id, "id", recordIndex);
         var ioc = Require(record.Ioc ?? record.IocValue, "ioc", recordIndex);
-        var type = MapIocType(record.IocType, recordIndex);
         var firstSeen = ParseTimestamp(record.FirstSeen ?? record.FirstSeenUtc, "first_seen", recordIndex);
         var lastSeen = ParseOptionalTimestamp(record.LastSeen ?? record.LastSeenUtc, "last_seen", recordIndex);
 
@@ -53,16 +60,28 @@ public sealed class ThreatFoxRecordMapper
     }
 
     /// <summary>
-    /// Maps the ThreatFox <c>ioc_type</c> string to an <see cref="IocType"/>.
-    /// <c>ip:port</c> maps to null so the classifier decides between IPv4 and IPv6.
+    /// Maps the ThreatFox <c>ioc_type</c> string to an <see cref="IocType"/>, returning false for
+    /// IOC types the platform does not ingest so the caller can skip the record.
+    /// <c>ip:port</c> maps to a null type so the classifier decides between IPv4 and IPv6.
     /// </summary>
-    private static IocType? MapIocType(string? iocType, int recordIndex) => (iocType ?? string.Empty).Trim().ToLowerInvariant() switch
+    private static bool TryMapIocType(string? iocType, out IocType? type)
     {
-        "domain" => IocType.Domain,
-        "url" => IocType.Url,
-        "ip:port" => null,
-        _ => throw new ThreatFoxRecordParseException(recordIndex, "ioc_type", $"Unsupported IOC type '{iocType}'.")
-    };
+        switch ((iocType ?? string.Empty).Trim().ToLowerInvariant())
+        {
+            case "domain":
+                type = IocType.Domain;
+                return true;
+            case "url":
+                type = IocType.Url;
+                return true;
+            case "ip:port":
+                type = null;
+                return true;
+            default:
+                type = null;
+                return false;
+        }
+    }
 
     private static string Require(string? value, string field, int recordIndex)
         => string.IsNullOrWhiteSpace(value)

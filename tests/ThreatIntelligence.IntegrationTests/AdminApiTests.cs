@@ -57,6 +57,33 @@ public sealed class AdminApiTests(SqlServerFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Non_admin_cannot_manage_providers()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/providers")
+        {
+            Content = JsonContent.Create(new
+            {
+                name = "Nope",
+                baseUrl = "https://nope.example",
+                intervalMinutes = 60,
+                isEnabled = true,
+                defaultMode = "recent",
+                supportedModes = new[] { "recent" },
+                recentCooldownMinutes = (int?)null,
+                fullCooldownMinutes = (int?)null,
+                minimumIntervalMinutes = 30
+            })
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(UserRole.User));
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var problem = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("forbidden", (string)problem["code"]!);
+    }
+
+    [Fact]
     public async Task Admin_can_read_the_provider_dashboard_and_summary()
     {
         using var providers = await GetAuthorized("/api/admin/providers", UserRole.Admin);
@@ -90,6 +117,15 @@ public sealed class AdminApiTests(SqlServerFixture fixture) : IAsyncLifetime
 
         using var valid = await GetAuthorized("/api/admin/logs", UserRole.Admin);
         Assert.Equal(HttpStatusCode.OK, valid.StatusCode);
+        var entries = (await valid.Content.ReadFromJsonAsync<JsonArray>())!;
+        Assert.NotEmpty(entries!);
+        var first = (JsonObject)entries[0]!;
+        Assert.NotNull(first["timestamp"]);
+        Assert.NotNull(first["level"]);
+        Assert.NotNull(first["message"]);
+        Assert.All(entries!, entry => Assert.DoesNotContain(
+            "{RequestMethod}", (string)entry!["message"]!, StringComparison.Ordinal));
+        Assert.Contains(entries!, entry => entry!["correlationId"] is not null);
     }
 
     [Fact]

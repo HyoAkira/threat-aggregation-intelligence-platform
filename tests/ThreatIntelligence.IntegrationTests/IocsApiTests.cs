@@ -60,20 +60,24 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Unauthenticated_request_is_a_401_problem_with_the_correlation_id()
+    public async Task Anonymous_request_can_browse_and_search_without_a_token()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/iocs");
-        request.Headers.Add("X-Correlation-ID", "corr-401");
-        using var response = await _client.SendAsync(request);
+        using var browseRequest = new HttpRequestMessage(HttpMethod.Get, "/api/iocs");
+        browseRequest.Headers.Add("X-Correlation-ID", "corr-anon");
+        using var browse = await _client.SendAsync(browseRequest);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("corr-401", response.Headers.GetValues("X-Correlation-ID").Single());
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-        var problem = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
-        Assert.Equal("urn:threat-intelligence:problem:unauthenticated", (string)problem["type"]!);
-        Assert.Equal("unauthenticated", (string)problem["code"]!);
-        Assert.Equal("corr-401", (string)problem["correlationId"]!);
-        Assert.Equal(401, (int)problem["status"]!);
+        Assert.Equal(HttpStatusCode.OK, browse.StatusCode);
+        Assert.Equal("corr-anon", browse.Headers.GetValues("X-Correlation-ID").Single());
+        var envelope = (await browse.Content.ReadFromJsonAsync<JsonObject>())!;
+        var items = envelope["items"]!.AsArray();
+        Assert.Equal(2, items.Count);
+        Assert.All(items, item => Assert.True((int)item!["id"]! > 0));
+
+        using var search = await _client.GetAsync("/api/iocs/search?q=1.2.3.4");
+        Assert.Equal(HttpStatusCode.OK, search.StatusCode);
+        var group = (await search.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("ipv4", (string)group["iocType"]!);
+        Assert.True((int)group["id"]! > 0);
     }
 
     [Fact]

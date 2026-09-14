@@ -11,7 +11,7 @@ public sealed class AdminProviderFetchControllerTests
     [Fact]
     public async Task Default_fetch_publishes_a_queued_manual_job_and_returns_202()
     {
-        var guard = new StubGuard(FetchReservation.Allow(Guid.Parse("969d935c-3c0b-4cd2-90a4-4917ff6c8ef7")));
+        var guard = new StubGuard(FetchReservation.Allow(Guid.Parse("969d935c-3c0b-4cd2-90a4-4917ff6c8ef7"), FetchMode.Recent));
         var publisher = new CapturingPublisher();
         var controller = new AdminProviderFetchController(guard, publisher, new StubLifecycle());
 
@@ -58,7 +58,7 @@ public sealed class AdminProviderFetchControllerTests
     {
         var publisher = new CapturingPublisher();
         var controller = new AdminProviderFetchController(
-            new StubGuard(FetchReservation.Allow(Guid.NewGuid())), publisher, new StubLifecycle());
+            new StubGuard(FetchReservation.Allow(Guid.NewGuid(), FetchMode.Full)), publisher, new StubLifecycle());
 
         var result = await controller.FetchFull(2, CancellationToken.None);
 
@@ -89,7 +89,7 @@ public sealed class AdminProviderFetchControllerTests
         var jobId = Guid.NewGuid();
         var lifecycle = new CapturingLifecycle();
         var controller = new AdminProviderFetchController(
-            new StubGuard(FetchReservation.Allow(jobId)), new FailingPublisher(), lifecycle);
+            new StubGuard(FetchReservation.Allow(jobId, FetchMode.Recent)), new FailingPublisher(), lifecycle);
 
         var result = await controller.Fetch(1, CancellationToken.None);
 
@@ -102,7 +102,7 @@ public sealed class AdminProviderFetchControllerTests
 
     private sealed class StubGuard(FetchReservation reservation) : IFetchGuard
     {
-        public Task<FetchReservation> ReserveAsync(int providerId, FetchTrigger trigger, FetchMode mode, CancellationToken cancellationToken) =>
+        public Task<FetchReservation> ReserveAsync(int providerId, FetchTrigger trigger, FetchMode? mode, CancellationToken cancellationToken) =>
             Task.FromResult(reservation);
 
         public Task<bool> CanExecuteAsync(FetchJob job, CancellationToken cancellationToken) => Task.FromResult(true);

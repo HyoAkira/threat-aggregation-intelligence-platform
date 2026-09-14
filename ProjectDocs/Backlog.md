@@ -162,8 +162,8 @@ This backlog turns the PRD and Technical Specification into an implementation se
   - Issue 8-hour HS256 JWTs with username, role, expiry, issuer, and audience.
   - **Acceptance:** valid login returns the contract; invalid credentials return indistinguishable 401 responses.
 - [x] **TI-042 — Configure authorization policies** · P0 · S
-  - Require authentication by default and Admin role for `/api/admin/*`; allow anonymous `/health` and `/health/live` probes.
-  - **Acceptance:** integration matrix proves anonymous business request=401, anonymous health probe=success, User-on-admin=403, and Admin=success.
+  - Require authentication by default and Admin role for `/api/admin/*`; allow anonymous `/health` and `/health/live` probes. (Later amendment: the IOC query endpoints under `/api/iocs` are also anonymous — see the `auth` spec.)
+  - **Acceptance:** integration matrix proves anonymous request to a protected business endpoint=401, anonymous health probe=success, User-on-admin=403, and Admin=success.
 - [x] **TI-043 — Harden token handling** · P1 · M
   - Validate secret length, clock skew, algorithms, issuer/audience, expiration, and safe auth logging.
   - **Acceptance:** expired, tampered, wrong-algorithm, wrong-issuer, and wrong-audience tokens are rejected.

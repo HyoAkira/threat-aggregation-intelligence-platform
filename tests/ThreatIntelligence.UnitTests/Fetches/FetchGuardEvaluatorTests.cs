@@ -6,17 +6,24 @@ namespace ThreatIntelligence.UnitTests.Fetches;
 
 public sealed class FetchGuardEvaluatorTests
 {
-    [Theory]
-    [InlineData("ThreatFox", FetchMode.Recent, true)]
-    [InlineData("ThreatFox", FetchMode.Full, true)]
-    [InlineData("PhishTank", FetchMode.Recent, false)]
-    [InlineData("PhishTank", FetchMode.Full, true)]
-    [InlineData("Unknown", FetchMode.Recent, false)]
-    [InlineData("Unknown", FetchMode.Full, false)]
-    public void Supports_matches_each_provider_mode_matrix(string name, FetchMode mode, bool expected)
+    [Fact]
+    public void Supports_reads_the_persisted_provider_configuration()
     {
-        var provider = new Provider(name, $"https://{name.ToLowerInvariant()}.example", 60);
+        var recentOnly = new Provider(
+            "Custom", "https://custom.example", 60,
+            defaultMode: FetchMode.Recent, supportedModes: ProviderFetchModes.Recent);
+        var fullOnly = new Provider(
+            "PhishTank", "https://phishtank.example", 480,
+            defaultMode: FetchMode.Full, supportedModes: ProviderFetchModes.Full);
+        var both = new Provider("ThreatFox", "https://threatfox.example", 5);
 
-        Assert.Equal(expected, FetchGuardEvaluator.Supports(provider, mode));
+        Assert.True(FetchGuardEvaluator.Supports(recentOnly, FetchMode.Recent));
+        Assert.False(FetchGuardEvaluator.Supports(recentOnly, FetchMode.Full));
+
+        Assert.False(FetchGuardEvaluator.Supports(fullOnly, FetchMode.Recent));
+        Assert.True(FetchGuardEvaluator.Supports(fullOnly, FetchMode.Full));
+
+        Assert.True(FetchGuardEvaluator.Supports(both, FetchMode.Recent));
+        Assert.True(FetchGuardEvaluator.Supports(both, FetchMode.Full));
     }
 }

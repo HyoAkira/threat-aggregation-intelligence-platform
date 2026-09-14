@@ -7,7 +7,7 @@ namespace ThreatIntelligence.Infrastructure.Persistence.Seeding;
 /// <summary>
 /// Seeds the two deterministic provider rows (ThreatFox id 1, PhishTank id 2) insert-if-absent.
 /// Explicit IDs require IDENTITY_INSERT; existence is checked by id so operator changes to
-/// enabled/interval are never overwritten.
+/// enabled/interval/capabilities are never overwritten.
 /// </summary>
 public sealed class ProviderSeeder(ThreatIntelligenceDbContext dbContext)
 {
@@ -22,6 +22,11 @@ public sealed class ProviderSeeder(ThreatIntelligenceDbContext dbContext)
             "ThreatFox",
             "https://threatfox-api.abuse.ch",
             intervalMinutes: 5,
+            defaultMode: 0,
+            supportedModes: 3,
+            recentCooldownMinutes: 5,
+            fullCooldownMinutes: 60,
+            minimumIntervalMinutes: 5,
             cancellationToken);
 
         await SeedProviderAsync(
@@ -29,6 +34,11 @@ public sealed class ProviderSeeder(ThreatIntelligenceDbContext dbContext)
             "PhishTank",
             "https://data.phishtank.com",
             intervalMinutes: 480,
+            defaultMode: 1,
+            supportedModes: 2,
+            recentCooldownMinutes: null,
+            fullCooldownMinutes: null,
+            minimumIntervalMinutes: 480,
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -39,14 +49,19 @@ public sealed class ProviderSeeder(ThreatIntelligenceDbContext dbContext)
         string name,
         string baseUrl,
         int intervalMinutes,
+        int defaultMode,
+        int supportedModes,
+        int? recentCooldownMinutes,
+        int? fullCooldownMinutes,
+        int minimumIntervalMinutes,
         CancellationToken cancellationToken)
     {
         await dbContext.Database.ExecuteSqlAsync($"""
             IF NOT EXISTS (SELECT 1 FROM providers WITH (UPDLOCK, HOLDLOCK) WHERE id = {id})
             BEGIN
                 SET IDENTITY_INSERT providers ON;
-                INSERT INTO providers (id, name, baseUrl, isEnabled, intervalMinutes, lastFetchStatus, lastFetchAt, nextFetchTime)
-                VALUES ({id}, {name}, {baseUrl}, 1, {intervalMinutes}, NULL, NULL, NULL);
+                INSERT INTO providers (id, name, baseUrl, isEnabled, intervalMinutes, lastFetchStatus, lastFetchAt, nextFetchTime, defaultMode, supportedModes, recentCooldownMinutes, fullCooldownMinutes, minimumIntervalMinutes)
+                VALUES ({id}, {name}, {baseUrl}, 1, {intervalMinutes}, NULL, NULL, NULL, {defaultMode}, {supportedModes}, {recentCooldownMinutes}, {fullCooldownMinutes}, {minimumIntervalMinutes});
                 SET IDENTITY_INSERT providers OFF;
             END
             """, cancellationToken);

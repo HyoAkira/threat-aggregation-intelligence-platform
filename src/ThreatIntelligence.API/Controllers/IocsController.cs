@@ -10,12 +10,12 @@ using ThreatIntelligence.Application.Features.Iocs.Queries.SearchIocs;
 namespace ThreatIntelligence.API.Controllers;
 
 /// <summary>
-/// Authenticated IOC query surface: combined search, detail by row id, opt-in paginated relations,
+/// Anonymous IOC query surface: combined search, detail by row id, opt-in paginated relations,
 /// and filtered grouped browse. Admin-only concerns live under <c>/api/admin/*</c>.
 /// </summary>
 [ApiController]
 [Route("api/iocs")]
-[Authorize]
+[AllowAnonymous]
 public sealed class IocsController(ISender sender) : ControllerBase
 {
     [HttpGet("search")]

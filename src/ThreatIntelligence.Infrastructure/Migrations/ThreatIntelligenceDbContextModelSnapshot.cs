@@ -276,6 +276,14 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("baseUrl");
 
+                    b.Property<byte>("DefaultMode")
+                        .HasColumnType("tinyint")
+                        .HasColumnName("defaultMode");
+
+                    b.Property<int?>("FullCooldownMinutes")
+                        .HasColumnType("int")
+                        .HasColumnName("fullCooldownMinutes");
+
                     b.Property<int>("IntervalMinutes")
                         .HasColumnType("int")
                         .HasColumnName("intervalMinutes");
@@ -292,6 +300,10 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                         .HasColumnType("tinyint")
                         .HasColumnName("lastFetchStatus");
 
+                    b.Property<int>("MinimumIntervalMinutes")
+                        .HasColumnType("int")
+                        .HasColumnName("minimumIntervalMinutes");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -301,6 +313,14 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                     b.Property<DateTime?>("NextFetchTime")
                         .HasColumnType("datetime2")
                         .HasColumnName("nextFetchTime");
+
+                    b.Property<int?>("RecentCooldownMinutes")
+                        .HasColumnType("int")
+                        .HasColumnName("recentCooldownMinutes");
+
+                    b.Property<int>("SupportedModes")
+                        .HasColumnType("int")
+                        .HasColumnName("supportedModes");
 
                     b.HasKey("Id");
 

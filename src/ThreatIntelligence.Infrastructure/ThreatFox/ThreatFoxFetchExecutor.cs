@@ -59,36 +59,31 @@ public sealed class ThreatFoxFetchExecutor(
 
     private async Task<List<NormalizedProviderRecord>> FetchRecentAsync(CancellationToken ct)
     {
-        var records = new List<NormalizedProviderRecord>();
+        _logger.LogInformation("Fetching ThreatFox recent export");
 
-        foreach (var kind in Enum.GetValues<ThreatFoxRecentKind>())
+        ThreatFoxExportStream stream;
+        try
         {
-            _logger.LogInformation("Fetching ThreatFox recent export Kind={Kind}", kind);
+            stream = await client.FetchRecentAsync(ct).ConfigureAwait(false);
+        }
+        catch (ProviderFetchHttpException ex)
+        {
+            _logger.LogError(
+                ex,
+                "ThreatFox recent export request failed StatusCode={StatusCode}",
+                (int)ex.StatusCode);
+            throw new TerminalFetchException("ThreatFox recent export request failed.", ex);
+        }
 
-            ThreatFoxExportStream stream;
-            try
-            {
-                stream = await client.FetchRecentAsync(kind, ct).ConfigureAwait(false);
-            }
-            catch (ProviderFetchHttpException ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "ThreatFox recent export request failed Kind={Kind} StatusCode={StatusCode}",
-                    kind,
-                    (int)ex.StatusCode);
-                throw new TerminalFetchException("ThreatFox recent export request failed.", ex);
-            }
-
-            try
-            {
-                await ParseAndValidateAsync(recentParser.ParseAsync(stream.Content, ct), records, kind.ToString(), ct)
-                    .ConfigureAwait(false);
-            }
-            finally
-            {
-                await stream.Content.DisposeAsync().ConfigureAwait(false);
-            }
+        var records = new List<NormalizedProviderRecord>();
+        try
+        {
+            await ParseAndValidateAsync(recentParser.ParseAsync(stream.Content, ct), records, "Recent", ct)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            await stream.Content.DisposeAsync().ConfigureAwait(false);
         }
 
         return records;

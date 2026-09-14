@@ -9,6 +9,7 @@ namespace ThreatIntelligence.UnitTests.Features.Iocs.Queries.SearchIocs;
 public sealed class SearchIocsHandlerTests
 {
     private static readonly IocGroupResult Group = new(
+        1,
         "example.com",
         "domain",
         null,

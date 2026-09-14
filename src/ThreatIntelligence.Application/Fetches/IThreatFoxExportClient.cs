@@ -1,12 +1,5 @@
 namespace ThreatIntelligence.Application.Fetches;
 
-public enum ThreatFoxRecentKind : byte
-{
-    Domains = 0,
-    Urls = 1,
-    IpPort = 2
-}
-
 /// <summary>A streamed ThreatFox export artifact. The caller owns and must dispose <see cref="Content"/>.</summary>
 public sealed record ThreatFoxExportStream(string Name, Stream Content);
 
@@ -17,7 +10,7 @@ public sealed record ThreatFoxExportStream(string Name, Stream Content);
 /// </summary>
 public interface IThreatFoxExportClient
 {
-    Task<ThreatFoxExportStream> FetchRecentAsync(ThreatFoxRecentKind kind, CancellationToken cancellationToken);
+    Task<ThreatFoxExportStream> FetchRecentAsync(CancellationToken cancellationToken);
 
     Task<ThreatFoxExportStream> FetchFullAsync(CancellationToken cancellationToken);
 }
