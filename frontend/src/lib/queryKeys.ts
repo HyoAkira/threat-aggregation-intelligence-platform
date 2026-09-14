@@ -30,3 +30,28 @@ export const browseKey = (params: BrowseParams) =>
     params.page,
     params.pageSize,
   ] as const
+
+/* -------------------------------------------------------------------------- */
+/*  Admin query keys                                                         */
+/* -------------------------------------------------------------------------- */
+
+export const adminProviderListKey = () => ['admin', 'providers'] as const
+
+export const adminProviderDetailKey = (id: number) =>
+  ['admin', 'providers', id] as const
+
+export const adminHistoryKey = (
+  providerId: number,
+  page: number,
+  pageSize: number,
+) => ['admin', 'providers', providerId, 'history', page, pageSize] as const
+
+export const adminFetchJobKey = (jobId: string) =>
+  ['admin', 'fetch-job', jobId] as const
+
+export const adminSummaryKey = () => ['admin', 'summary'] as const
+
+export const adminLogsKey = (count: number, level: string | null) =>
+  ['admin', 'logs', count, level] as const
+
+export const adminSettingsKey = () => ['admin', 'settings'] as const

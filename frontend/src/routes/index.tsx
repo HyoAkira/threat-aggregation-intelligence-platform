@@ -191,19 +191,6 @@ function HomePage() {
         </div>
 
         <div className="relative mx-auto flex max-w-3xl flex-col items-center px-4 pt-12 text-center md:px-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-surface-container-low px-3 py-1 shadow-sm">
-            <span
-              aria-hidden="true"
-              className="h-2 w-2 animate-pulse rounded-full bg-tertiary"
-            />
-            <span className="text-xs uppercase tracking-wider text-on-surface-variant">
-              Live IOC repository
-            </span>
-            <span className="rounded bg-surface-container-high px-1.5 py-0.5 text-xs font-semibold uppercase text-primary">
-              Auto-detect
-            </span>
-          </div>
-
           <h1
             id="hub-heading"
             className="mt-6 text-balance text-4xl font-semibold tracking-tight text-on-surface md:text-5xl"

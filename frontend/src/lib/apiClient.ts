@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { ZodType } from 'zod'
 import { ApiError, apiProblemSchema } from './apiErrors'
 import { clearAllSessionData, useAuthStore } from './authStore'
@@ -10,6 +11,25 @@ import {
 } from './schemas'
 import type { IocGroup, LoginResponse, PagedIocGroups } from './schemas'
 import { isSessionExpired } from './session'
+import {
+  adminProviderListSchema,
+  adminProviderHistoryPageSchema,
+  adminFetchHistoryItemSchema,
+  adminSummarySchema,
+  adminLogListSchema,
+  settingsResponseSchema,
+  fetchQueuedResponseSchema,
+} from './adminSchemas'
+import type {
+  AdminProviderDashboardItem,
+  AdminProviderHistoryPage,
+  AdminFetchHistoryItem,
+  AdminSummary,
+  AdminLogEntry,
+  SettingsResponse,
+  SettingsRequest,
+  FetchQueuedResponse,
+} from './adminSchemas'
 
 export { ApiError }
 
@@ -35,7 +55,7 @@ function handleSessionLost(): void {
 
 export type ApiFetchOptions = {
   schema: ZodType
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   body?: unknown
   signal?: AbortSignal
   /**
@@ -104,14 +124,18 @@ export async function apiFetch<T>(
   }
 
   let payload: unknown
-  try {
-    payload = await response.json()
-  } catch {
-    throw new ApiError(
-      response.status,
-      'invalid_response',
-      'The server response was not valid JSON.',
-    )
+  if (response.status === 204) {
+    payload = undefined
+  } else {
+    try {
+      payload = await response.json()
+    } catch {
+      throw new ApiError(
+        response.status,
+        'invalid_response',
+        'The server response was not valid JSON.',
+      )
+    }
   }
 
   const parsed = options.schema.safeParse(payload)
@@ -211,5 +235,107 @@ export function login(
     body: { username, password },
     signal,
     allowUnauthorized: true,
+  })
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Admin API functions                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** `GET /api/admin/providers` — full provider dashboard list. */
+export function getAdminProviders(
+  signal?: AbortSignal,
+): Promise<AdminProviderDashboardItem[]> {
+  return apiFetch('/admin/providers', {
+    schema: adminProviderListSchema,
+    signal,
+  })
+}
+
+/** `POST /api/admin/providers/{id}/fetch` — default mode manual fetch. */
+export function triggerDefaultFetch(
+  providerId: number,
+  signal?: AbortSignal,
+): Promise<FetchQueuedResponse> {
+  return apiFetch(`/admin/providers/${providerId}/fetch`, {
+    schema: fetchQueuedResponseSchema,
+    method: 'POST',
+    signal,
+  })
+}
+
+/** `POST /api/admin/providers/{id}/fetch/full` — full mode manual fetch. */
+export function triggerFullFetch(
+  providerId: number,
+  signal?: AbortSignal,
+): Promise<FetchQueuedResponse> {
+  return apiFetch(`/admin/providers/${providerId}/fetch/full`, {
+    schema: fetchQueuedResponseSchema,
+    method: 'POST',
+    signal,
+  })
+}
+
+/** `GET /api/admin/fetch-history/{jobId}` — single job status. */
+export function getFetchJobStatus(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<AdminFetchHistoryItem> {
+  return apiFetch(`/admin/fetch-history/${jobId}`, {
+    schema: adminFetchHistoryItemSchema,
+    signal,
+  })
+}
+
+/** `GET /api/admin/providers/{id}/history` — paginated fetch history. */
+export function getAdminProviderHistory(
+  providerId: number,
+  page: number,
+  pageSize: number,
+  signal?: AbortSignal,
+): Promise<AdminProviderHistoryPage> {
+  return apiFetch(
+    `/admin/providers/${providerId}/history${buildQuery({ page, pageSize })}`,
+    { schema: adminProviderHistoryPageSchema, signal },
+  )
+}
+
+/** `GET /api/admin/summary` — database IOC counts. */
+export function getAdminSummary(signal?: AbortSignal): Promise<AdminSummary> {
+  return apiFetch('/admin/summary', { schema: adminSummarySchema, signal })
+}
+
+/** `GET /api/admin/logs` — structured log tail. */
+export function getAdminLogs(
+  count: number,
+  level: string | null,
+  signal?: AbortSignal,
+): Promise<AdminLogEntry[]> {
+  return apiFetch(`/admin/logs${buildQuery({ count, level })}`, {
+    schema: adminLogListSchema,
+    signal,
+  })
+}
+
+/** `GET /api/admin/settings` — current non-secret runtime settings. */
+export function getAdminSettings(
+  signal?: AbortSignal,
+): Promise<SettingsResponse> {
+  return apiFetch('/admin/settings', {
+    schema: settingsResponseSchema,
+    signal,
+  })
+}
+
+/** `PUT /api/admin/settings` — atomic full-snapshot settings update. */
+export function putAdminSettings(
+  body: SettingsRequest,
+  signal?: AbortSignal,
+): Promise<void> {
+  return apiFetch('/admin/settings', {
+    schema: z.undefined(),
+    method: 'PUT',
+    body,
+    signal,
   })
 }

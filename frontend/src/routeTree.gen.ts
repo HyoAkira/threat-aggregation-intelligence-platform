@@ -14,6 +14,10 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as AdminLogsRouteImport } from './routes/admin.logs'
+import { Route as AdminProvidersRouteImport } from './routes/admin.providers'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminSummaryRouteImport } from './routes/admin.summary'
 import { Route as IocsIdRouteImport } from './routes/iocs.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +45,26 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLogsRoute = AdminLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProvidersRoute = AdminProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSummaryRoute = AdminSummaryRouteImport.update({
+  id: '/summary',
+  path: '/summary',
+  getParentRoute: () => AdminRoute,
+} as any)
 const IocsIdRoute = IocsIdRouteImport.update({
   id: '/iocs/$id',
   path: '/iocs/$id',
@@ -49,41 +73,83 @@ const IocsIdRoute = IocsIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/browse': typeof BrowseRoute
   '/login': typeof LoginRoute
   '/search': typeof SearchRoute
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/providers': typeof AdminProvidersRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/summary': typeof AdminSummaryRoute
   '/iocs/$id': typeof IocsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/browse': typeof BrowseRoute
   '/login': typeof LoginRoute
   '/search': typeof SearchRoute
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/providers': typeof AdminProvidersRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/summary': typeof AdminSummaryRoute
   '/iocs/$id': typeof IocsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/browse': typeof BrowseRoute
   '/login': typeof LoginRoute
   '/search': typeof SearchRoute
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/providers': typeof AdminProvidersRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/summary': typeof AdminSummaryRoute
   '/iocs/$id': typeof IocsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/browse' | '/login' | '/search' | '/iocs/$id'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/browse'
+    | '/login'
+    | '/search'
+    | '/admin/logs'
+    | '/admin/providers'
+    | '/admin/settings'
+    | '/admin/summary'
+    | '/iocs/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/browse' | '/login' | '/search' | '/iocs/$id'
+  to:
+    | '/'
+    | '/admin'
+    | '/browse'
+    | '/login'
+    | '/search'
+    | '/admin/logs'
+    | '/admin/providers'
+    | '/admin/settings'
+    | '/admin/summary'
+    | '/iocs/$id'
   id:
-    '__root__' | '/' | '/admin' | '/browse' | '/login' | '/search' | '/iocs/$id'
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/browse'
+    | '/login'
+    | '/search'
+    | '/admin/logs'
+    | '/admin/providers'
+    | '/admin/settings'
+    | '/admin/summary'
+    | '/iocs/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   BrowseRoute: typeof BrowseRoute
   LoginRoute: typeof LoginRoute
   SearchRoute: typeof SearchRoute
@@ -127,6 +193,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/logs': {
+      id: '/admin/logs'
+      path: '/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AdminLogsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/providers': {
+      id: '/admin/providers'
+      path: '/providers'
+      fullPath: '/admin/providers'
+      preLoaderRoute: typeof AdminProvidersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/summary': {
+      id: '/admin/summary'
+      path: '/summary'
+      fullPath: '/admin/summary'
+      preLoaderRoute: typeof AdminSummaryRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/iocs/$id': {
       id: '/iocs/$id'
       path: '/iocs/$id'
@@ -137,9 +231,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminLogsRoute: typeof AdminLogsRoute
+  AdminProvidersRoute: typeof AdminProvidersRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSummaryRoute: typeof AdminSummaryRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminLogsRoute: AdminLogsRoute,
+  AdminProvidersRoute: AdminProvidersRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminSummaryRoute: AdminSummaryRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   BrowseRoute: BrowseRoute,
   LoginRoute: LoginRoute,
   SearchRoute: SearchRoute,
