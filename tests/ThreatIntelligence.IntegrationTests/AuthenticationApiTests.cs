@@ -72,8 +72,17 @@ public sealed class AuthenticationApiTests(SqlServerFixture fixture) : IAsyncLif
         Assert.Equal(HttpStatusCode.OK, health.StatusCode);
         Assert.Equal("auth-integration-test", health.Headers.GetValues("X-Correlation-ID").Single());
 
-        using var anonymousBusiness = await _client.GetAsync("/api/test/protected");
+        using var anonymousBusinessRequest = new HttpRequestMessage(HttpMethod.Get, "/api/test/protected");
+        anonymousBusinessRequest.Headers.Add("X-Correlation-ID", "anon-401");
+        using var anonymousBusiness = await _client.SendAsync(anonymousBusinessRequest);
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousBusiness.StatusCode);
+        Assert.Equal("anon-401", anonymousBusiness.Headers.GetValues("X-Correlation-ID").Single());
+        Assert.Equal("application/problem+json", anonymousBusiness.Content.Headers.ContentType?.MediaType);
+        var anonymousProblem = (await anonymousBusiness.Content.ReadFromJsonAsync<ApiProblemDetails>())!;
+        Assert.Equal("urn:threat-intelligence:problem:unauthenticated", anonymousProblem.Type);
+        Assert.Equal("unauthenticated", anonymousProblem.Code);
+        Assert.Equal("anon-401", anonymousProblem.CorrelationId);
+        Assert.Equal(401, anonymousProblem.Status);
 
         using var unknownResponse = await PostLoginAsync("missing-user", "wrong-password", "login-401");
         using var wrongPasswordResponse = await PostLoginAsync(AdminUsername, "wrong-password");

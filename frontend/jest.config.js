@@ -7,5 +7,8 @@ export default {
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '\\.css\\?url$': '<rootDir>/src/test/stubCssModule.ts',
+    '\\.css$': '<rootDir>/src/test/stubCssModule.ts',
+    '^@tanstack/react-devtools$': '<rootDir>/src/test/stubDevtools.tsx',
   },
 }

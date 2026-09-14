@@ -20,6 +20,7 @@ using ThreatIntelligence.Infrastructure.Persistence.Seeding;
 using ThreatIntelligence.Infrastructure.Pipeline;
 using ThreatIntelligence.Infrastructure.PublicSuffix;
 using ThreatIntelligence.Infrastructure.PhishTank;
+using ThreatIntelligence.Infrastructure.Storage;
 using ThreatIntelligence.Infrastructure.ThreatFox;
 
 namespace ThreatIntelligence.Infrastructure;
@@ -56,11 +57,15 @@ public static class DependencyInjection
         services.AddScoped<IIocRepository, IocRepository>();
         services.AddScoped<IIocQueryReader, IocQueryReader>();
         services.AddScoped<IAdminProviderOperationsReader, AdminProviderOperationsReader>();
+        services.AddScoped<IAdminProviderRepository, AdminProviderRepository>();
         services.AddScoped<IAdminSummaryReader, AdminSummaryReader>();
         services.AddSingleton(new AdminLogOptions(
             configuration["Admin:LogDirectory"] is { Length: > 0 } logDirectory ? logDirectory : "logs",
             configuration["Admin:LogFilePrefix"] is { Length: > 0 } logPrefix ? logPrefix : "api-"));
         services.AddSingleton<IAdminLogReader, AdminLogReader>();
+        services.AddSingleton(new RawStorageOptions(
+            configuration["RawStorage:BasePath"] is { Length: > 0 } rawStoragePath ? rawStoragePath : "data/providers"));
+        services.AddSingleton<IRawFeedStore, RawFeedStore>();
         services.AddScoped<IUserAuthenticationReader, UserAuthenticationReader>();
         services.AddScoped<IFetchHistoryRepository, FetchHistoryRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -102,7 +107,7 @@ public static class DependencyInjection
 
         services.AddScoped<ThreatFoxFetchExecutor>();
 
-        services.AddHttpClient<IThreatFoxExportClient, ThreatFoxExportClient>(configureClient: static client =>
+        services.AddHttpClient<ThreatFoxExportClient>(configureClient: static client =>
         {
             // Explicit transport timeout; E05 owns retry policy, so the handler-level wiring never retries.
             // The ThreatFoxExportClient constructor sets the descriptive user agent.
@@ -112,6 +117,12 @@ public static class DependencyInjection
         // API key. Remove those loggers so the key never reaches application logs; the client emits its
         // own key-free request/response logs.
         .RemoveAllLoggers();
+
+        // Persist every received export before the executor parses it.
+        services.AddScoped<IThreatFoxExportClient>(sp =>
+            new PersistingThreatFoxExportClient(
+                sp.GetRequiredService<ThreatFoxExportClient>(),
+                sp.GetRequiredService<IRawFeedStore>()));
     }
 
     private static void AddPhishTankAdapter(IServiceCollection services)
@@ -122,7 +133,7 @@ public static class DependencyInjection
         services.AddSingleton<PhishTankUpsertFieldsMapper>();
         services.AddScoped<PhishTankFetchExecutor>();
 
-        services.AddHttpClient<IPhishTankClient, PhishTankClient>(configureClient: static client =>
+        services.AddHttpClient<PhishTankClient>(configureClient: static client =>
         {
             // Explicit transport timeout; E05 owns retry policy, so the handler-level wiring never retries.
             // The PhishTankClient constructor sets the descriptive user agent.
@@ -132,6 +143,12 @@ public static class DependencyInjection
         // application key when configured. Remove those loggers so the key never reaches application
         // logs; the client emits its own key-free request/response logs.
         .RemoveAllLoggers();
+
+        // Persist the downloaded feed before the executor parses it.
+        services.AddScoped<IPhishTankClient>(sp =>
+            new PersistingPhishTankClient(
+                sp.GetRequiredService<PhishTankClient>(),
+                sp.GetRequiredService<IRawFeedStore>()));
     }
 
     private static void RegisterProviderMaps(IServiceCollection services)

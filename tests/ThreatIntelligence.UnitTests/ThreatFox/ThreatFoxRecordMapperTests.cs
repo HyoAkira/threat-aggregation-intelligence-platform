@@ -32,7 +32,7 @@ public sealed class ThreatFoxRecordMapperTests
     [Fact]
     public void Every_documented_field_is_mapped_to_its_canonical_location()
     {
-        var input = _mapper.Map(FullRecord(), recordIndex: 1);
+        var input = _mapper.Map(FullRecord(), recordIndex: 1)!;
 
         Assert.Equal(ThreatFoxRecordMapper.ThreatFoxProviderId, input.ProviderId);
         Assert.Equal("1020675", input.ProviderRecordId);
@@ -68,7 +68,7 @@ public sealed class ThreatFoxRecordMapperTests
             Reporter = "",
         };
 
-        var input = _mapper.Map(record, 1);
+        var input = _mapper.Map(record, 1)!;
 
         Assert.Equal(new DateTime(2022, 11, 19, 0, 0, 0, DateTimeKind.Utc), input.LastSeenAt);
         Assert.Equal("", input.Metadata![ThreatFoxRecordMapper.ReporterKey]);
@@ -77,7 +77,7 @@ public sealed class ThreatFoxRecordMapperTests
     [Fact]
     public void Tags_are_trimmed_lowercased_and_de_duplicated()
     {
-        var input = _mapper.Map(FullRecord(), 1);
+        var input = _mapper.Map(FullRecord(), 1)!;
 
         Assert.Equal(["vidar", "botnet"], input.Tags);
     }
@@ -87,7 +87,7 @@ public sealed class ThreatFoxRecordMapperTests
     {
         var record = FullRecord() with { Tags = null };
 
-        var input = _mapper.Map(record, 1);
+        var input = _mapper.Map(record, 1)!;
 
         Assert.Null(input.Tags);
     }
@@ -95,8 +95,8 @@ public sealed class ThreatFoxRecordMapperTests
     [Fact]
     public void False_boolean_is_retained_and_distinct_from_absent()
     {
-        var withFalse = _mapper.Map(FullRecord(), 1);
-        var withAbsent = _mapper.Map(FullRecord() with { IsCompromised = null }, 1);
+        var withFalse = _mapper.Map(FullRecord(), 1)!;
+        var withAbsent = _mapper.Map(FullRecord() with { IsCompromised = null }, 1)!;
 
         Assert.False((bool)withFalse.Metadata![ThreatFoxRecordMapper.IsCompromisedKey]!);
         Assert.False(withAbsent.Metadata!.ContainsKey(ThreatFoxRecordMapper.IsCompromisedKey));
@@ -105,8 +105,8 @@ public sealed class ThreatFoxRecordMapperTests
     [Fact]
     public void Zero_confidence_is_retained_and_distinct_from_absent()
     {
-        var withZero = _mapper.Map(FullRecord() with { ConfidenceLevel = 0 }, 1);
-        var withAbsent = _mapper.Map(FullRecord() with { ConfidenceLevel = null }, 1);
+        var withZero = _mapper.Map(FullRecord() with { ConfidenceLevel = 0 }, 1)!;
+        var withAbsent = _mapper.Map(FullRecord() with { ConfidenceLevel = null }, 1)!;
 
         Assert.Equal(0, withZero.Metadata![ThreatFoxRecordMapper.ConfidenceLevelKey]);
         Assert.False(withAbsent.Metadata!.ContainsKey(ThreatFoxRecordMapper.ConfidenceLevelKey));
@@ -115,8 +115,8 @@ public sealed class ThreatFoxRecordMapperTests
     [Fact]
     public void Empty_values_are_retained_while_absent_values_remain_null()
     {
-        var withEmpty = _mapper.Map(FullRecord() with { Reference = "" }, 1);
-        var withAbsent = _mapper.Map(FullRecord() with { Reference = null }, 1);
+        var withEmpty = _mapper.Map(FullRecord() with { Reference = "" }, 1)!;
+        var withAbsent = _mapper.Map(FullRecord() with { Reference = null }, 1)!;
 
         Assert.Equal("", withEmpty.Metadata![ThreatFoxRecordMapper.ReferenceKey]);
         Assert.Null(withAbsent.LastSeenAt);
@@ -133,7 +133,7 @@ public sealed class ThreatFoxRecordMapperTests
             FirstSeen = "2026-01-01 00:00:00 UTC",
         };
 
-        var input = _mapper.Map(record, 1);
+        var input = _mapper.Map(record, 1)!;
 
         Assert.Null(input.DeclaredType);
         Assert.Null(input.LastSeenAt);
@@ -153,9 +153,40 @@ public sealed class ThreatFoxRecordMapperTests
             FirstSeen = "2026-01-04 00:00:00 UTC",
         };
 
-        var input = _mapper.Map(record, 1);
+        var input = _mapper.Map(record, 1)!;
 
         Assert.Equal("185.132.53.205:1312", input.RawIoc);
         Assert.Null(input.DeclaredType);
+    }
+
+    [Fact]
+    public void Unsupported_ioc_types_map_to_null_to_signal_a_skip()
+    {
+        foreach (var iocType in new[] { "sha256_hash", "md5_hash", "sha1_hash", "some_future_type" })
+        {
+            var record = new ThreatFoxJsonRecord
+            {
+                Id = "9",
+                Ioc = "0123456789abcdef0123456789abcdef",
+                IocType = iocType,
+                FirstSeen = "2026-01-01 00:00:00 UTC",
+            };
+
+            Assert.Null(_mapper.Map(record, 1));
+        }
+    }
+
+    [Fact]
+    public void Unsupported_ioc_type_is_normalized_before_the_skip_decision()
+    {
+        var record = new ThreatFoxJsonRecord
+        {
+            Id = "10",
+            Ioc = "0123456789abcdef",
+            IocType = "  SHA256_HASH  ",
+            FirstSeen = "2026-01-01 00:00:00 UTC",
+        };
+
+        Assert.Null(_mapper.Map(record, 1));
     }
 }

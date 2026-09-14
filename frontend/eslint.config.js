@@ -15,6 +15,11 @@ export default [
     },
   },
   {
-    ignores: ['eslint.config.js', 'jest.config.js', 'prettier.config.js', 'tsconfig.jest.json'],
+    ignores: [
+      'eslint.config.js',
+      'jest.config.js',
+      'prettier.config.js',
+      'tsconfig.jest.json',
+    ],
   },
 ]

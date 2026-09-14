@@ -58,15 +58,7 @@ public static class FetchGuardEvaluator
             : null;
     }
 
-    public static bool Supports(Provider provider, FetchMode mode) => provider.Name switch
-    {
-        "ThreatFox" => mode is FetchMode.Recent or FetchMode.Full,
-        "PhishTank" => mode == FetchMode.Full,
-        _ => false
-    };
+    public static bool Supports(Provider provider, FetchMode mode) => provider.HasMode(mode);
 
-    private static TimeSpan? Cooldown(Provider provider, FetchMode mode) =>
-        provider.Name == "ThreatFox"
-            ? mode == FetchMode.Recent ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(60)
-            : null;
+    private static TimeSpan? Cooldown(Provider provider, FetchMode mode) => provider.CooldownFor(mode);
 }

@@ -42,7 +42,9 @@ public sealed class AdminSettingsController(ThreatIntelligenceDbContext dbContex
         var providers = await dbContext.Providers.Where(provider => request.Providers.Select(input => input.Id).Contains(provider.Id))
             .ToListAsync(cancellationToken);
         if (providers.Count != request.Providers.Count || request.Providers.Select(provider => provider.Id).Distinct().Count() != request.Providers.Count ||
-            request.Providers.Any(input => input.IntervalMinutes < MinimumInterval(providers.SingleOrDefault(provider => provider.Id == input.Id)?.Name)))
+            request.Providers.Any(input =>
+                input.IntervalMinutes <
+                (providers.SingleOrDefault(provider => provider.Id == input.Id)?.MinimumIntervalMinutes ?? int.MaxValue)))
         {
             return ApiProblemFactory.Result(
                 HttpContext,
@@ -75,13 +77,6 @@ public sealed class AdminSettingsController(ThreatIntelligenceDbContext dbContex
         await transaction.CommitAsync(cancellationToken);
         return NoContent();
     }
-
-    private static int MinimumInterval(string? providerName) => providerName switch
-    {
-        "ThreatFox" => 5,
-        "PhishTank" => 480,
-        _ => int.MaxValue
-    };
 }
 
 public sealed record SettingsRequest(string LogLevel, List<ProviderSettingRequest> Providers);

@@ -78,6 +78,12 @@ public sealed class SqlServerFixture : IAsyncLifetime
         await context.Database.ExecuteSqlRawAsync(
             "UPDATE providers SET nextFetchTime = NULL, lastFetchAt = NULL, lastFetchStatus = NULL, isEnabled = 1, " +
             "intervalMinutes = CASE WHEN id = 1 THEN 5 ELSE 480 END;");
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE providers SET defaultMode = CASE WHEN id = 1 THEN 0 ELSE 1 END, " +
+            "supportedModes = CASE WHEN id = 1 THEN 3 ELSE 2 END, " +
+            "recentCooldownMinutes = CASE WHEN id = 1 THEN 5 ELSE NULL END, " +
+            "fullCooldownMinutes = CASE WHEN id = 1 THEN 60 ELSE NULL END, " +
+            "minimumIntervalMinutes = CASE WHEN id = 1 THEN 5 ELSE 480 END WHERE id IN (1, 2);");
     }
 
     private static string FindEnvPath()

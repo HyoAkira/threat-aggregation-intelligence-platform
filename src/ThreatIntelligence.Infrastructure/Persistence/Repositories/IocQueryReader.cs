@@ -297,6 +297,7 @@ public sealed class IocQueryReader(
                 : null;
 
             result[group.Key] = new IocGroupResult(
+                members.Min(row => row.Id),
                 group.Key.Value,
                 IocTypeToken.ToToken(group.Key.Type),
                 members.Select(row => row.UrlHost).FirstOrDefault(host => !string.IsNullOrEmpty(host)),

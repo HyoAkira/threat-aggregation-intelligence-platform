@@ -67,6 +67,28 @@ public sealed class AdminSettingsControllerTests(SqlServerFixture fixture) : IAs
     }
 
     [Fact]
+    public async Task Interval_below_the_stored_provider_minimum_is_rejected()
+    {
+        await using var context = fixture.CreateContext();
+        var provider = await context.Providers.SingleAsync(item => item.Id == 1);
+        provider.Configure(
+            provider.DefaultMode,
+            provider.SupportedModes,
+            provider.RecentCooldownMinutes,
+            provider.FullCooldownMinutes,
+            minimumIntervalMinutes: 20);
+        await context.SaveChangesAsync();
+        var controller = new AdminSettingsController(context, TimeProvider.System);
+
+        var result = await controller.Put(new SettingsRequest("Information", [
+            new ProviderSettingRequest(1, true, 15),
+            new ProviderSettingRequest(2, true, 480)
+        ]), CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
     public async Task Invalid_request_writes_nothing()
     {
         await using var context = fixture.CreateContext();

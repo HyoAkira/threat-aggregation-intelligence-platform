@@ -73,7 +73,7 @@ More information about DNS RPZ can be found on [dnsrpz.info](https://dnsrpz.info
 
 ---
 
-The following data exports exists in JSON format:
+The following data exports exists in JSON format. The application consumes the combined `recent.json` and `full.json.zip` exports:
 
 - Recent additions ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/recent.json "Recent additions"))
 - Full data dump ( [download](https://threatfox-api.abuse.ch/v2/files/exports/{KEY}/full.json.zip "Full data dump") - zip compressed)

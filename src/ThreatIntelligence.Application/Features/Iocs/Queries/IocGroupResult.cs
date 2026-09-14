@@ -48,10 +48,12 @@ public static class IocTypeToken
 
 /// <summary>
 /// One normalized IOC group as projected onto the wire by every query endpoint. The group exposes
-/// the normalized value, its lowercase type token, the nullable relations, the aggregate
-/// first/last seen across its returned sources, and one source entry per matching provider row.
+/// the id of one of its stored rows so callers can link to detail and relations, the normalized
+/// value, its lowercase type token, the nullable relations, the aggregate first/last seen across
+/// its returned sources, and one source entry per matching provider row.
 /// </summary>
 public sealed record IocGroupResult(
+    int Id,
     string IocValue,
     string IocType,
     string? UrlHost,

@@ -30,8 +30,32 @@ public sealed class AdminProviderOperationsControllerTests(SqlServerFixture fixt
         Assert.Null(threatFox.LastFetchStatus);
         Assert.Null(threatFox.LastFetchAt);
         Assert.Null(threatFox.NextFetchTime);
-        Assert.Equal(["recent", "full"], threatFox.AvailableModes);
-        Assert.Equal(["full"], phishTank.AvailableModes);
+        Assert.Equal(["recent", "full"], threatFox.SupportedModes);
+        Assert.Equal("recent", threatFox.DefaultMode);
+        Assert.Equal(["full"], phishTank.SupportedModes);
+        Assert.Equal("full", phishTank.DefaultMode);
+    }
+
+    [Fact]
+    public async Task Dashboard_returns_the_complete_writable_configuration()
+    {
+        var controller = CreateController();
+
+        var result = await controller.Providers(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var providers = Assert.IsAssignableFrom<IReadOnlyList<AdminProviderDashboardItem>>(ok.Value);
+        var threatFox = providers.Single(provider => provider.Name == "ThreatFox");
+        var phishTank = providers.Single(provider => provider.Name == "PhishTank");
+
+        Assert.Equal(["recent", "full"], threatFox.SupportedModes);
+        Assert.Equal(5, threatFox.RecentCooldownMinutes);
+        Assert.Equal(60, threatFox.FullCooldownMinutes);
+        Assert.Equal(5, threatFox.MinimumIntervalMinutes);
+        Assert.Equal(["full"], phishTank.SupportedModes);
+        Assert.Null(phishTank.RecentCooldownMinutes);
+        Assert.Null(phishTank.FullCooldownMinutes);
+        Assert.Equal(480, phishTank.MinimumIntervalMinutes);
     }
 
     [Fact]
@@ -115,5 +139,7 @@ public sealed class AdminProviderOperationsControllerTests(SqlServerFixture fixt
     }
 
     private AdminProviderOperationsController CreateController() =>
-        new(new AdminProviderOperationsReader(fixture.CreateContextFactory()));
+        new(
+            new AdminProviderOperationsReader(fixture.CreateContextFactory()),
+            new AdminProviderRepository(fixture.CreateContextFactory()));
 }

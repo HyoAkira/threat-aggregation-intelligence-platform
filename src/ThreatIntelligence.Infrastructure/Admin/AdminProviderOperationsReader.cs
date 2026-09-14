@@ -3,8 +3,6 @@ using ThreatIntelligence.Application.Abstractions.Persistence;
 using ThreatIntelligence.Application.Admin;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Domain.Entities;
-using ThreatIntelligence.Domain.Enums;
-using ThreatIntelligence.Infrastructure.Fetches;
 using ThreatIntelligence.Infrastructure.Persistence;
 
 namespace ThreatIntelligence.Infrastructure.Admin;
@@ -23,16 +21,7 @@ public sealed class AdminProviderOperationsReader(IDbContextFactory<ThreatIntell
             .OrderBy(provider => provider.Id)
             .ToListAsync(cancellationToken);
 
-        return providers.Select(provider => new AdminProviderDashboardItem(
-            provider.Id,
-            provider.Name,
-            provider.BaseUrl,
-            provider.IsEnabled,
-            provider.IntervalMinutes,
-            provider.LastFetchStatus is { } status ? FetchTokens.Status(status) : null,
-            provider.LastFetchAt,
-            provider.NextFetchTime,
-            AvailableModes(provider))).ToList();
+        return providers.Select(AdminProviderProjection.Project).ToList();
     }
 
     public async Task<AdminProviderHistoryPage?> GetProviderHistoryAsync(
@@ -78,10 +67,4 @@ public sealed class AdminProviderOperationsReader(IDbContextFactory<ThreatIntell
         history.RecordsAdded,
         history.RecordsUpdated,
         history.ErrorDetail);
-
-    private static IReadOnlyList<string> AvailableModes(Provider provider) =>
-        Enum.GetValues<FetchMode>()
-            .Where(mode => FetchGuardEvaluator.Supports(provider, mode))
-            .Select(FetchTokens.Mode)
-            .ToList();
 }

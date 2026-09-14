@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.Logging;
 using ThreatIntelligence.Application.ProviderRecords;
 using ThreatIntelligence.Domain.Enums;
 using ThreatIntelligence.Infrastructure.ThreatFox;
@@ -200,14 +201,105 @@ public sealed class ThreatFoxRecentParserTests
     }
 
     [Fact]
-    public async Task Unsupported_ioc_type_is_reported_with_record_context()
+    public async Task Unsupported_ioc_type_record_between_valid_records_is_skipped()
     {
-        var json = """[{"id":"1","ioc":"0123456789abcdef","ioc_type":"md5_hash","first_seen":"2026-01-01 00:00:00 UTC"}]""";
+        var json = """
+        [
+          {"id":"1","ioc":"a.example","ioc_type":"domain","first_seen":"2026-01-01 00:00:00 UTC"},
+          {"id":"2","ioc":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","ioc_type":"sha256_hash","first_seen":"2026-01-01 00:00:00 UTC"},
+          {"id":"3","ioc":"b.example","ioc_type":"domain","first_seen":"2026-01-02 00:00:00 UTC"}
+        ]
+        """;
 
-        var ex = await Assert.ThrowsAsync<ThreatFoxRecordParseException>(() =>
-            ParseAsync(_parser, json));
+        var records = await ParseAsync(_parser, json);
 
-        Assert.Equal(1, ex.RecordIndex);
-        Assert.Equal("ioc_type", ex.Field);
+        Assert.Equal(new[] { "a.example", "b.example" }, records.Select(record => record.RawIoc).ToArray());
+    }
+
+    [Fact]
+    public async Task Keyed_object_export_skips_unsupported_ioc_type_records()
+    {
+        var json = """{"1":[{"ioc_value":"a.example","ioc_type":"domain","first_seen_utc":"2026-01-01 00:00:00"}],"2":[{"ioc_value":"0123456789abcdef","ioc_type":"sha256_hash","first_seen_utc":"2026-01-01 00:00:00"}],"3":[{"ioc_value":"b.example","ioc_type":"domain","first_seen_utc":"2026-01-02 00:00:00"}]}""";
+
+        var records = await ParseAsync(_parser, json);
+
+        Assert.Equal(new[] { "a.example", "b.example" }, records.Select(record => record.RawIoc).ToArray());
+    }
+
+    [Fact]
+    public async Task A_feed_of_only_unsupported_records_yields_nothing_and_does_not_throw()
+    {
+        var json = """[{"id":"1","ioc":"0123456789abcdef","ioc_type":"sha256_hash","first_seen":"2026-01-01 00:00:00 UTC"},{"id":"2","ioc":"0123456789abcdef","ioc_type":"md5_hash","first_seen":"2026-01-01 00:00:00 UTC"}]""";
+
+        var records = await ParseAsync(_parser, json);
+
+        Assert.Empty(records);
+    }
+
+    [Fact]
+    public async Task A_malformed_record_after_a_skipped_one_still_fails_with_its_feed_index()
+    {
+        var json = """
+        [
+          {"id":"1","ioc":"0123456789abcdef","ioc_type":"sha256_hash","first_seen":"2026-01-01 00:00:00 UTC"},
+          {"id":"2","ioc":"b.example","ioc_type":"domain","first_seen":"not-a-date"}
+        ]
+        """;
+
+        var ex = await Assert.ThrowsAsync<ThreatFoxRecordParseException>(() => ParseAsync(_parser, json));
+
+        Assert.Equal(2, ex.RecordIndex);
+        Assert.Equal("first_seen", ex.Field);
+    }
+
+    [Fact]
+    public async Task Skipped_records_are_summarized_in_one_warning_per_source()
+    {
+        var logger = new RecordingLogger();
+        var parser = new ThreatFoxRecentParser(new ThreatFoxRecordMapper(), logger);
+        var json = """
+        [
+          {"id":"1","ioc":"a.example","ioc_type":"domain","first_seen":"2026-01-01 00:00:00 UTC"},
+          {"id":"2","ioc":"0123456789abcdef","ioc_type":"sha256_hash","first_seen":"2026-01-01 00:00:00 UTC"},
+          {"id":"3","ioc":"0123456789abcdee","ioc_type":"sha256_hash","first_seen":"2026-01-01 00:00:00 UTC"},
+          {"id":"4","ioc":"0123456789abcdef","ioc_type":"md5_hash","first_seen":"2026-01-01 00:00:00 UTC"}
+        ]
+        """;
+
+        var records = await ParseAsync(parser, json);
+
+        Assert.Single(records);
+        var warning = Assert.Single(logger.Entries.Where(entry => entry.Level == LogLevel.Warning));
+        Assert.Contains("sha256_hash", warning.Message);
+        Assert.Contains("md5_hash", warning.Message);
+    }
+
+    [Fact]
+    public async Task No_skip_summary_is_logged_when_nothing_is_skipped()
+    {
+        var logger = new RecordingLogger();
+        var parser = new ThreatFoxRecentParser(new ThreatFoxRecordMapper(), logger);
+        var json = """[{"id":"1","ioc":"a.example","ioc_type":"domain","first_seen":"2026-01-01 00:00:00 UTC"}]""";
+
+        await ParseAsync(parser, json);
+
+        Assert.DoesNotContain(logger.Entries, entry => entry.Level == LogLevel.Warning);
+    }
+
+    private sealed class RecordingLogger : ILogger<ThreatFoxRecentParser>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception)));
     }
 }

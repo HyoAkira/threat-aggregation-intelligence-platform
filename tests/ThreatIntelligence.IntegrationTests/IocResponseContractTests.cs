@@ -21,6 +21,7 @@ public sealed class IocResponseContractTests
         var expected = JsonNode.Parse(
             """
             {
+              "id": 7,
               "iocValue": "https://evil.example/x?arg=1",
               "iocType": "url",
               "urlHost": "evil.example",
@@ -89,6 +90,7 @@ public sealed class IocResponseContractTests
             JsonDocument.Parse("[]").RootElement.Clone(), true, null, [], false);
 
         return new IocGroupResult(
+            7,
             "https://evil.example/x?arg=1",
             "url",
             "evil.example",

@@ -23,6 +23,18 @@ public sealed class ProviderConfiguration : IEntityTypeConfiguration<Provider>
         builder.Property(p => p.IsEnabled).IsRequired();
         builder.Property(p => p.IntervalMinutes).IsRequired();
 
+        builder.Property(p => p.DefaultMode)
+            .HasConversion<byte>()
+            .IsRequired();
+
+        builder.Property(p => p.SupportedModes)
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(p => p.RecentCooldownMinutes);
+        builder.Property(p => p.FullCooldownMinutes);
+        builder.Property(p => p.MinimumIntervalMinutes).IsRequired();
+
         builder.Property(p => p.LastFetchStatus)
             .HasConversion<byte?>();
 

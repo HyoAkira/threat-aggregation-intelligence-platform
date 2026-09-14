@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ThreatIntelligence.API.Controllers;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Domain.Enums;
 using ThreatIntelligence.Infrastructure.Fetches;
@@ -46,5 +48,31 @@ public sealed class FetchGuardTests(SqlServerFixture fixture) : IAsyncLifetime
         var blocked = await guard.ReserveAsync(1, FetchTrigger.Manual, FetchMode.Recent, CancellationToken.None);
         Assert.Equal(FetchReservationRejection.Cooldown, blocked.Rejection);
         Assert.False(await guard.CanExecuteAsync(job, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Default_fetch_resolves_the_providers_persisted_default_mode()
+    {
+        var guard = new FetchGuard(fixture.CreateContextFactory(), TimeProvider.System);
+        var publisher = new CapturingPublisher();
+        var lifecycle = new FetchLifecycle(fixture.CreateContextFactory(), TimeProvider.System);
+        var controller = new AdminProviderFetchController(guard, publisher, lifecycle);
+
+        var result = await controller.Fetch(2, CancellationToken.None);
+
+        Assert.IsType<AcceptedResult>(result.Result);
+        Assert.Equal(FetchMode.Full, publisher.Job!.Mode);
+        Assert.Equal(2, publisher.Job.ProviderId);
+    }
+
+    private sealed class CapturingPublisher : IFetchJobPublisher
+    {
+        public FetchJob? Job { get; private set; }
+
+        public Task PublishAsync(FetchJob job, CancellationToken cancellationToken)
+        {
+            Job = job;
+            return Task.CompletedTask;
+        }
     }
 }

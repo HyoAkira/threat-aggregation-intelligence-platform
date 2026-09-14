@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Infrastructure;
 using ThreatIntelligence.Infrastructure.Persistence;
+using ThreatIntelligence.Infrastructure.PhishTank;
+using ThreatIntelligence.Infrastructure.ThreatFox;
 
 namespace ThreatIntelligence.UnitTests.Persistence;
 
@@ -49,5 +52,17 @@ public class DependencyInjectionTests
         using var scope = provider.CreateScope();
 
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<DatabaseInitializer>());
+    }
+
+    [Fact]
+    public void Provider_clients_resolve_as_persisting_decorators()
+    {
+        using var provider = BuildProvider();
+        using var scope = provider.CreateScope();
+
+        Assert.IsType<PersistingThreatFoxExportClient>(
+            scope.ServiceProvider.GetRequiredService<IThreatFoxExportClient>());
+        Assert.IsType<PersistingPhishTankClient>(
+            scope.ServiceProvider.GetRequiredService<IPhishTankClient>());
     }
 }

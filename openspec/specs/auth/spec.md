@@ -65,11 +65,16 @@ The system SHALL expose `POST /api/auth/login` that accepts `{username, password
 
 ### Requirement: Authorization policies
 
-The system SHALL require authentication for every business endpoint except `POST /api/auth/login`, SHALL require the Admin role for all `/api/admin/*` endpoints, and SHALL allow anonymous access to the operational `/health` and `/health/live` endpoints used by container orchestration.
+The system SHALL require authentication for every business endpoint except `POST /api/auth/login` and the IOC query endpoints (`GET /api/iocs`, `GET /api/iocs/search`, `GET /api/iocs/{id}`, and `GET /api/iocs/{id}/relations`), which SHALL be usable without login. The system SHALL require the Admin role for all `/api/admin/*` endpoints, and SHALL allow anonymous access to the operational `/health` and `/health/live` endpoints used by container orchestration.
+
+#### Scenario: Anonymous IOC query allowed
+
+- **WHEN** an unauthenticated request is made to an IOC query endpoint under `/api/iocs`
+- **THEN** the request is served without requiring a token
 
 #### Scenario: Anonymous request rejected
 
-- **WHEN** an unauthenticated request is made to a non-login business endpoint
+- **WHEN** an unauthenticated request is made to any other protected business endpoint
 - **THEN** the request is rejected with 401
 
 #### Scenario: Operational health probe allowed

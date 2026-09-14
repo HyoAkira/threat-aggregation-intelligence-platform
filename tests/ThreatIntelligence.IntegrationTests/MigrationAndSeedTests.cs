@@ -27,7 +27,7 @@ public class MigrationAndSeedTests(SqlServerFixture fixture)
             .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM __EFMigrationsHistory")
             .ToListAsync();
         Assert.Single(applied);
-        Assert.Equal(1, applied[0]);
+        Assert.Equal(2, applied[0]);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class MigrationAndSeedTests(SqlServerFixture fixture)
 
         var countAfter = await context.Providers.CountAsync();
         Assert.Equal(countBefore, countAfter);
-        Assert.Equal(1, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM __EFMigrationsHistory").SingleAsync());
+        Assert.Equal(2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM __EFMigrationsHistory").SingleAsync());
     }
 
     [Fact]
@@ -60,6 +60,12 @@ public class MigrationAndSeedTests(SqlServerFixture fixture)
         Assert.True(provider.IsEnabled);
         Assert.Equal(5, provider.IntervalMinutes);
         Assert.Null(provider.NextFetchTime);
+        Assert.Equal(FetchMode.Recent, provider.DefaultMode);
+        Assert.True(provider.HasMode(FetchMode.Recent));
+        Assert.True(provider.HasMode(FetchMode.Full));
+        Assert.Equal(5, provider.RecentCooldownMinutes);
+        Assert.Equal(60, provider.FullCooldownMinutes);
+        Assert.Equal(5, provider.MinimumIntervalMinutes);
     }
 
     [Fact]
@@ -73,6 +79,12 @@ public class MigrationAndSeedTests(SqlServerFixture fixture)
         Assert.True(provider.IsEnabled);
         Assert.Equal(480, provider.IntervalMinutes);
         Assert.Null(provider.NextFetchTime);
+        Assert.Equal(FetchMode.Full, provider.DefaultMode);
+        Assert.True(provider.HasMode(FetchMode.Full));
+        Assert.False(provider.HasMode(FetchMode.Recent));
+        Assert.Null(provider.RecentCooldownMinutes);
+        Assert.Null(provider.FullCooldownMinutes);
+        Assert.Equal(480, provider.MinimumIntervalMinutes);
     }
 
     [Fact]

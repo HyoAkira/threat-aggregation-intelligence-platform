@@ -147,7 +147,8 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         var group = await reader.GetDetailGroupAsync(seed.Id, CancellationToken.None);
 
         Assert.NotNull(group);
-        Assert.Equal("url", group!.IocType);
+        Assert.Equal(seed.Id, group!.Id);
+        Assert.Equal("url", group.IocType);
         Assert.Equal("evil.example", group.UrlHost);
         Assert.Equal("evil.example", group.ParentDomain);
         Assert.Equal(3, group.Sources.Count);

@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Domain.Enums;
 using ThreatIntelligence.Infrastructure.Persistence;
-using ThreatIntelligence.Infrastructure.ThreatFox;
 
 namespace ThreatIntelligence.Infrastructure.Fetches;
 
@@ -26,7 +25,7 @@ public sealed class FetchSchedulerService(
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var dueProviders = await context.Providers.AsNoTracking()
             .Where(provider => provider.IsEnabled && provider.NextFetchTime != null && provider.NextFetchTime <= now)
-            .Select(provider => new ScheduledProvider(provider.Id, provider.IntervalMinutes))
+            .Select(provider => new ScheduledProvider(provider.Id, provider.IntervalMinutes, provider.DefaultMode))
             .ToListAsync(cancellationToken);
 
         var published = 0;
@@ -36,9 +35,7 @@ public sealed class FetchSchedulerService(
             var guard = scope.ServiceProvider.GetRequiredService<IFetchGuard>();
             var publisher = scope.ServiceProvider.GetRequiredService<IFetchJobPublisher>();
             var lifecycle = scope.ServiceProvider.GetRequiredService<IFetchLifecycle>();
-            var mode = provider.Id == ThreatFoxProviderValidator.ThreatFoxProviderId
-                ? FetchMode.Recent
-                : FetchMode.Full;
+            var mode = provider.DefaultMode;
             var correlationId = Guid.NewGuid().ToString("N");
             var reservation = await guard.ReserveAsync(provider.Id, FetchTrigger.Scheduled, mode, cancellationToken);
             if (!reservation.IsAllowed)
@@ -107,5 +104,5 @@ public sealed class FetchSchedulerService(
             FetchTokens.Trigger(job.Trigger),
             job.CorrelationId));
 
-    private sealed record ScheduledProvider(int Id, int IntervalMinutes);
+    private sealed record ScheduledProvider(int Id, int IntervalMinutes, FetchMode DefaultMode);
 }

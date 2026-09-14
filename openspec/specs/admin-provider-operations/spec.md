@@ -1,11 +1,13 @@
+# Admin Provider Operations Specification
+
 ## Purpose
 
 Provides administrators with a consistent view of provider state and fetch history without exposing provider credentials or unsafe failure data.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Provider dashboard
-`GET /api/admin/providers` SHALL require the Admin role and return every provider with `id`, `name`, `baseUrl`, `isEnabled`, `intervalMinutes`, `lastFetchStatus`, `lastFetchAt`, `nextFetchTime`, and `availableModes`. Never-run providers SHALL use null status/time fields. The response SHALL NOT include API keys or other secrets.
+`GET /api/admin/providers` SHALL require the Admin role and return every provider with `id`, `name`, `baseUrl`, `isEnabled`, `intervalMinutes`, `lastFetchStatus`, `lastFetchAt`, `nextFetchTime`, `supportedModes`, `defaultMode`, `recentCooldownMinutes`, `fullCooldownMinutes`, and `minimumIntervalMinutes`. Never-run providers SHALL use null status/time fields. The response SHALL NOT include API keys or other secrets.
 
 #### Scenario: Never-run provider
 - **WHEN** an Admin lists providers before a provider has completed a fetch
