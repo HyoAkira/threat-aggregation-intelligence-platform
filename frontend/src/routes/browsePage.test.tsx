@@ -25,8 +25,9 @@ describe('browse page render', () => {
     const markup = await renderAppRoute('/browse')
 
     expect(markup).toContain('Browse indicators')
-    expect(markup).toContain('IOC group https://evil.example/x')
-    expect(markup).toContain('IOC group 1.2.3.4')
+    expect(markup).toContain(urlGroup.iocValue)
+    expect(markup).toContain(ipv4Group.iocValue)
+    expect(markup).toContain('Threat family / campaign')
     expect(markup).toMatch(/<!-- -->1<!-- --> of <!-- -->3/)
     expect(markup).toMatch(/<!-- -->45<!-- --> total/)
     expect(markup).toContain('Previous page')
@@ -57,16 +58,16 @@ describe('browse page render', () => {
     const markup = await renderAppRoute(url)
 
     // Every control reflects the URL state.
-    expect(markup).toContain('<option value="url" selected="">')
+    expect(markup).toMatch(/aria-pressed="true"[^>]*>URL<\/button>/)
     expect(markup).toContain('<option value="iocValue" selected="">')
     expect(markup).toContain('<option value="asc" selected="">')
     expect(markup).toContain('<option value="10" selected="">')
     expect(markup).toContain('value="phishing"')
     expect(markup).toContain('value="1"')
     // The seeded page-two data renders.
-    expect(markup).toContain('IOC group https://evil.example/x')
+    expect(markup).toContain(urlGroup.iocValue)
     expect(markup).toMatch(/<!-- -->2<!-- --> of <!-- -->5/)
-    expect(markup).not.toContain('IOC group 1.2.3.4')
+    expect(markup).not.toContain(ipv4Group.iocValue)
   })
 
   it('distinguishes empty data from a request failure', async () => {
@@ -120,6 +121,7 @@ describe('browse page render', () => {
     expect(markup).toContain('Order by')
     expect(markup).toContain('Direction')
     expect(markup).toContain('Page size')
+    expect(markup).toContain('Observed period')
     expect(markup).toContain('Apply filters')
   })
 })
@@ -157,6 +159,8 @@ describe('URL round-trip guarantees Back/Forward and reload semantics', () => {
       type: 'domain',
       provider: 3,
       tag: 'botnet',
+      lastSeenFrom: '2026-01-01T00:00:00.000Z',
+      lastSeenTo: '2026-01-31T23:59:59.000Z',
       orderBy: 'firstSeenUtc',
       dir: 'asc',
       page: 4,

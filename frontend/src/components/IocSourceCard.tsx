@@ -5,12 +5,15 @@ import {
   formatUtcDateTime,
 } from '../lib/format'
 
-const cardClass = 'rounded-lg border border-slate-200 bg-white p-4'
-const fieldRowClass = 'flex flex-wrap gap-x-2 gap-y-0.5 text-sm'
-const fieldLabelClass = 'font-medium text-slate-700'
-const fieldValueClass = 'text-slate-900'
+const cardClass =
+  'rounded border border-outline-variant bg-surface-container-lowest'
+const fieldRowClass =
+  'grid grid-cols-[minmax(7rem,auto)_1fr] items-baseline gap-x-3 gap-y-0.5 py-1 text-xs'
+const fieldLabelClass =
+  'font-mono text-[10px] uppercase tracking-wider text-outline'
+const fieldValueClass = 'break-words font-mono text-on-surface'
 const tagClass =
-  'rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700'
+  'rounded-full bg-surface-container px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-on-surface-variant'
 
 /**
  * One labelled source entry: provider attribution, record id, port, first/last
@@ -25,21 +28,25 @@ export function IocSourceCard({ source }: { source: IocSource }) {
 
   return (
     <article className={cardClass} aria-label={`Source: ${source.provider}`}>
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h4 className="text-base font-semibold text-slate-900">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-outline-variant/60 px-3 py-2">
+        <h4 className="flex flex-wrap items-baseline gap-x-2 text-sm font-semibold text-on-surface">
           {source.provider}
-          <span className="ml-2 font-mono text-xs font-normal text-slate-500">
+          <span className="font-mono text-[10px] font-normal uppercase tracking-wider text-outline">
             record {source.providerRecordId}
           </span>
         </h4>
         <p
-          className={`text-xs font-medium ${source.isFalsePositive ? 'text-amber-700' : 'text-slate-600'}`}
+          className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${
+            source.isFalsePositive
+              ? 'bg-warning-container text-on-warning-container'
+              : 'bg-tertiary-container/10 text-tertiary'
+          }`}
         >
           {formatFalsePositive(source.isFalsePositive)}
         </p>
       </header>
 
-      <dl className="mt-2 space-y-1">
+      <dl className="grid grid-cols-1 gap-x-6 px-3 py-2 sm:grid-cols-2">
         <SourceField label="Port" value={formatFieldValue(source.port)} />
         <SourceField label="First seen" value={firstSeen} />
         <SourceField label="Last seen" value={lastSeen} />
@@ -85,8 +92,10 @@ export function IocSourceCard({ source }: { source: IocSource }) {
       </dl>
 
       {source.tags.length > 0 ? (
-        <p className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-medium text-slate-600">Tags:</span>
+        <p className="flex flex-wrap items-center gap-1.5 border-t border-outline-variant/60 px-3 py-2">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-outline">
+            Tags:
+          </span>
           {source.tags.map((tag) => (
             <span key={tag} className={tagClass}>
               {tag}
@@ -96,12 +105,12 @@ export function IocSourceCard({ source }: { source: IocSource }) {
       ) : null}
 
       {source.providerDetailsLink ? (
-        <p className="mt-3 text-sm">
+        <p className="border-t border-outline-variant/60 px-3 py-2 text-xs">
           <a
             href={source.providerDetailsLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-sky-800 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700"
+            className="font-medium text-primary underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             View provider record (external link, opens in a new tab)
           </a>
@@ -139,17 +148,17 @@ function PhishTankDetailsField({ details }: { details: unknown }) {
     (typeof details === 'object' && Object.keys(details).length === 0)
   if (isEmpty) {
     return (
-      <div className={fieldRowClass}>
+      <div className={`${fieldRowClass} sm:col-span-2`}>
         <dt className={fieldLabelClass}>Details:</dt>
         <dd className={fieldValueClass}>(no detail entries)</dd>
       </div>
     )
   }
   return (
-    <div className="text-sm">
+    <div className="py-1 sm:col-span-2">
       <dt className={fieldLabelClass}>Details:</dt>
       <dd>
-        <pre className="mt-1 max-w-xl overflow-x-auto rounded-md bg-slate-50 p-2 font-mono text-xs text-slate-800">
+        <pre className="mt-1 max-w-xl overflow-x-auto rounded bg-surface-container-low p-2 font-mono text-[11px] leading-relaxed text-on-surface">
           {JSON.stringify(details, null, 2)}
         </pre>
       </dd>

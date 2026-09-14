@@ -265,6 +265,8 @@ describe('typed query functions', () => {
       type: 'url',
       provider: 1,
       tag: 'phishing',
+      lastSeenFrom: '2026-01-01T00:00:00.000Z',
+      lastSeenTo: '2026-01-31T23:59:59.000Z',
       orderBy: 'iocValue',
       dir: 'asc',
       page: 3,
@@ -272,7 +274,7 @@ describe('typed query functions', () => {
     })
 
     expect(fetchMock.mock.calls[0][0]).toBe(
-      '/api/iocs?type=url&provider=1&tag=phishing&orderBy=iocValue&dir=asc&page=3&pageSize=50',
+      '/api/iocs?type=url&provider=1&tag=phishing&lastSeenFrom=2026-01-01T00%3A00%3A00.000Z&lastSeenTo=2026-01-31T23%3A59%3A59.000Z&orderBy=iocValue&dir=asc&page=3&pageSize=50',
     )
   })
 

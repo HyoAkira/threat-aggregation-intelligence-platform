@@ -4,10 +4,10 @@ import { Link, useRouter } from '@tanstack/react-router'
 import { logout, useAuthStore } from '../lib/authStore'
 
 export const focusRingClass =
-  'rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700'
+  'rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
-const navLinkClass = `px-1 py-0.5 font-medium text-slate-700 hover:text-slate-950 ${focusRingClass}`
-const authLinkClass = `font-medium text-sky-800 underline underline-offset-2 ${focusRingClass}`
+const navLinkClass = `rounded px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface ${focusRingClass}`
+const authLinkClass = `font-mono text-xs font-semibold uppercase tracking-wider text-primary underline decoration-dotted underline-offset-4 hover:text-on-surface ${focusRingClass}`
 
 type ShellSession = { username: string; role: 'User' | 'Admin' } | null
 
@@ -19,7 +19,7 @@ export function ShellNav({ session }: { session: ShellSession }) {
   return (
     <nav
       aria-label="Primary"
-      className="flex flex-wrap items-center gap-x-5 gap-y-1"
+      className="flex flex-wrap items-center gap-x-1 gap-y-1"
     >
       <Link
         to="/search"
@@ -60,9 +60,12 @@ export function ShellAuthArea({ session }: { session: ShellSession }) {
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="text-sm text-slate-700">
-        Signed in as <span className="font-medium">{session.username}</span> (
-        {session.role === 'Admin' ? 'Administrator' : 'User'})
+      <span className="text-xs text-on-surface-variant">
+        Signed in as{' '}
+        <span className="font-mono font-semibold text-on-surface">
+          {session.username}
+        </span>{' '}
+        ({session.role === 'Admin' ? 'Administrator' : 'User'})
       </span>
       <button
         type="button"
@@ -70,7 +73,7 @@ export function ShellAuthArea({ session }: { session: ShellSession }) {
           logout()
           void router.navigate({ to: '/login' })
         }}
-        className={`rounded-md border border-slate-400 px-2.5 py-1 text-sm font-medium text-slate-800 hover:bg-slate-100 ${focusRingClass}`}
+        className={`rounded border border-outline-variant bg-surface-container-lowest px-2.5 py-1 text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-low ${focusRingClass}`}
       >
         Sign out
       </button>
@@ -92,21 +95,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   const visibleSession = mounted ? session : null
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-surface text-on-surface">
       <a
         href="#main-content"
-        className={`sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:font-medium focus:text-slate-900 focus:shadow ${focusRingClass}`}
+        className={`sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-surface-container-lowest focus:px-3 focus:py-2 focus:font-medium focus:text-on-surface focus:shadow ${focusRingClass}`}
       >
         Skip to main content
       </a>
-      <header className="border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-outline-variant/50 bg-surface-container-lowest/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 md:px-6">
           <Link
             to="/"
-            className={`text-lg font-semibold text-slate-900 ${focusRingClass}`}
+            className={`flex items-center gap-2.5 ${focusRingClass}`}
             aria-label="Threat Intelligence home"
           >
-            Threat Intelligence
+            <span
+              aria-hidden="true"
+              className="flex h-7 w-7 items-center justify-center rounded-sm bg-primary font-mono text-[11px] font-bold tracking-tight text-on-primary"
+            >
+              TI
+            </span>
+            <span className="flex flex-col leading-none">
+              <span className="text-sm font-semibold tracking-tight text-on-surface">
+                Threat Intelligence
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-outline">
+                Aggregation Console
+              </span>
+            </span>
           </Link>
           <ShellNav session={visibleSession} />
           <ShellAuthArea session={visibleSession} />
@@ -119,9 +135,18 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         {children}
       </main>
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-3 text-sm text-slate-600 md:px-6">
-          Aggregated threat indicators from configured providers.
+      <footer className="border-t border-outline-variant/50 bg-surface-container-lowest">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 md:px-6">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">
+            Threat Intelligence
+          </span>
+          <span
+            aria-hidden="true"
+            className="h-1 w-1 rounded-full bg-outline-variant"
+          />
+          <span className="text-xs text-on-surface-variant">
+            Aggregated threat indicators from configured providers.
+          </span>
         </div>
       </footer>
     </div>

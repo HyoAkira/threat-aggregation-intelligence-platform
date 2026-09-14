@@ -18,11 +18,36 @@ export const browsePageSizeOptions = [10, 20, 50, 100] as const
 export const BROWSE_PAGE_SIZE_MIN = 1
 export const BROWSE_PAGE_SIZE_MAX = 100
 
+/** Preset "observed period" windows offered by the explorer filter rail. */
+export const observedPeriodPresets = [
+  { value: 'all', label: 'All time' },
+  { value: '24h', label: 'Last 24h' },
+  { value: '7d', label: 'Last 7 Days' },
+  { value: '30d', label: 'Last 30 Days' },
+] as const
+export type ObservedPeriodPreset =
+  (typeof observedPeriodPresets)[number]['value']
+
+/** ISO instant for the lower bound of a preset window (open-ended upper bound). */
+export function observedPeriodFrom(
+  preset: Exclude<ObservedPeriodPreset, 'all'>,
+  now: Date = new Date(),
+): string {
+  const windowMs: Record<Exclude<ObservedPeriodPreset, 'all'>, number> = {
+    '24h': 24 * 60 * 60 * 1000,
+    '7d': 7 * 24 * 60 * 60 * 1000,
+    '30d': 30 * 24 * 60 * 60 * 1000,
+  }
+  return new Date(now.getTime() - windowMs[preset]).toISOString()
+}
+
 /** Fully normalized browse state; every value is one the E09 contract accepts. */
 export type BrowseParams = {
   type: IocTypeToken | null
   provider: number | null
   tag: string | null
+  lastSeenFrom: string | null
+  lastSeenTo: string | null
   orderBy: BrowseOrderBy
   dir: BrowseDir
   page: number
@@ -33,6 +58,8 @@ export const defaultBrowseParams: BrowseParams = {
   type: null,
   provider: null,
   tag: null,
+  lastSeenFrom: null,
+  lastSeenTo: null,
   orderBy: 'lastSeenUtc',
   dir: 'desc',
   page: 1,
@@ -48,6 +75,8 @@ export const rawBrowseSearchSchema = z.object({
   type: z.coerce.string().optional(),
   provider: z.coerce.string().optional(),
   tag: z.coerce.string().optional(),
+  lastSeenFrom: z.coerce.string().optional(),
+  lastSeenTo: z.coerce.string().optional(),
   orderBy: z.coerce.string().optional(),
   dir: z.coerce.string().optional(),
   page: z.coerce.string().optional(),
@@ -58,6 +87,10 @@ export type RawBrowseSearch = z.infer<typeof rawBrowseSearchSchema>
 
 export type ParsedBrowseParams =
   { params: BrowseParams; issues: never[] } | { params: null; issues: string[] }
+
+function isIsoInstant(value: string): boolean {
+  return !Number.isNaN(new Date(value).getTime())
+}
 
 /**
  * Normalizes raw URL strings into validated browse state. Absent or empty values
@@ -89,6 +122,24 @@ export function parseBrowseParams(raw: RawBrowseSearch): ParsedBrowseParams {
 
   const tag = raw.tag?.trim()
   if (tag) params.tag = tag
+
+  const lastSeenFrom = raw.lastSeenFrom?.trim()
+  if (lastSeenFrom) {
+    if (isIsoInstant(lastSeenFrom)) {
+      params.lastSeenFrom = lastSeenFrom
+    } else {
+      issues.push('The “last seen from” bound must be a valid date.')
+    }
+  }
+
+  const lastSeenTo = raw.lastSeenTo?.trim()
+  if (lastSeenTo) {
+    if (isIsoInstant(lastSeenTo)) {
+      params.lastSeenTo = lastSeenTo
+    } else {
+      issues.push('The “last seen to” bound must be a valid date.')
+    }
+  }
 
   const orderBy = raw.orderBy?.trim()
   if (orderBy) {
@@ -148,6 +199,8 @@ export function browseParamsToSearch(
   if (params.type) search.type = params.type
   if (params.provider !== null) search.provider = String(params.provider)
   if (params.tag) search.tag = params.tag
+  if (params.lastSeenFrom) search.lastSeenFrom = params.lastSeenFrom
+  if (params.lastSeenTo) search.lastSeenTo = params.lastSeenTo
   if (params.orderBy !== defaultBrowseParams.orderBy)
     search.orderBy = params.orderBy
   if (params.dir !== defaultBrowseParams.dir) search.dir = params.dir
@@ -164,6 +217,8 @@ export function hasActiveBrowseFilters(params: BrowseParams): boolean {
     params.type !== null ||
     params.provider !== null ||
     params.tag !== null ||
+    params.lastSeenFrom !== null ||
+    params.lastSeenTo !== null ||
     params.orderBy !== defaultBrowseParams.orderBy ||
     params.dir !== defaultBrowseParams.dir ||
     params.pageSize !== defaultBrowseParams.pageSize
