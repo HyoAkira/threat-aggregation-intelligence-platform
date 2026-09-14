@@ -117,8 +117,9 @@ export function SearchErrorState({
   )
 }
 
-const inputClass =
-  'mt-1 w-full rounded-md border border-slate-400 px-3 py-2 text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700'
+const fieldLabelClass =
+  'font-mono text-[10px] font-semibold uppercase tracking-wider text-outline'
+const inputClass = `mt-1 w-full rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface placeholder:text-outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`
 
 function SearchPage() {
   const [values, setValues] = useState<SearchFormValues>({
@@ -142,101 +143,120 @@ function SearchPage() {
     setSubmission(validation.submission)
   }
 
+  const busy = submission !== null && query.isPending
+
   return (
     <section aria-labelledby="search-heading">
-      <h1 id="search-heading" className="text-2xl font-bold text-slate-900">
-        Search indicators
-      </h1>
-      <p className="mt-2 max-w-2xl text-sm text-slate-700">
-        Search for an exact indicator: an IPv4 or IPv6 address, a domain, or an
-        HTTP(S) URL. The type is detected automatically.
-      </p>
-      <form
-        onSubmit={handleSubmit}
-        className="mt-6 max-w-2xl space-y-4"
-        noValidate
-      >
-        <div>
-          <label
-            htmlFor="search-q"
-            className="block text-sm font-medium text-slate-800"
+      <div className="overflow-hidden rounded border border-outline-variant bg-surface-container-lowest">
+        <div className="border-b border-outline-variant/60 bg-surface-container-low/60 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-primary"
+            />
+            <span className={fieldLabelClass}>Exact-match lookup</span>
+          </div>
+          <h1
+            id="search-heading"
+            className="mt-2 text-2xl font-semibold tracking-tight text-on-surface"
           >
-            Indicator (IPv4, IPv6, domain, or HTTP(S) URL)
-          </label>
-          <input
-            id="search-q"
-            name="q"
-            type="text"
-            required
-            value={values.q}
-            onChange={(event) =>
-              setValues((current) => ({ ...current, q: event.target.value }))
-            }
-            className={inputClass}
-          />
+            Search indicators
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-on-surface-variant">
+            Search for an exact indicator: an IPv4 or IPv6 address, a domain, or
+            an HTTP(S) URL. The type is detected automatically.
+          </p>
         </div>
-        <div className="flex flex-wrap gap-4">
-          <div className="min-w-40 flex-1">
-            <label
-              htmlFor="search-tag"
-              className="block text-sm font-medium text-slate-800"
-            >
-              Tag filter (optional)
-            </label>
-            <input
-              id="search-tag"
-              name="tag"
-              type="text"
-              value={values.tag}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  tag: event.target.value,
-                }))
-              }
-              className={inputClass}
-            />
-          </div>
-          <div className="min-w-40 flex-1">
-            <label
-              htmlFor="search-provider"
-              className="block text-sm font-medium text-slate-800"
-            >
-              Provider id filter (optional)
-            </label>
-            <input
-              id="search-provider"
-              name="provider"
-              type="number"
-              min={1}
-              value={values.provider}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  provider: event.target.value,
-                }))
-              }
-              className={inputClass}
-            />
-          </div>
-        </div>
-        {formError ? (
-          <ErrorState title="Check your input" message={formError} />
-        ) : null}
-        <button
-          type="submit"
-          disabled={query.isPending}
-          aria-busy={query.isPending}
-          className={`rounded-md bg-sky-800 px-4 py-2 font-medium text-white enabled:hover:bg-sky-900 disabled:cursor-wait disabled:opacity-60 ${focusRingClass}`}
-        >
-          {query.isPending ? 'Searching…' : 'Search'}
-        </button>
-      </form>
 
-      <div className="mt-8">
-        {submission && query.isPending ? (
-          <LoadingState label="Searching…" />
-        ) : null}
+        <form onSubmit={handleSubmit} className="space-y-4 p-5" noValidate>
+          <div>
+            <label htmlFor="search-q" className={fieldLabelClass}>
+              Indicator (IPv4, IPv6, domain, or HTTP(S) URL)
+            </label>
+            <div className="mt-1 flex items-center gap-2 rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 focus-within:border-primary">
+              <span
+                aria-hidden="true"
+                className="material-symbols-outlined text-[20px] text-primary"
+              >
+                search
+              </span>
+              <input
+                id="search-q"
+                name="q"
+                type="text"
+                required
+                autoComplete="off"
+                spellCheck={false}
+                value={values.q}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    q: event.target.value,
+                  }))
+                }
+                className="w-full bg-transparent font-mono text-sm text-on-surface outline-none placeholder:text-outline"
+                placeholder="194.26.29.112, evil-domain.ru, https://…"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="search-tag" className={fieldLabelClass}>
+                Tag filter (optional)
+              </label>
+              <input
+                id="search-tag"
+                name="tag"
+                type="text"
+                value={values.tag}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    tag: event.target.value,
+                  }))
+                }
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="search-provider" className={fieldLabelClass}>
+                Provider id filter (optional)
+              </label>
+              <input
+                id="search-provider"
+                name="provider"
+                type="number"
+                min={1}
+                value={values.provider}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    provider: event.target.value,
+                  }))
+                }
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          {formError ? (
+            <ErrorState title="Check your input" message={formError} />
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={busy}
+            aria-busy={busy}
+            className={`inline-flex items-center gap-2 rounded bg-primary px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wider text-on-primary transition-colors hover:bg-primary-container disabled:cursor-wait disabled:opacity-60 ${focusRingClass}`}
+          >
+            <span>{busy ? 'Searching…' : 'Search'}</span>
+          </button>
+        </form>
+      </div>
+
+      <div className="mt-6">
+        {busy ? <LoadingState label="Searching…" /> : null}
         {submission && query.isError ? (
           <SearchErrorState
             error={query.error}
@@ -245,10 +265,12 @@ function SearchPage() {
           />
         ) : null}
         {query.data ? (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Result for{' '}
-              <span className="font-mono">{query.data.iocValue}</span>
+          <div className="space-y-3">
+            <h2 className="flex flex-wrap items-baseline gap-x-2 text-sm font-semibold uppercase tracking-wider text-on-surface-variant">
+              Result for
+              <span className="font-mono normal-case text-on-surface">
+                {query.data.iocValue}
+              </span>
             </h2>
             <IocGroupCard group={query.data} linkToDetail />
           </div>

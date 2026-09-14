@@ -23,6 +23,8 @@ export const browseKey = (params: BrowseParams) =>
     params.type,
     params.provider,
     params.tag,
+    params.lastSeenFrom,
+    params.lastSeenTo,
     params.orderBy,
     params.dir,
     params.page,
