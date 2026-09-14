@@ -174,15 +174,17 @@ export type SearchSubmission = {
   q: string
   tag: string | null
   provider: number | null
+  page?: number
+  pageSize?: number
 }
 
-/** `GET /api/iocs/search` — exact grouped search with optional tag/provider filters. */
+/** `GET /api/iocs/search` — grouped search, including host/domain relations. */
 export function searchIocs(
   submission: SearchSubmission,
   signal?: AbortSignal,
-): Promise<IocGroup> {
+): Promise<PagedIocGroups> {
   return apiFetch(`/iocs/search${buildQuery(submission)}`, {
-    schema: iocGroupSchema,
+    schema: pagedIocGroupsSchema,
     signal,
   })
 }

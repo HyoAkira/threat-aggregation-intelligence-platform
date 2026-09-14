@@ -149,7 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="h-1 w-1 rounded-full bg-outline-variant"
           />
           <span className="text-xs text-on-surface-variant">
-            Aggregated threat indicators from configured providers.
+            Aggregated threat indicators from providers.
           </span>
         </div>
       </footer>

@@ -19,6 +19,7 @@ import {
 import { defaultBrowseParams } from './browseParams'
 import {
   createSessionStorageStub,
+  makePaged,
   makeSession,
   urlGroup,
 } from '../test/fixtures'
@@ -204,7 +205,7 @@ describe('typed query functions', () => {
   })
 
   it('searchIocs sends q plus optional tag and provider filters', async () => {
-    fetchMock.mockResolvedValue(jsonResponse(urlGroup))
+    fetchMock.mockResolvedValue(jsonResponse(makePaged([urlGroup], 1, 20, 1)))
 
     await searchIocs({ q: 'evil.example', tag: 'phishing', provider: 1 })
 
@@ -214,7 +215,7 @@ describe('typed query functions', () => {
   })
 
   it('searchIocs omits absent filters', async () => {
-    fetchMock.mockResolvedValue(jsonResponse(urlGroup))
+    fetchMock.mockResolvedValue(jsonResponse(makePaged([urlGroup], 1, 20, 1)))
 
     await searchIocs({ q: 'evil.example', tag: null, provider: null })
 

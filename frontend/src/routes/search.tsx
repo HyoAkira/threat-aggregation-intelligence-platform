@@ -6,6 +6,7 @@ import type { SearchSubmission } from '../lib/apiClient'
 import { iocSearchKey } from '../lib/queryKeys'
 import { focusRingClass } from '../components/AppShell'
 import { IocGroupCard } from '../components/IocGroupCard'
+import { Pagination } from '../components/Pagination'
 import {
   EmptyState,
   ErrorState,
@@ -120,6 +121,7 @@ export function SearchErrorState({
 const fieldLabelClass =
   'font-mono text-[10px] font-semibold uppercase tracking-wider text-outline'
 const inputClass = `mt-1 w-full rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface placeholder:text-outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`
+const SEARCH_PAGE_SIZE = 20
 
 function SearchPage() {
   const [values, setValues] = useState<SearchFormValues>({
@@ -129,10 +131,17 @@ function SearchPage() {
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [submission, setSubmission] = useState<SearchSubmission | null>(null)
+  const [page, setPage] = useState(1)
+
+  const pagedSubmission = submission
+    ? { ...submission, page, pageSize: SEARCH_PAGE_SIZE }
+    : null
 
   const query = useQuery({
-    queryKey: iocSearchKey(submission ?? { q: '', tag: null, provider: null }),
-    queryFn: ({ signal }) => searchIocs(submission!, signal),
+    queryKey: iocSearchKey(
+      pagedSubmission ?? { q: '', tag: null, provider: null },
+    ),
+    queryFn: ({ signal }) => searchIocs(pagedSubmission!, signal),
     enabled: submission !== null,
   })
 
@@ -140,6 +149,7 @@ function SearchPage() {
     event.preventDefault()
     const validation = validateSearchSubmission(values)
     setFormError(validation.error)
+    setPage(1)
     setSubmission(validation.submission)
   }
 
@@ -154,7 +164,7 @@ function SearchPage() {
               aria-hidden="true"
               className="h-2 w-2 rounded-full bg-primary"
             />
-            <span className={fieldLabelClass}>Exact-match lookup</span>
+            <span className={fieldLabelClass}>Indicator and host lookup</span>
           </div>
           <h1
             id="search-heading"
@@ -163,8 +173,8 @@ function SearchPage() {
             Search indicators
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-on-surface-variant">
-            Search for an exact indicator: an IPv4 or IPv6 address, a domain, or
-            an HTTP(S) URL. The type is detected automatically.
+            Search for an IPv4 or IPv6 address, a domain, URL host, parent
+            domain, or an HTTP(S) URL. The type is detected automatically.
           </p>
         </div>
 
@@ -267,12 +277,30 @@ function SearchPage() {
         {query.data ? (
           <div className="space-y-3">
             <h2 className="flex flex-wrap items-baseline gap-x-2 text-sm font-semibold uppercase tracking-wider text-on-surface-variant">
-              Result for
+              {query.data.totalCount === 1 ? 'Result' : 'Results'} for
               <span className="font-mono normal-case text-on-surface">
-                {query.data.iocValue}
+                {submission?.q}
+              </span>
+              <span className="font-mono text-xs normal-case text-outline">
+                ({query.data.totalCount})
               </span>
             </h2>
-            <IocGroupCard group={query.data} linkToDetail />
+            {query.data.items.map((group) => (
+              <IocGroupCard
+                key={`${group.iocType}:${group.iocValue}`}
+                group={group}
+                linkToDetail
+              />
+            ))}
+            {query.data.totalCount > SEARCH_PAGE_SIZE ? (
+              <Pagination
+                page={query.data.page}
+                pageSize={query.data.pageSize}
+                totalCount={query.data.totalCount}
+                onPage={setPage}
+                pageLabel="Search page"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

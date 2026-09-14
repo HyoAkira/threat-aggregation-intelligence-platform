@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the combined IOC search endpoint: how a free-form query is auto-classified and normalized, how exact matches are grouped across providers and ports, and how optional tag and provider filters narrow a matched group's sources without changing the response shape.
+Defines the combined IOC search endpoint: how a free-form query is auto-classified and normalized, how exact and domain-relation matches are grouped across providers and ports, and how optional tag and provider filters narrow matched groups' sources.
 
 ## Requirements
 
@@ -21,23 +21,31 @@ Defines the combined IOC search endpoint: how a free-form query is auto-classifi
 - **WHEN** the query is `not an ioc at all!`
 - **THEN** the endpoint returns a 400 invalid-input response
 
-### Requirement: Exact grouped match across providers
-The endpoint SHALL search for rows whose normalized `(iocType, iocValue)` equals the normalized query and return a single group containing every matching provider row. A bare IP query SHALL group matching rows across all explicit ports; a port-bearing IP query (`1.2.3.4:443` or `[2001:db8::1]:443`) SHALL match only rows with that exact address and explicit port. A domain or URL query SHALL match exactly the normalized value. Matching SHALL be safe against hash collision: the stored normalized value is compared after the value-hash lookup before a row counts as a match.
+### Requirement: Grouped indicator and domain-relation matches
+The endpoint SHALL return a paged group envelope. An IP or URL query SHALL search for rows whose normalized `(iocType, iocValue)` equals the normalized query. A domain query SHALL include an exact domain IOC plus every IOC whose `urlHost` or `parentDomain` equals the normalized domain. Each returned group SHALL contain every matching provider row. A bare IP query SHALL group matching rows across all explicit ports; a port-bearing IP query (`1.2.3.4:443` or `[2001:db8::1]:443`) SHALL match only rows with that exact address and explicit port. Exact identity matching SHALL be safe against hash collision: the stored normalized value is compared after the value-hash lookup before a row counts as a match.
+
+#### Scenario: URL host finds stored URL IOCs
+- **WHEN** the query is `shop.example.co.uk` and stored URL IOCs have `urlHost=shop.example.co.uk`
+- **THEN** the response contains those URL IOC groups even when no exact domain IOC is stored
+
+#### Scenario: Parent domain finds subdomain and URL IOCs
+- **WHEN** the query is `example.co.uk` and stored domain or URL IOCs have `parentDomain=example.co.uk`
+- **THEN** the response contains every matching IOC group
 
 #### Scenario: Bare IP groups port variants and providers
 - **WHEN** the query is `1.2.3.4` and rows exist for `1.2.3.4` (no port) from ThreatFox, `1.2.3.4:443` from ThreatFox, and `1.2.3.4` from PhishTank
-- **THEN** one group is returned whose sources include all three rows
+- **THEN** one group is present in the response whose sources include all three rows
 
 #### Scenario: Port-bearing IP matches only that port
 - **WHEN** the query is `1.2.3.4:443`
-- **THEN** the returned group contains only rows for address 1.2.3.4 with explicit port 443
+- **THEN** the matching group contains only rows for address 1.2.3.4 with explicit port 443
 
 #### Scenario: Equivalent IPv6 forms match one normalized identity
 - **WHEN** the query is `2001:0db8:0:0:0:0:0:1` and a row stores compressed `2001:db8::1`
 - **THEN** the query matches that row after normalization
 
 ### Requirement: Combined tag and provider filters narrow sources
-When a request supplies the optional `tag` and/or `provider` parameter alongside `q`, the endpoint SHALL first resolve the exact-match group as above, then narrow the returned group's `sources` to the rows that carry the normalized tag (trimmed and lowercased) and/or belong to the identified provider. The group-level aggregate first/last seen SHALL be recomputed over the returned sources. If no group exists for the query, or if the filters leave no matching source, the endpoint SHALL return 404 not-found. The combined response SHALL keep the same single-group, source-attributed shape as an unfiltered search.
+When a request supplies the optional `tag` and/or `provider` parameter alongside `q`, the endpoint SHALL narrow every candidate group's `sources` to rows that carry the normalized tag (trimmed and lowercased) and/or belong to the identified provider. Group-level aggregate first/last seen values SHALL be recomputed over the returned sources. Groups with no matching sources SHALL be omitted. If no group exists for the query, or if the filters leave no matching group, the endpoint SHALL return 404 not-found.
 
 #### Scenario: Tag filter keeps only sources carrying the tag
 - **WHEN** the query is `1.2.3.4` with `tag=botnet` and only one of the matching rows carries tag `botnet`

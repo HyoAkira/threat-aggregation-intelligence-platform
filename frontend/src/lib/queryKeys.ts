@@ -7,6 +7,8 @@ export const iocSearchKey = (submission: SearchSubmission) =>
     submission.q,
     submission.tag ?? null,
     submission.provider ?? null,
+    submission.page ?? 1,
+    submission.pageSize ?? 20,
   ] as const
 
 export const iocDetailKey = (id: number) => ['ioc-detail', id] as const

@@ -32,13 +32,15 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         await IocQueryTestData.InsertIocAsync(context, 2, "s-3", "1.2.3.4", IocType.Ipv4, lastSeenUtc: Recent);
 
         var reader = CreateReader(fixture.CreateContext());
-        var group = await reader.SearchGroupAsync(
+        var result = await reader.SearchGroupsAsync(
             new NormalizationResult(IocType.Ipv4, "1.2.3.4", null, null, null),
             new IocSourceFilter(),
+            1,
+            20,
             CancellationToken.None);
 
-        Assert.NotNull(group);
-        Assert.Equal("ipv4", group!.IocType);
+        var group = Assert.Single(result.Items);
+        Assert.Equal("ipv4", group.IocType);
         Assert.Equal(3, group.Sources.Count);
         Assert.Contains(group.Sources, source => source.Provider == "ThreatFox" && source.Port == 443);
         Assert.Contains(group.Sources, source => source.Provider == "PhishTank");
@@ -52,13 +54,15 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         await IocQueryTestData.InsertIocAsync(context, 1, "p-2", "5.6.7.8", IocType.Ipv4, port: 443);
 
         var reader = CreateReader(fixture.CreateContext());
-        var group = await reader.SearchGroupAsync(
+        var result = await reader.SearchGroupsAsync(
             new NormalizationResult(IocType.Ipv4, "5.6.7.8", 443, null, null),
             new IocSourceFilter(),
+            1,
+            20,
             CancellationToken.None);
 
-        Assert.NotNull(group);
-        Assert.Single(group!.Sources);
+        var group = Assert.Single(result.Items);
+        Assert.Single(group.Sources);
         Assert.Equal(443, group.Sources[0].Port);
     }
 
@@ -71,13 +75,15 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         await IocQueryTestData.TagAsync(context, tagged, " BotNet ");
 
         var reader = CreateReader(fixture.CreateContext());
-        var group = await reader.SearchGroupAsync(
+        var result = await reader.SearchGroupsAsync(
             new NormalizationResult(IocType.Ipv4, "6.6.6.6", null, null, null),
             new IocSourceFilter("botnet"),
+            1,
+            20,
             CancellationToken.None);
 
-        Assert.NotNull(group);
-        var source = Assert.Single(group!.Sources);
+        var group = Assert.Single(result.Items);
+        var source = Assert.Single(group.Sources);
         Assert.Equal("ThreatFox", source.Provider);
         Assert.Equal(["botnet"], source.Tags);
     }
@@ -90,13 +96,15 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         await IocQueryTestData.InsertIocAsync(context, 2, "pv-2", "7.7.7.7", IocType.Ipv4);
 
         var reader = CreateReader(fixture.CreateContext());
-        var group = await reader.SearchGroupAsync(
+        var result = await reader.SearchGroupsAsync(
             new NormalizationResult(IocType.Ipv4, "7.7.7.7", null, null, null),
             new IocSourceFilter(ProviderId: 1),
+            1,
+            20,
             CancellationToken.None);
 
-        Assert.NotNull(group);
-        Assert.Single(group!.Sources);
+        var group = Assert.Single(result.Items);
+        Assert.Single(group.Sources);
         Assert.Equal("ThreatFox", group.Sources[0].Provider);
     }
 
@@ -107,24 +115,65 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         await IocQueryTestData.InsertIocAsync(context, 1, "f-1", "8.8.8.8", IocType.Ipv4);
 
         var reader = CreateReader(fixture.CreateContext());
-        var group = await reader.SearchGroupAsync(
+        var result = await reader.SearchGroupsAsync(
             new NormalizationResult(IocType.Ipv4, "8.8.8.8", null, null, null),
             new IocSourceFilter("does-not-exist"),
+            1,
+            20,
             CancellationToken.None);
 
-        Assert.Null(group);
+        Assert.Empty(result.Items);
     }
 
     [Fact]
     public async Task Search_absent_indicator_returns_null()
     {
         var reader = CreateReader(fixture.CreateContext());
-        var group = await reader.SearchGroupAsync(
+        var result = await reader.SearchGroupsAsync(
             new NormalizationResult(IocType.Domain, "absent.example", null, null, "absent.example"),
             new IocSourceFilter(),
+            1,
+            20,
             CancellationToken.None);
 
-        Assert.Null(group);
+        Assert.Empty(result.Items);
+    }
+
+    [Fact]
+    public async Task Search_domain_finds_exact_url_host_and_parent_domain_groups()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "host-1", "https://shop.example.co.uk/a", IocType.Url,
+            urlHost: "shop.example.co.uk", parentDomain: "example.co.uk");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "host-2", "https://shop.example.co.uk/b", IocType.Url,
+            port: 8443, urlHost: "shop.example.co.uk", parentDomain: "example.co.uk");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "host-3", "api.example.co.uk", IocType.Domain,
+            parentDomain: "example.co.uk");
+
+        var reader = CreateReader(fixture.CreateContext());
+
+        var hostResult = await reader.SearchGroupsAsync(
+            new NormalizationResult(
+                IocType.Domain, "shop.example.co.uk", null, null, "example.co.uk"),
+            new IocSourceFilter(),
+            1,
+            20,
+            CancellationToken.None);
+        Assert.Equal(2, hostResult.TotalCount);
+        Assert.All(hostResult.Items, item => Assert.Equal("shop.example.co.uk", item.UrlHost));
+
+        var parentResult = await reader.SearchGroupsAsync(
+            new NormalizationResult(IocType.Domain, "example.co.uk", null, null, "example.co.uk"),
+            new IocSourceFilter(),
+            1,
+            20,
+            CancellationToken.None);
+        Assert.Equal(3, parentResult.TotalCount);
+        Assert.Contains(parentResult.Items, item => item.IocValue == "api.example.co.uk");
+        Assert.Contains(parentResult.Items, item => item.IocValue == "https://shop.example.co.uk/a");
     }
 
     // --- 1.4 Detail -------------------------------------------------------------

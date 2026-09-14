@@ -21,7 +21,7 @@ public sealed class SearchIocsHandlerTests
     [Fact]
     public async Task Handle_ClassifiesThenDelegatesTheCanonicalIdentityAndFilters()
     {
-        var reader = new StubReader(Group);
+        var reader = new StubReader(new PagedResult<IocGroupResult>([Group], 1, 20, 1));
         var handler = new SearchIocsHandler(
             new StubClassifier(NormalizationOutput.Success(
                 new NormalizationResult(IocType.Domain, "example.com", null, null, "example.com"))),
@@ -31,7 +31,7 @@ public sealed class SearchIocsHandlerTests
             new SearchIocsQuery("  EXAMPLE.com  ", " BotNet ", 2),
             CancellationToken.None);
 
-        Assert.Same(Group, result);
+        Assert.Same(Group, Assert.Single(result.Items));
         Assert.Equal(IocType.Domain, reader.Identity!.Type);
         Assert.Equal("example.com", reader.Identity.IocValue);
         Assert.Equal(" BotNet ", reader.Filter!.Tag);
@@ -45,7 +45,7 @@ public sealed class SearchIocsHandlerTests
             new StubClassifier(NormalizationOutput.Failure(
                 NormalizationErrorCode.InvalidInput,
                 ErrorMessages.InvalidInput)),
-            new StubReader(Group));
+            new StubReader(new PagedResult<IocGroupResult>([Group], 1, 20, 1)));
 
         var exception = await Assert.ThrowsAsync<IocQueryValidationException>(() =>
             handler.Handle(new SearchIocsQuery("not an ioc at all!"), CancellationToken.None));
@@ -60,7 +60,7 @@ public sealed class SearchIocsHandlerTests
         var handler = new SearchIocsHandler(
             new StubClassifier(NormalizationOutput.Success(
                 new NormalizationResult(IocType.Ipv4, "1.2.3.4", null, null, null))),
-            new StubReader(null));
+            new StubReader(PagedResult<IocGroupResult>.Empty(1, 20)));
 
         var exception = await Assert.ThrowsAsync<IocNotFoundException>(() =>
             handler.Handle(new SearchIocsQuery("1.2.3.4"), CancellationToken.None));
@@ -73,14 +73,16 @@ public sealed class SearchIocsHandlerTests
         public NormalizationOutput Classify(string query) => output;
     }
 
-    private sealed class StubReader(IocGroupResult? result) : IIocQueryReader
+    private sealed class StubReader(PagedResult<IocGroupResult> result) : IIocQueryReader
     {
         public NormalizationResult? Identity { get; private set; }
         public IocSourceFilter? Filter { get; private set; }
 
-        public Task<IocGroupResult?> SearchGroupAsync(
+        public Task<PagedResult<IocGroupResult>> SearchGroupsAsync(
             NormalizationResult identity,
             IocSourceFilter filter,
+            int page,
+            int pageSize,
             CancellationToken cancellationToken)
         {
             Identity = identity;

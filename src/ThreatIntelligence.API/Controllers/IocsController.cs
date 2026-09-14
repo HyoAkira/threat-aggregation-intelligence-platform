@@ -19,14 +19,16 @@ namespace ThreatIntelligence.API.Controllers;
 public sealed class IocsController(ISender sender) : ControllerBase
 {
     [HttpGet("search")]
-    public async Task<ActionResult<IocGroupResult>> Search(
+    public async Task<ActionResult<PagedResult<IocGroupResult>>> Search(
         [FromQuery] string? q,
         [FromQuery] string? tag,
         [FromQuery] int? provider,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new SearchIocsQuery(q ?? string.Empty, tag, provider),
+            new SearchIocsQuery(q ?? string.Empty, tag, provider, page, pageSize),
             cancellationToken);
         return Ok(result);
     }

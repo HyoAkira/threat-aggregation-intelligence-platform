@@ -146,13 +146,7 @@ function ForensicDetail({
           </span>
           Back to Explorer
         </Link>
-        <span className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">
-          <span
-            aria-hidden="true"
-            className="h-2 w-2 rounded-full bg-tertiary"
-          />
-          Source-attributed evidence
-        </span>
+
       </div>
 
       <header className="relative overflow-hidden rounded border border-outline-variant bg-surface-container-lowest">
