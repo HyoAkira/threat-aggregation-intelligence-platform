@@ -21,7 +21,12 @@ public sealed class AdminSettingsController(ThreatIntelligenceDbContext dbContex
             .SingleOrDefaultAsync(cancellationToken) ?? "Information";
         var providers = await dbContext.Providers.AsNoTracking()
             .OrderBy(provider => provider.Id)
-            .Select(provider => new ProviderSettingResponse(provider.Id, provider.Name, provider.IsEnabled, provider.IntervalMinutes))
+            .Select(provider => new ProviderSettingResponse(
+                provider.Id,
+                provider.Name,
+                provider.IsEnabled,
+                provider.IntervalMinutes,
+                provider.MinimumIntervalMinutes))
             .ToListAsync(cancellationToken);
         return Ok(new SettingsResponse(logLevel, providers));
     }
@@ -82,4 +87,9 @@ public sealed class AdminSettingsController(ThreatIntelligenceDbContext dbContex
 public sealed record SettingsRequest(string LogLevel, List<ProviderSettingRequest> Providers);
 public sealed record ProviderSettingRequest(int Id, bool IsEnabled, int IntervalMinutes);
 public sealed record SettingsResponse(string LogLevel, IReadOnlyList<ProviderSettingResponse> Providers);
-public sealed record ProviderSettingResponse(int Id, string Name, bool IsEnabled, int IntervalMinutes);
+public sealed record ProviderSettingResponse(
+    int Id,
+    string Name,
+    bool IsEnabled,
+    int IntervalMinutes,
+    int MinimumIntervalMinutes);

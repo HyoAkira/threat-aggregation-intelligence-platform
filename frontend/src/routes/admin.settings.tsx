@@ -1,16 +1,16 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { createFileRoute, useBlocker } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getAdminSettings, putAdminSettings, ApiError } from '../lib/apiClient'
+import { createFileRoute, useBlocker } from '@tanstack/react-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { focusRingClass } from '../components/AppShell'
+import { ErrorState, LoadingState } from '../components/uiStates'
 import type {
-  SettingsResponse,
   ProviderSettingRequest,
+  SettingsResponse,
   SupportedLogLevel,
 } from '../lib/adminSchemas'
 import { supportedLogLevels } from '../lib/adminSchemas'
-import { adminSettingsKey, adminProviderListKey } from '../lib/queryKeys'
-import { LoadingState, ErrorState } from '../components/uiStates'
-import { focusRingClass } from '../components/AppShell'
+import { ApiError, getAdminSettings, putAdminSettings } from '../lib/apiClient'
+import { adminSettingsKey } from '../lib/queryKeys'
 
 export const Route = createFileRoute('/admin/settings')({
   component: AdminSettingsPage,
@@ -41,9 +41,7 @@ function baselineToDraft(baseline: SettingsResponse): Draft {
       name: p.name,
       isEnabled: p.isEnabled,
       intervalMinutes: p.intervalMinutes,
-      // The API response for settings doesn't include minimumIntervalMinutes,
-      // but the provider list endpoint does. We'll use a fallback of 5.
-      minimumIntervalMinutes: 5,
+      minimumIntervalMinutes: p.minimumIntervalMinutes,
     })),
   }
 }
@@ -153,30 +151,6 @@ function AdminSettingsPage() {
       setBaseline(d)
     }
   }, [settings, draft])
-
-  // Load minimum intervals from provider list
-  const { data: providers } = useQuery({
-    queryKey: adminProviderListKey(),
-    queryFn: ({ signal }) =>
-      import('../lib/apiClient').then((m) => m.getAdminProviders(signal)),
-  })
-
-  useEffect(() => {
-    if (providers && draft) {
-      setDraft((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          providers: prev.providers.map((p) => {
-            const api = providers.find((ap) => ap.id === p.id)
-            return api
-              ? { ...p, minimumIntervalMinutes: api.minimumIntervalMinutes }
-              : p
-          }),
-        }
-      })
-    }
-  }, [providers])
 
   // Dirty state
   const dirty = baseline && draft ? isDirty(baseline, draft) : false
