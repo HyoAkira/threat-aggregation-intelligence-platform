@@ -65,7 +65,7 @@
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Google Material Symbols icon font (loaded per-route where icons are used).
+/* Google Material Symbols icon font (loaded globally via the root route head).
  * Layered below utilities so size/color utilities can override it. */
 @layer components {
   .material-symbols-outlined {
