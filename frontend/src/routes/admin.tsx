@@ -39,7 +39,7 @@ function AdminLayout() {
         Admin Console
       </h1>
       <p className="mt-1 text-sm text-on-surface-variant">
-        Provider operations, monitoring, and runtime configuration.
+        Administrative workflows for provider operations, monitoring, and runtime configuration.
       </p>
 
       <nav

@@ -2,9 +2,27 @@ import {
   adminFetchHistoryItemSchema,
   adminLogEntrySchema,
   adminProviderDashboardItemSchema,
+  settingsResponseSchema,
 } from './adminSchemas'
 
 describe('admin response schemas', () => {
+  it('accepts provider minimum intervals in settings responses', () => {
+    const settings = settingsResponseSchema.parse({
+      logLevel: 'Information',
+      providers: [
+        {
+          id: 2,
+          name: 'PhishTank',
+          isEnabled: true,
+          intervalMinutes: 480,
+          minimumIntervalMinutes: 480,
+        },
+      ],
+    })
+
+    expect(settings.providers[0].minimumIntervalMinutes).toBe(480)
+  })
+
   it('accepts provider null fields omitted by the API serializer', () => {
     const provider = adminProviderDashboardItemSchema.parse({
       id: 2,

@@ -13,7 +13,7 @@ const config = defineConfig({
     // and Vite forwards the requests to the local backend.
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:5092',
         changeOrigin: true,
       },
     },

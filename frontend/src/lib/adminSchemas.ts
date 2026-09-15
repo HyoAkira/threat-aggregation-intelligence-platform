@@ -134,6 +134,7 @@ export const providerSettingResponseSchema = z.object({
   name: z.string(),
   isEnabled: z.boolean(),
   intervalMinutes: z.number().int(),
+  minimumIntervalMinutes: z.number().int(),
 })
 
 export type ProviderSettingResponse = z.infer<

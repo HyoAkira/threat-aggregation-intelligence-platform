@@ -44,7 +44,7 @@ export function observedPeriodFrom(
 /** Fully normalized browse state; every value is one the E09 contract accepts. */
 export type BrowseParams = {
   type: IocTypeToken | null
-  provider: string | null
+  provider: number | null
   tag: string | null
   lastSeenFrom: string | null
   lastSeenTo: string | null
@@ -112,7 +112,12 @@ export function parseBrowseParams(raw: RawBrowseSearch): ParsedBrowseParams {
 
   const provider = raw.provider?.trim()
   if (provider) {
-    params.provider = provider
+    const value = Number(provider)
+    if (Number.isInteger(value) && value > 0) {
+      params.provider = value
+    } else {
+      issues.push('Provider must be a positive number.')
+    }
   }
 
   const tag = raw.tag?.trim()

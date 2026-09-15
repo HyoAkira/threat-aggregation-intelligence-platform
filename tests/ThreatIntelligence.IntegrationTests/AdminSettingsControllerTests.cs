@@ -25,6 +25,7 @@ public sealed class AdminSettingsControllerTests(SqlServerFixture fixture) : IAs
         var response = Assert.IsType<SettingsResponse>(ok.Value);
         Assert.Equal("Warning", response.LogLevel);
         Assert.Equal(2, response.Providers.Count);
+        Assert.Equal(480, response.Providers.Single(provider => provider.Name == "PhishTank").MinimumIntervalMinutes);
     }
 
     [Fact]
