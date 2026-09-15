@@ -36,7 +36,7 @@ describe('parseBrowseParams', () => {
     expect(issues).toEqual([])
     expect(params).toEqual({
       type: 'url',
-      provider: 1,
+      provider: '1',
       tag: 'phishing',
       lastSeenFrom: null,
       lastSeenTo: null,
@@ -53,12 +53,10 @@ describe('parseBrowseParams', () => {
     expect(issues[0]).toContain('email')
   })
 
-  it('rejects a non-positive provider id', () => {
-    const { params, issues } = parseBrowseParams({ provider: 'abc' })
-    expect(params).toBeNull()
-    expect(issues.length).toBe(1)
-
-    expect(parseBrowseParams({ provider: '0' }).params).toBeNull()
+  it('accepts a free-form provider name filter', () => {
+    const { params, issues } = parseBrowseParams({ provider: 'ThreatFox' })
+    expect(issues).toEqual([])
+    expect(params?.provider).toBe('ThreatFox')
   })
 
   it('rejects an unsupported sort field and direction', () => {
@@ -93,7 +91,7 @@ describe('browseParamsToSearch', () => {
   it('round-trips through parse so a copied URL restores the same view', () => {
     const params = {
       type: 'domain' as const,
-      provider: 2,
+      provider: '2',
       tag: 'botnet',
       lastSeenFrom: '2026-01-01T00:00:00.000Z',
       lastSeenTo: '2026-01-31T23:59:59.000Z',

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import type { IocGroup } from '../lib/schemas'
-import { formatUtcDateTime } from '../lib/format'
+import { formatLocalDateTime } from '../lib/format'
 import { IocSourceCard } from './IocSourceCard'
 
 const typeBadgeClass: Record<IocGroup['iocType'], string> = {
@@ -26,8 +26,8 @@ export function IocGroupCard({
   linkToDetail?: boolean
 }) {
   const Heading = headingLevel
-  const firstSeen = formatUtcDateTime(group.firstSeenUtc)
-  const lastSeen = formatUtcDateTime(group.lastSeenUtc ?? undefined)
+  const firstSeen = formatLocalDateTime(group.firstSeenUtc)
+  const lastSeen = formatLocalDateTime(group.lastSeenUtc ?? undefined)
 
   return (
     <section

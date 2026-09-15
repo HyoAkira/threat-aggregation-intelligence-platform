@@ -117,7 +117,7 @@ describe('browse page render', () => {
 
     expect(markup).toContain('Indicator type')
     expect(markup).toContain('Tag')
-    expect(markup).toContain('Provider id')
+    expect(markup).toContain('Provider')
     expect(markup).toContain('Order by')
     expect(markup).toContain('Direction')
     expect(markup).toContain('Page size')
@@ -157,7 +157,7 @@ describe('URL round-trip guarantees Back/Forward and reload semantics', () => {
   it('a serialized view parses back to the exact same state', () => {
     const params: BrowseParams = {
       type: 'domain',
-      provider: 3,
+      provider: '3',
       tag: 'botnet',
       lastSeenFrom: '2026-01-01T00:00:00.000Z',
       lastSeenTo: '2026-01-31T23:59:59.000Z',

@@ -7,6 +7,7 @@ import { adminLogsKey } from '../lib/queryKeys'
 import { supportedLogLevels } from '../lib/adminSchemas'
 import { LoadingState, EmptyState, ErrorState } from '../components/uiStates'
 import { focusRingClass } from '../components/AppShell'
+import { parseUtcDateTime } from '../lib/format'
 
 export const Route = createFileRoute('/admin/logs')({
   component: AdminLogsPage,
@@ -18,8 +19,7 @@ export const Route = createFileRoute('/admin/logs')({
 
 function formatTimestamp(iso: string): string {
   try {
-    return new Date(iso).toLocaleString('en-US', {
-      timeZone: 'UTC',
+    return parseUtcDateTime(iso).toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -279,7 +279,7 @@ function AdminLogsPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-outline-variant bg-surface-container-low font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
-                <th className="px-3 py-2 font-medium">Timestamp (UTC)</th>
+                <th className="px-3 py-2 font-medium">Timestamp</th>
                 <th className="px-3 py-2 font-medium">Level</th>
                 <th className="px-3 py-2 font-medium">Message</th>
                 <th className="px-3 py-2 font-medium">Correlation ID</th>

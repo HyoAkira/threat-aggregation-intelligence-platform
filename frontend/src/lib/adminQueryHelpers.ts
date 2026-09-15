@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
   adminProviderListKey,
-  adminHistoryKey,
   adminSummaryKey,
   adminSettingsKey,
   adminFetchJobKey,

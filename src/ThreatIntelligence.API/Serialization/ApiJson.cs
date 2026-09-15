@@ -14,6 +14,8 @@ public static class ApiJson
     {
         options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.Converters.Add(new UtcDateTimeJsonConverter());
+        options.Converters.Add(new NullableUtcDateTimeJsonConverter());
     }
 
     public static JsonSerializerOptions Create()

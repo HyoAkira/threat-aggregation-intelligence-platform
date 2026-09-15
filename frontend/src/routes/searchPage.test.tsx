@@ -26,7 +26,7 @@ describe('validateSearchSubmission (local rejection of empty input)', () => {
     expect(result.submission).toEqual({
       q: '1.2.3.4',
       tag: 'botnet',
-      provider: 1,
+      provider: '1',
     })
   })
 
@@ -43,13 +43,18 @@ describe('validateSearchSubmission (local rejection of empty input)', () => {
     })
   })
 
-  it('rejects an invalid provider id locally', () => {
-    expect(
-      validateSearchSubmission({ q: 'x', tag: '', provider: 'abc' }).error,
-    ).toContain('Provider')
-    expect(
-      validateSearchSubmission({ q: 'x', tag: '', provider: '0' }).error,
-    ).toContain('Provider')
+  it('accepts a free-form provider name filter', () => {
+    const result = validateSearchSubmission({
+      q: 'x',
+      tag: '',
+      provider: 'ThreatFox',
+    })
+    expect(result.error).toBeNull()
+    expect(result.submission).toEqual({
+      q: 'x',
+      tag: null,
+      provider: 'ThreatFox',
+    })
   })
 
   it('rejects oversized input at the frontend boundary', () => {
@@ -168,7 +173,7 @@ describe('search page render', () => {
     expect(markup).toContain('Search indicators')
     expect(markup).toContain('Indicator (IPv4, IPv6, domain, or HTTP(S) URL)')
     expect(markup).toContain('Tag filter (optional)')
-    expect(markup).toContain('Provider id filter (optional)')
+    expect(markup).toContain('Provider filter (optional)')
     // The user never chooses an IOC type: no type control exists.
     expect(markup).not.toContain('name="type"')
     expect(markup).not.toContain('Indicator type')

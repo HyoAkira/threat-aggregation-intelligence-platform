@@ -8,14 +8,61 @@ export function parseUtcDateTime(value: string): Date {
   return new Date(`${value}Z`)
 }
 
-/** Stable, locale-independent UTC presentation, identical on server and client. */
-export function formatUtcDateTime(
+function pad2(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+/**
+ * Short label of the runtime's local timezone for a given instant, e.g. "GMT+3"
+ * or "UTC". Presentation only; the underlying instant is never altered.
+ */
+export function localTimeZoneLabel(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZoneName: 'short',
+  }).formatToParts(date)
+  return parts.find((part) => part.type === 'timeZoneName')?.value ?? ''
+}
+
+/**
+ * Presentation in the viewer's browser timezone, e.g. "2026-09-15 13:00:00 GMT+3".
+ * API instants are always UTC; they are parsed deterministically and then rendered
+ * with the runtime's local zone so each viewer sees their own wall-clock time.
+ */
+export function formatLocalDateTime(
   value: string | null | undefined,
 ): string | null {
   if (value === null || value === undefined || value === '') return null
   const date = parseUtcDateTime(value)
   if (Number.isNaN(date.getTime())) return null
-  return `${date.toISOString().slice(0, 10)} ${date.toISOString().slice(11, 19)} UTC`
+  const stamp = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
+  const label = localTimeZoneLabel(date)
+  return label ? `${stamp} ${label}` : stamp
+}
+
+/** Compact viewer-local presentation for dense cells, e.g. "2026-09-15 13:00". */
+export function formatLocalDateTimeShort(
+  value: string | null | undefined,
+): string | null {
+  if (value === null || value === undefined || value === '') return null
+  const date = parseUtcDateTime(value)
+  if (Number.isNaN(date.getTime())) return null
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+}
+
+/** Compact viewer-local presentation, e.g. "Sep 15, 13:00". */
+export function formatLocalMonthDayTime(
+  value: string | null | undefined,
+): string | null {
+  if (value === null || value === undefined || value === '') return null
+  const date = parseUtcDateTime(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 }
 
 /**

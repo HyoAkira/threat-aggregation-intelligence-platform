@@ -207,7 +207,7 @@ describe('typed query functions', () => {
   it('searchIocs sends q plus optional tag and provider filters', async () => {
     fetchMock.mockResolvedValue(jsonResponse(makePaged([urlGroup], 1, 20, 1)))
 
-    await searchIocs({ q: 'evil.example', tag: 'phishing', provider: 1 })
+    await searchIocs({ q: 'evil.example', tag: 'phishing', provider: '1' })
 
     expect(fetchMock.mock.calls[0][0]).toBe(
       '/api/iocs/search?q=evil.example&tag=phishing&provider=1',
@@ -264,7 +264,7 @@ describe('typed query functions', () => {
 
     await browseIocs({
       type: 'url',
-      provider: 1,
+      provider: '1',
       tag: 'phishing',
       lastSeenFrom: '2026-01-01T00:00:00.000Z',
       lastSeenTo: '2026-01-31T23:59:59.000Z',

@@ -10,7 +10,7 @@ import type {
 } from '../lib/adminSchemas'
 import { supportedLogLevels } from '../lib/adminSchemas'
 import { ApiError, getAdminSettings, putAdminSettings } from '../lib/apiClient'
-import { adminSettingsKey } from '../lib/queryKeys'
+import { adminProviderListKey, adminSettingsKey } from '../lib/queryKeys'
 
 export const Route = createFileRoute('/admin/settings')({
   component: AdminSettingsPage,
