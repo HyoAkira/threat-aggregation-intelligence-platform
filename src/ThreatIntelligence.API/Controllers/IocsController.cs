@@ -22,7 +22,7 @@ public sealed class IocsController(ISender sender) : ControllerBase
     public async Task<ActionResult<PagedResult<IocGroupResult>>> Search(
         [FromQuery] string? q,
         [FromQuery] string? tag,
-        [FromQuery] int? provider,
+        [FromQuery] string? provider,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
@@ -57,7 +57,7 @@ public sealed class IocsController(ISender sender) : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PagedResult<IocGroupResult>>> Browse(
         [FromQuery] string? type,
-        [FromQuery] int? provider,
+        [FromQuery] string? provider,
         [FromQuery] string? tag,
         [FromQuery] DateTime? firstSeenFrom,
         [FromQuery] DateTime? firstSeenTo,

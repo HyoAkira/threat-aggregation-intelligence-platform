@@ -9,6 +9,6 @@ namespace ThreatIntelligence.Application.Features.Iocs.Queries.SearchIocs;
 public sealed record SearchIocsQuery(
     string Query,
     string? Tag = null,
-    int? ProviderId = null,
+    string? Provider = null,
     int? Page = null,
     int? PageSize = null) : IRequest<PagedResult<IocGroupResult>>;

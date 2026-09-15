@@ -173,7 +173,7 @@ function buildQuery(
 export type SearchSubmission = {
   q: string
   tag: string | null
-  provider: number | null
+  provider: string | null
   page?: number
   pageSize?: number
 }

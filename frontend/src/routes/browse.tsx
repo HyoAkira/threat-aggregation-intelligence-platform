@@ -44,7 +44,7 @@ const fieldLabelClass =
   'font-mono text-[10px] font-semibold uppercase tracking-wider text-outline'
 
 function providerDraftValue(params: BrowseParams | null): string {
-  return params?.provider != null ? String(params.provider) : ''
+  return params?.provider ?? ''
 }
 
 /** Local datetime string for a `datetime-local` input from an ISO instant. */
@@ -205,10 +205,7 @@ function BrowsePage() {
                 goTo({
                   tag: tagDraft.trim() === '' ? null : tagDraft.trim(),
                   provider:
-                    providerDraft.trim() === '' ||
-                    !Number.isInteger(Number(providerDraft))
-                      ? null
-                      : Number(providerDraft),
+                    providerDraft.trim() === '' ? null : providerDraft.trim(),
                   lastSeenFrom: fromDatetimeLocalValue(fromDraft),
                   lastSeenTo: fromDatetimeLocalValue(toDraft),
                   page: 1,
@@ -267,12 +264,11 @@ function BrowsePage() {
 
               <div>
                 <label htmlFor="browse-provider" className={fieldLabelClass}>
-                  Provider id
+                  Provider
                 </label>
                 <input
                   id="browse-provider"
-                  type="number"
-                  min={1}
+                  type="text"
                   value={providerDraft}
                   onChange={(event) => setProviderDraft(event.target.value)}
                   className={controlClass}

@@ -20,7 +20,7 @@ public sealed class BrowseIocsHandler(IIocQueryReader reader)
     private static IocBrowseCriteria BuildCriteria(BrowseIocsQuery request)
     {
         var type = ParseType(request.Type);
-        var provider = ValidateProvider(request.Provider);
+        var provider = NormalizeProvider(request.Provider);
         var orderBy = ParseOrderBy(request.OrderBy);
         var descending = ParseDirection(request.Dir);
         var page = request.Page ?? 1;
@@ -71,21 +71,22 @@ public sealed class BrowseIocsHandler(IIocQueryReader reader)
             "The type filter must be one of ipv4, ipv6, domain, or url.");
     }
 
-    private static int? ValidateProvider(int? provider)
+    private static string? NormalizeProvider(string? provider)
     {
-        if (provider is null)
+        if (string.IsNullOrWhiteSpace(provider))
         {
             return null;
         }
 
-        if (provider <= 0)
+        var trimmed = provider.Trim();
+        if (trimmed.Length > 255)
         {
             throw new IocQueryValidationException(
                 IocErrorCodes.InvalidInput,
-                "The provider filter must be a positive provider id.");
+                "The provider filter is too long.");
         }
 
-        return provider;
+        return trimmed;
     }
 
     private static IocBrowseOrderBy ParseOrderBy(string? orderBy)

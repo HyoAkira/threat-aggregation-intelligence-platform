@@ -8,7 +8,7 @@ namespace ThreatIntelligence.Application.Features.Iocs.Queries.BrowseIocs;
 /// </summary>
 public sealed record BrowseIocsQuery(
     string? Type = null,
-    int? Provider = null,
+    string? Provider = null,
     string? Tag = null,
     DateTime? FirstSeenFrom = null,
     DateTime? FirstSeenTo = null,
