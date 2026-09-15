@@ -1,5 +1,5 @@
 import type { IocGroup, IocTypeToken } from './schemas'
-import { formatUtcDateTime } from './format'
+import { formatLocalDateTimeShort } from './format'
 
 /** Human labels for the four indicator types the API supports. */
 export const iocTypeLabels: Record<IocTypeToken, string> = {
@@ -37,12 +37,11 @@ export function detectIocType(value: string): IocTypeToken | null {
   return null
 }
 
-/** Short stable UTC presentation for table cells ("YYYY-MM-DD HH:MM UTC"). */
-export function formatShortUtc(
+/** Short viewer-local presentation for table cells ("YYYY-MM-DD HH:MM"). */
+export function formatShortLocal(
   value: string | null | undefined,
 ): string | null {
-  const formatted = formatUtcDateTime(value)
-  return formatted ? `${formatted.slice(0, 16)} UTC` : null
+  return formatLocalDateTimeShort(value)
 }
 
 /** First human-readable threat label across the group's sources, or null. */

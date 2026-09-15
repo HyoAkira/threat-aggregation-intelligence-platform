@@ -18,6 +18,7 @@ import {
 } from '../lib/queryKeys'
 import { LoadingState, EmptyState, ErrorState } from '../components/uiStates'
 import { focusRingClass } from '../components/AppShell'
+import { parseUtcDateTime, formatLocalMonthDayTime } from '../lib/format'
 
 const providerSearchSchema = z.object({
   providerId: z.coerce.number().int().positive().optional(),
@@ -33,25 +34,9 @@ export const Route = createFileRoute('/admin/providers')({
 /*  Helpers                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function formatUtc(iso: string | null): string {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString('en-US', {
-      timeZone: 'UTC',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    })
-  } catch {
-    return iso
-  }
-}
-
 function relativeTime(iso: string | null): string {
   if (!iso) return 'never'
-  const diff = Date.now() - new Date(iso).getTime()
+  const diff = Date.now() - parseUtcDateTime(iso).getTime()
   if (diff < 0) return 'in the future'
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'just now'
@@ -68,7 +53,9 @@ function isTerminal(status: string): boolean {
 
 function formatDuration(startedAt: string, finishedAt: string | null): string {
   if (!finishedAt) return '—'
-  const ms = new Date(finishedAt).getTime() - new Date(startedAt).getTime()
+  const ms =
+    parseUtcDateTime(finishedAt).getTime() -
+    parseUtcDateTime(startedAt).getTime()
   if (ms < 1000) return `${ms}ms`
   const secs = Math.floor(ms / 1000)
   if (secs < 60) return `${secs}s`
@@ -385,10 +372,10 @@ function HistoryPanel({
                       <StatusBadge status={item.status} />
                     </td>
                     <td className="px-4 py-2 font-mono text-[11px] text-on-surface-variant">
-                      {formatUtc(item.startedAt)}
+                      {formatLocalMonthDayTime(item.startedAt) ?? '—'}
                     </td>
                     <td className="px-4 py-2 font-mono text-[11px] text-on-surface-variant">
-                      {formatUtc(item.finishedAt)}
+                      {formatLocalMonthDayTime(item.finishedAt) ?? '—'}
                     </td>
                     <td className="px-4 py-2 font-mono text-[11px] text-on-surface-variant">
                       {formatDuration(item.startedAt, item.finishedAt)}
@@ -521,7 +508,7 @@ function ProviderRow({
           <div className="mt-1 text-[10px] text-on-surface-variant">
             Next:{' '}
             {provider.nextFetchTime
-              ? formatUtc(provider.nextFetchTime)
+              ? formatLocalMonthDayTime(provider.nextFetchTime)
               : 'not scheduled'}
           </div>
           <div className="mt-1 text-[10px] text-on-surface-variant">
@@ -537,7 +524,7 @@ function ProviderRow({
             <>
               <div>{relativeTime(provider.lastFetchAt)}</div>
               <div className="text-[10px] text-on-surface-variant">
-                {formatUtc(provider.lastFetchAt)}
+                {formatLocalMonthDayTime(provider.lastFetchAt) ?? '—'}
               </div>
             </>
           )}

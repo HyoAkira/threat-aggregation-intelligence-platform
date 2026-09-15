@@ -214,6 +214,33 @@ public sealed class ThreatFoxFetchExecutorTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Invalid_ioc_is_skipped_and_valid_records_are_committed()
+    {
+        var recentJson = RecentJson(
+            ValidDomainRecord("tf-valid"),
+            new
+            {
+                id = "tf-invalid-ioc",
+                ioc = "satinmaple4",
+                ioc_type = "domain",
+                first_seen = "2026-01-01T00:00:00UTC"
+            });
+
+        var executor = CreateExecutor(recentJson);
+
+        var job = new FetchJob(Guid.NewGuid(), ThreatFoxRecordMapper.ThreatFoxProviderId, FetchTrigger.Manual, FetchMode.Recent, 1);
+        var result = await executor.ExecuteAsync(job, CancellationToken.None);
+
+        Assert.Equal(1, result.RecordsAdded);
+        Assert.Equal(0, result.RecordsUpdated);
+
+        await using var context = _fixture.CreateContext();
+        var iocs = await context.Iocs.Where(i => i.ProviderId == ThreatFoxRecordMapper.ThreatFoxProviderId).ToListAsync();
+        Assert.Single(iocs);
+        Assert.DoesNotContain(iocs, ioc => ioc.ProviderRecordId == "tf-invalid-ioc");
+    }
+
+    [Fact]
     public async Task Wrong_provider_throws_terminal()
     {
         var executor = CreateExecutor("[]");

@@ -1,3 +1,7 @@
+// Force a deterministic runtime timezone so local-time presentation is testable
+// regardless of the developer machine's zone. Production uses the browser's zone.
+process.env.TZ = 'UTC'
+
 export default {
   preset: 'ts-jest',
   testEnvironment: 'node',

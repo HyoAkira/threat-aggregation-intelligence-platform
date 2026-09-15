@@ -2,7 +2,7 @@ import type { IocSource } from '../lib/schemas'
 import {
   formatFalsePositive,
   formatFieldValue,
-  formatUtcDateTime,
+  formatLocalDateTime,
 } from '../lib/format'
 
 const cardClass =
@@ -23,8 +23,8 @@ const tagClass =
  * on their own card.
  */
 export function IocSourceCard({ source }: { source: IocSource }) {
-  const firstSeen = formatUtcDateTime(source.firstSeenUtc)
-  const lastSeen = formatUtcDateTime(source.lastSeenUtc ?? undefined)
+  const firstSeen = formatLocalDateTime(source.firstSeenUtc)
+  const lastSeen = formatLocalDateTime(source.lastSeenUtc ?? undefined)
 
   return (
     <article className={cardClass} aria-label={`Source: ${source.provider}`}>

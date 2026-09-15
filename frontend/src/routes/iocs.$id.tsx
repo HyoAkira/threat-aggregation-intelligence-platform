@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { ApiError, getIocDetail, getIocRelations } from '../lib/apiClient'
 import type { IocRelation } from '../lib/apiClient'
 import { iocDetailKey, iocRelationsKey } from '../lib/queryKeys'
-import { formatUtcDateTime } from '../lib/format'
+import { formatLocalDateTime } from '../lib/format'
 import {
   iocTypeBadgeClass,
   iocTypeLabels,
@@ -146,7 +146,6 @@ function ForensicDetail({
           </span>
           Back to Explorer
         </Link>
-
       </div>
 
       <header className="relative overflow-hidden rounded border border-outline-variant bg-surface-container-lowest">
@@ -206,13 +205,13 @@ function ForensicDetail({
               <div className="bg-surface-container-low p-3">
                 <span className={sectionTitleClass}>First seen</span>
                 <p className="mt-1 font-mono text-xs font-semibold text-on-surface">
-                  {formatUtcDateTime(group.firstSeenUtc) ?? 'Unknown'}
+                  {formatLocalDateTime(group.firstSeenUtc) ?? 'Unknown'}
                 </p>
               </div>
               <div className="bg-surface-container-low p-3">
                 <span className={sectionTitleClass}>Last seen</span>
                 <p className="mt-1 font-mono text-xs font-semibold text-on-surface">
-                  {formatUtcDateTime(group.lastSeenUtc ?? undefined) ??
+                  {formatLocalDateTime(group.lastSeenUtc ?? undefined) ??
                     'Unknown'}
                 </p>
               </div>
@@ -229,7 +228,7 @@ function ForensicDetail({
               </span>
               <dt>First seen:</dt>
               <dd className="font-semibold text-on-surface">
-                {formatUtcDateTime(group.firstSeenUtc) ?? 'Unknown'}
+                {formatLocalDateTime(group.firstSeenUtc) ?? 'Unknown'}
               </dd>
             </div>
             <div className="flex items-center gap-1.5">
@@ -241,7 +240,8 @@ function ForensicDetail({
               </span>
               <dt>Last seen:</dt>
               <dd className="font-semibold text-on-surface">
-                {formatUtcDateTime(group.lastSeenUtc ?? undefined) ?? 'Unknown'}
+                {formatLocalDateTime(group.lastSeenUtc ?? undefined) ??
+                  'Unknown'}
               </dd>
             </div>
             <div className="flex items-center gap-1.5">

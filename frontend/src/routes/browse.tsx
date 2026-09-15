@@ -19,7 +19,7 @@ import { iocTypeTokens } from '../lib/schemas'
 import type { IocGroup } from '../lib/schemas'
 import { browseKey } from '../lib/queryKeys'
 import {
-  formatShortUtc,
+  formatShortLocal,
   iocTypeBadgeClass,
   iocTypeLabels,
   threatLabel,
@@ -603,10 +603,10 @@ function ExplorerRow({
         </div>
       </td>
       <td className="px-2 py-2.5 font-mono text-[10px] text-outline">
-        {formatShortUtc(group.firstSeenUtc) ?? '—'}
+        {formatShortLocal(group.firstSeenUtc) ?? '—'}
       </td>
       <td className="px-2 py-2.5 font-mono text-[10px] text-outline">
-        {formatShortUtc(group.lastSeenUtc ?? null) ?? '—'}
+        {formatShortLocal(group.lastSeenUtc ?? null) ?? '—'}
       </td>
       <td className="px-3 py-2.5 text-right">
         <Link

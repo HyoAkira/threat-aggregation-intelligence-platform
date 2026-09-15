@@ -127,6 +127,7 @@ public sealed class ThreatFoxFetchExecutor(
     {
         var recordIndex = 0;
         var accepted = 0;
+        var rejected = 0;
         try
         {
             await foreach (var recordInput in source.ConfigureAwait(false))
@@ -138,16 +139,16 @@ public sealed class ThreatFoxFetchExecutor(
                 if (!validation.IsValid)
                 {
                     var failure = validation.Failure!;
-                    _logger.LogError(
-                        "ThreatFox record rejected Source={Source} RecordIndex={RecordIndex} ProviderRecordId={ProviderRecordId} Field={Field} Code={Code} Message={Message}",
+                    _logger.LogWarning(
+                        "ThreatFox record skipped Source={Source} RecordIndex={RecordIndex} ProviderRecordId={ProviderRecordId} Field={Field} Code={Code} Message={Message}",
                         sourceLabel,
                         failure.RecordIndex,
                         recordInput.ProviderRecordId,
                         failure.Field,
                         failure.Code,
                         failure.Message);
-                    throw new TerminalFetchException(
-                        $"ThreatFox record {failure.RecordIndex} rejected in field '{failure.Field}': {failure.Message}");
+                    rejected++;
+                    continue;
                 }
 
                 records.Add(validation.Normalized!);
@@ -182,9 +183,10 @@ public sealed class ThreatFoxFetchExecutor(
         }
 
         _logger.LogInformation(
-            "ThreatFox source processed Source={Source} RecordsParsed={RecordsParsed} RecordsAccepted={RecordsAccepted}",
+            "ThreatFox source processed Source={Source} RecordsParsed={RecordsParsed} RecordsAccepted={RecordsAccepted} RecordsRejected={RecordsRejected}",
             sourceLabel,
             recordIndex,
-            accepted);
+            accepted,
+            rejected);
     }
 }

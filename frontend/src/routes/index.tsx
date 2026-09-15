@@ -10,7 +10,7 @@ import { iocTypeTokens } from '../lib/schemas'
 import type { IocGroup, IocTypeToken } from '../lib/schemas'
 import {
   detectIocType,
-  formatShortUtc,
+  formatShortLocal,
   iocTypeLabels,
   threatLabel,
 } from '../lib/iocPresentation'
@@ -610,7 +610,7 @@ function RecentRow({
 }) {
   const label = threatLabel(group)
   const reporter = group.sources.length > 0 ? group.sources[0].provider : null
-  const ingested = formatShortUtc(group.firstSeenUtc)
+  const ingested = formatShortLocal(group.firstSeenUtc)
 
   return (
     <tr className="group transition-colors hover:bg-surface-container-low/50">
