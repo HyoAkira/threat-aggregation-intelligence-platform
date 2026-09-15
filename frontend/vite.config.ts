@@ -1,10 +1,10 @@
-import { defineConfig } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
+import { defineConfig } from 'vite'
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
-import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import viteReact from '@vitejs/plugin-react'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
@@ -13,7 +13,7 @@ const config = defineConfig({
     // and Vite forwards the requests to the local backend.
     proxy: {
       '/api': {
-        target: 'http://localhost:5092',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },
