@@ -23,12 +23,7 @@ public sealed class SearchIocsHandler(
                 classification.Error!.Message);
         }
 
-        if (request.ProviderId is <= 0)
-        {
-            throw new IocQueryValidationException(
-                IocErrorCodes.InvalidInput,
-                "The provider filter must be a positive provider id.");
-        }
+        var provider = NormalizeProvider(request.Provider);
 
         var page = request.Page ?? 1;
         var pageSize = request.PageSize ?? DefaultPageSize;
@@ -49,7 +44,7 @@ public sealed class SearchIocsHandler(
         var identity = classification.OrThrow();
         var result = await reader.SearchGroupsAsync(
             identity,
-            new IocSourceFilter(request.Tag, request.ProviderId),
+            new IocSourceFilter(request.Tag, provider),
             page,
             pageSize,
             cancellationToken);
@@ -62,5 +57,23 @@ public sealed class SearchIocsHandler(
         }
 
         return result;
+    }
+
+    private static string? NormalizeProvider(string? provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            return null;
+        }
+
+        var trimmed = provider.Trim();
+        if (trimmed.Length > 255)
+        {
+            throw new IocQueryValidationException(
+                IocErrorCodes.InvalidInput,
+                "The provider filter is too long.");
+        }
+
+        return trimmed;
     }
 }

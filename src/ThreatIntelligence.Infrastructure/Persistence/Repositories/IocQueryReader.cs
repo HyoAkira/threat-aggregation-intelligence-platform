@@ -48,9 +48,15 @@ public sealed class IocQueryReader(
             query = query.Where(i => i.Port == identity.Port);
         }
 
-        if (filter.ProviderId is int providerId)
+        if (!string.IsNullOrWhiteSpace(filter.Provider))
         {
-            query = query.Where(i => i.ProviderId == providerId);
+            var providerIds = await ResolveProviderIdsAsync(filter.Provider, cancellationToken);
+            if (providerIds is null)
+            {
+                return PagedResult<IocGroupResult>.Empty(page, pageSize);
+            }
+
+            query = query.Where(i => providerIds.Contains(i.ProviderId));
         }
 
         if (!string.IsNullOrWhiteSpace(filter.Tag))
@@ -128,9 +134,15 @@ public sealed class IocQueryReader(
             baseQuery = baseQuery.Where(i => i.IocType == type);
         }
 
-        if (criteria.ProviderId is int providerId)
+        if (!string.IsNullOrWhiteSpace(criteria.Provider))
         {
-            baseQuery = baseQuery.Where(i => i.ProviderId == providerId);
+            var providerIds = await ResolveProviderIdsAsync(criteria.Provider, cancellationToken);
+            if (providerIds is null)
+            {
+                return PagedResult<IocGroupResult>.Empty(criteria.Page, criteria.PageSize);
+            }
+
+            baseQuery = baseQuery.Where(i => providerIds.Contains(i.ProviderId));
         }
 
         if (!string.IsNullOrWhiteSpace(criteria.Tag))
@@ -262,6 +274,24 @@ public sealed class IocQueryReader(
         var pageKeys = pageKeyRows.Select(row => new GroupKey(row.IocType, row.IocValue)).ToList();
         var items = await HydrateKeysAsync(pageKeys, cancellationToken);
         return new PagedResult<IocGroupResult>(items, page, pageSize, totalCount);
+    }
+
+    private async Task<int[]?> ResolveProviderIdsAsync(
+        string provider,
+        CancellationToken cancellationToken)
+    {
+        if (int.TryParse(provider, out var providerId) && providerId > 0)
+        {
+            return [providerId];
+        }
+
+        var lowered = provider.ToLowerInvariant();
+        var ids = await dbContext.Providers.AsNoTracking()
+            .Where(p => p.Name.ToLower() == lowered)
+            .Select(p => p.Id)
+            .ToArrayAsync(cancellationToken);
+
+        return ids.Length == 0 ? null : ids;
     }
 
     private async Task<IReadOnlyList<IocGroupResult>> HydrateKeysAsync(

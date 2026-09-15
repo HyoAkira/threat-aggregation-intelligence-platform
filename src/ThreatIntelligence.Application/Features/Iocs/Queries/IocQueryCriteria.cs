@@ -6,7 +6,7 @@ namespace ThreatIntelligence.Application.Features.Iocs.Queries;
 /// Optional source-narrowing filters applied after an exact search resolves a group. A non-null
 /// <see cref="Tag"/> is normalized (trimmed and lowercased) before matching.
 /// </summary>
-public sealed record IocSourceFilter(string? Tag = null, int? ProviderId = null);
+public sealed record IocSourceFilter(string? Tag = null, string? Provider = null);
 
 /// <summary>Allowed aggregate sort fields for grouped browse.</summary>
 public enum IocBrowseOrderBy
@@ -30,7 +30,7 @@ public enum IocRelationKind
 /// </summary>
 public sealed record IocBrowseCriteria(
     IocType? Type,
-    int? ProviderId,
+    string? Provider,
     string? Tag,
     DateTime? FirstSeenFrom,
     DateTime? FirstSeenTo,

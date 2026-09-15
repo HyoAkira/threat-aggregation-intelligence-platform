@@ -47,17 +47,9 @@ export function validateSearchSubmission(
     return { submission: null, error: 'The tag filter is too long.' }
 
   const providerRaw = values.provider.trim()
-  let provider: number | null = null
-  if (providerRaw !== '') {
-    const parsed = Number(providerRaw)
-    if (!Number.isInteger(parsed) || parsed < 1) {
-      return {
-        submission: null,
-        error: 'Provider must be a positive provider id.',
-      }
-    }
-    provider = parsed
-  }
+  if (providerRaw.length > 255)
+    return { submission: null, error: 'The provider filter is too long.' }
+  const provider = providerRaw === '' ? null : providerRaw
 
   return {
     submission: { q, tag: tag === '' ? null : tag, provider },
@@ -231,13 +223,12 @@ function SearchPage() {
             </div>
             <div>
               <label htmlFor="search-provider" className={fieldLabelClass}>
-                Provider id filter (optional)
+                Provider filter (optional)
               </label>
               <input
                 id="search-provider"
                 name="provider"
-                type="number"
-                min={1}
+                type="text"
                 value={values.provider}
                 onChange={(event) =>
                   setValues((current) => ({
