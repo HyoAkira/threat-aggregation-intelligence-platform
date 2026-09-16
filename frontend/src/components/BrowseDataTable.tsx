@@ -228,6 +228,38 @@ function ColumnFilterMenu({
   )
 }
 
+function InfoTooltip({
+  label,
+  description,
+}: {
+  label: string
+  description: string
+}) {
+  return (
+    <span className="group/tooltip relative inline-flex items-center">
+      <button
+        type="button"
+        aria-label={label}
+        onClick={(event) => event.stopPropagation()}
+        className={`inline-flex h-5 w-5 items-center justify-center rounded text-outline transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:text-on-surface ${focusRingClass}`}
+      >
+        <span
+          aria-hidden="true"
+          className="material-symbols-outlined text-[16px]"
+        >
+          info
+        </span>
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded border border-outline-variant bg-inverse-surface px-3 py-2 text-left font-sans text-[11px] normal-case leading-relaxed tracking-normal text-inverse-on-surface opacity-0 shadow-lg transition-opacity group-hover/tooltip:opacity-100 group-focus-within/tooltip:opacity-100"
+      >
+        {description}
+      </span>
+    </span>
+  )
+}
+
 /**
  * Client-only DataTables surface. It is the sole owner of browse-data requests:
  * DataTables invokes the Ajax function for the initial draw and for each page,
@@ -663,7 +695,13 @@ const BrowseDataTable = forwardRef<BrowseTableHandle, BrowseDataTableProps>(
                 />
               </th>
               <th scope="col" className={headerClass}>
-                Threat family / campaign
+                <span className="inline-flex items-center gap-1">
+                  <span>Threat family / campaign</span>
+                  <InfoTooltip
+                    label="About threat family and campaign"
+                    description="A threat family is a group of related malware or attack tools that share code or behavior. A campaign is a coordinated set of attacks linked by a common actor, goal, or timeframe."
+                  />
+                </span>
               </th>
               <th scope="col" className={headerClass}>
                 <ColumnFilterMenu
@@ -679,9 +717,11 @@ const BrowseDataTable = forwardRef<BrowseTableHandle, BrowseDataTableProps>(
               <th scope="col" className={headerClass}>
                 Last seen
               </th>
-              <th scope="col" className={`${headerClass} text-right`}>
-                Action
-              </th>
+              <th
+                scope="col"
+                aria-label="Action"
+                className={`${headerClass} text-right`}
+              />
             </tr>
           </thead>
         </DataTables>

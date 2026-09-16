@@ -15,4 +15,15 @@ public interface IAdminLogReader
         string source,
         string? correlationId,
         CancellationToken cancellationToken);
+
+    Task<AdminLogPage> ReadPageAsync(
+        int page,
+        int pageSize,
+        string? level,
+        string source,
+        string? correlationId,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        string orderDir,
+        CancellationToken cancellationToken);
 }

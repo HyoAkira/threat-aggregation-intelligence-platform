@@ -11,3 +11,10 @@ public sealed record AdminLogEntry(
     string? CorrelationId,
     string Message,
     string? Exception);
+
+/// <summary>One server-side page of structured admin log entries.</summary>
+public sealed record AdminLogPage(
+    IReadOnlyList<AdminLogEntry> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);

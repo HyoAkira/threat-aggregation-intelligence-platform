@@ -18,6 +18,7 @@ import {
   adminFetchHistoryItemSchema,
   adminSummarySchema,
   adminLogListSchema,
+  adminLogPageSchema,
   settingsResponseSchema,
   fetchQueuedResponseSchema,
 } from './adminSchemas'
@@ -27,6 +28,7 @@ import type {
   AdminFetchHistoryItem,
   AdminSummary,
   AdminLogEntry,
+  AdminLogPage,
   SettingsResponse,
   SettingsRequest,
   FetchQueuedResponse,
@@ -304,11 +306,88 @@ export function getAdminProviderHistory(
   page: number,
   pageSize: number,
   signal?: AbortSignal,
+  filters?: {
+    dateFrom?: string | null
+    dateTo?: string | null
+    orderBy?: 'startedAt' | 'finishedAt'
+    orderDir?: 'asc' | 'desc'
+  },
 ): Promise<AdminProviderHistoryPage> {
   return apiFetch(
-    `/admin/providers/${providerId}/history${buildQuery({ page, pageSize })}`,
+    `/admin/providers/${providerId}/history${buildQuery({
+      page,
+      pageSize,
+      dateFrom: filters?.dateFrom,
+      dateTo: filters?.dateTo,
+      orderBy: filters?.orderBy,
+      orderDir: filters?.orderDir,
+    })}`,
     { schema: adminProviderHistoryPageSchema, signal },
   )
+}
+
+/** `GET /api/admin/logs/table` — server-side DataTables page. */
+export function getAdminLogsTable(
+  params: {
+    page: number
+    pageSize: number
+    level: string | null
+    source: 'api' | 'worker' | 'all'
+    correlationId: string | null
+    dateFrom?: string | null
+    dateTo?: string | null
+    orderDir: 'asc' | 'desc'
+  },
+  signal?: AbortSignal,
+): Promise<AdminLogPage> {
+  return apiFetch<AdminLogPage>(`/admin/logs/table${buildQuery(params)}`, {
+    schema: adminLogPageSchema,
+    signal,
+  }).catch((error: unknown): Promise<AdminLogPage> => {
+    // Keep the admin page usable while an already-running API process is still
+    // serving the pre-DataTables build. The next request uses the new endpoint
+    // automatically once the API is restarted.
+    if (!(error instanceof ApiError) || error.status !== 404) throw error
+
+    return getAdminLogs(
+      500,
+      params.level,
+      params.source,
+      params.correlationId,
+      signal,
+    ).then((entries) => {
+      const dateFrom = adminDateBoundary(params.dateFrom)
+      const dateTo = adminDateBoundary(params.dateTo)
+      const filtered = entries.filter((entry) => {
+        const timestamp = new Date(entry.timestamp).getTime()
+        return (
+          Number.isFinite(timestamp) &&
+          (dateFrom === null || timestamp >= dateFrom) &&
+          (dateTo === null || timestamp < dateTo)
+        )
+      })
+      const ordered = [...filtered].sort((left, right) => {
+        const difference =
+          new Date(left.timestamp).getTime() -
+          new Date(right.timestamp).getTime()
+        return params.orderDir === 'asc' ? difference : -difference
+      })
+      const start = (params.page - 1) * params.pageSize
+      return {
+        items: ordered.slice(start, start + params.pageSize),
+        page: params.page,
+        pageSize: params.pageSize,
+        totalCount: ordered.length,
+      }
+    })
+  })
+}
+
+function adminDateBoundary(value: string | null | undefined): number | null {
+  if (!value) return null
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.getTime()
 }
 
 /** `GET /api/admin/summary` — database IOC counts. */

@@ -1,21 +1,21 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { lazy, useState, useCallback, useEffect, useRef } from 'react'
+import {
+  ClientOnly,
+  createFileRoute,
+  Link,
+  useNavigate,
+} from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import {
   getAdminProviders,
-  getAdminProviderHistory,
   triggerDefaultFetch,
   triggerFullFetch,
   getFetchJobStatus,
   ApiError,
 } from '../lib/apiClient'
 import type { AdminProviderDashboardItem } from '../lib/adminSchemas'
-import {
-  adminProviderListKey,
-  adminHistoryKey,
-  adminSummaryKey,
-} from '../lib/queryKeys'
+import { adminProviderListKey, adminSummaryKey } from '../lib/queryKeys'
 import { LoadingState, EmptyState, ErrorState } from '../components/uiStates'
 import { focusRingClass } from '../components/AppShell'
 import { parseUtcDateTime, formatLocalMonthDayTime } from '../lib/format'
@@ -49,18 +49,6 @@ function relativeTime(iso: string | null): string {
 
 function isTerminal(status: string): boolean {
   return status === 'success' || status === 'failed'
-}
-
-function formatDuration(startedAt: string, finishedAt: string | null): string {
-  if (!finishedAt) return '—'
-  const ms =
-    parseUtcDateTime(finishedAt).getTime() -
-    parseUtcDateTime(startedAt).getTime()
-  if (ms < 1000) return `${ms}ms`
-  const secs = Math.floor(ms / 1000)
-  if (secs < 60) return `${secs}s`
-  const mins = Math.floor(secs / 60)
-  return `${mins}m ${secs % 60}s`
 }
 
 /* -------------------------------------------------------------------------- */
@@ -223,272 +211,34 @@ function useFetchMutation(providerId: number) {
 /*  Error detail dialog                                                      */
 /* -------------------------------------------------------------------------- */
 
-function ErrorDetailDialog({
-  error,
-  onClose,
-}: {
-  error: string
-  onClose: () => void
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/40"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Error detail"
-    >
-      <div className="mx-4 flex max-h-[80vh] w-full max-w-2xl flex-col rounded border border-outline-variant bg-surface-container-lowest shadow-lg">
-        <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
-          <h3 className="text-sm font-semibold text-on-surface">
-            Error Detail
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`rounded p-1 text-on-surface-variant hover:bg-surface-container-low ${focusRingClass}`}
-            aria-label="Close"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
-        </div>
-        <div className="flex-1 overflow-auto p-4">
-          <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-on-surface">
-            {error}
-          </pre>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* -------------------------------------------------------------------------- */
 /*  History panel                                                            */
 /* -------------------------------------------------------------------------- */
 
+const LazyAdminProviderHistoryDataTable = lazy(
+  () => import('../components/AdminProviderHistoryDataTable'),
+)
+
 function HistoryPanel({
   providerId,
   providerName,
-  page,
-  onPageChange,
+  refreshKey,
   onClose,
 }: {
   providerId: number
   providerName: string
-  page: number
-  onPageChange: (page: number) => void
+  refreshKey: number
   onClose: () => void
 }) {
-  const [inspectingError, setInspectingError] = useState<string | null>(null)
-  const [copyNotice, setCopyNotice] = useState<string | null>(null)
-  const copyNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pageSize = 20
-
-  useEffect(() => {
-    return () => {
-      if (copyNoticeTimer.current) clearTimeout(copyNoticeTimer.current)
-    }
-  }, [])
-
-  function showCopyNotice(message: string) {
-    setCopyNotice(message)
-    if (copyNoticeTimer.current) clearTimeout(copyNoticeTimer.current)
-    copyNoticeTimer.current = setTimeout(() => setCopyNotice(null), 2500)
-  }
-
-  function copyJobId(jobId: string) {
-    const clipboard = navigator.clipboard as Clipboard | undefined
-    if (!clipboard?.writeText) {
-      showCopyNotice('Copy is not available in this browser.')
-      return
-    }
-    void clipboard.writeText(jobId).then(
-      () => showCopyNotice('Job ID copied.'),
-      () => showCopyNotice('Copy failed.'),
-    )
-  }
-
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: adminHistoryKey(providerId, page, pageSize),
-    queryFn: ({ signal }) =>
-      getAdminProviderHistory(providerId, page, pageSize, signal),
-  })
-
-  const totalPages = data
-    ? Math.max(1, Math.ceil(data.totalCount / pageSize))
-    : 0
-
   return (
-    <div className="mt-6 rounded border border-outline-variant bg-surface-container-lowest">
-      <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
-        <h3 className="font-semibold text-on-surface">
-          Fetch History — {providerName}
-        </h3>
-        <button
-          type="button"
-          onClick={onClose}
-          className={`rounded p-1 text-on-surface-variant hover:bg-surface-container-low ${focusRingClass}`}
-          aria-label="Close history"
-        >
-          <span className="material-symbols-outlined text-[18px]">close</span>
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className="p-4">
-          <LoadingState label="Loading history…" />
-        </div>
-      ) : isError ? (
-        <div className="p-4">
-          <ErrorState
-            title="Failed to load history"
-            message={error instanceof ApiError ? error.message : undefined}
-            correlationId={
-              error instanceof ApiError ? error.correlationId : undefined
-            }
-          />
-        </div>
-      ) : !data || data.items.length === 0 ? (
-        <div className="p-4">
-          <EmptyState
-            title="No fetch history"
-            message="This provider has not been fetched yet."
-          />
-        </div>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-outline-variant bg-surface-container-low font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
-                  <th className="px-4 py-2 font-medium">Job</th>
-                  <th className="px-4 py-2 font-medium">Trigger</th>
-                  <th className="px-4 py-2 font-medium">Mode</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium">Started</th>
-                  <th className="px-4 py-2 font-medium">Finished</th>
-                  <th className="px-4 py-2 font-medium">Duration</th>
-                  <th className="px-4 py-2 font-medium text-right">Added</th>
-                  <th className="px-4 py-2 font-medium text-right">Updated</th>
-                  <th className="px-4 py-2 font-medium">Error</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-container-low font-body text-[12px]">
-                {data.items.map((item) => (
-                  <tr
-                    key={item.jobId}
-                    className="hover:bg-surface-container-low/50"
-                  >
-                    <td className="px-4 py-2 font-mono text-[11px] text-on-surface-variant">
-                      <button
-                        type="button"
-                        onClick={() => copyJobId(item.jobId)}
-                        title={`Copy ${item.jobId}`}
-                        aria-label={`Copy job ID ${item.jobId}`}
-                        className={`max-w-28 truncate rounded px-1 text-left hover:bg-surface-container ${focusRingClass}`}
-                      >
-                        {item.jobId.slice(0, 8)}…
-                      </button>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-on-surface-variant">
-                        {item.trigger}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-primary">
-                        {item.mode}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <StatusBadge status={item.status} />
-                    </td>
-                    <td className="px-4 py-2 font-mono text-[11px] text-on-surface-variant">
-                      {formatLocalMonthDayTime(item.startedAt) ?? '—'}
-                    </td>
-                    <td className="px-4 py-2 font-mono text-[11px] text-on-surface-variant">
-                      {formatLocalMonthDayTime(item.finishedAt) ?? '—'}
-                    </td>
-                    <td className="px-4 py-2 font-mono text-[11px] text-on-surface-variant">
-                      {formatDuration(item.startedAt, item.finishedAt)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] text-tertiary">
-                      +{item.recordsAdded}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] text-tertiary">
-                      +{item.recordsUpdated}
-                    </td>
-                    <td className="px-4 py-2">
-                      {item.errorDetail ? (
-                        <button
-                          type="button"
-                          onClick={() => setInspectingError(item.errorDetail)}
-                          className={`rounded bg-error/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-error transition-colors hover:bg-error/20 ${focusRingClass}`}
-                        >
-                          Inspect
-                        </button>
-                      ) : (
-                        <span className="text-on-surface-variant">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-outline-variant px-4 py-2">
-              <span className="font-mono text-[10px] text-on-surface-variant">
-                Page {data.page} of {totalPages} ({data.totalCount} entries)
-              </span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => onPageChange(Math.max(1, page - 1))}
-                  disabled={page <= 1}
-                  className={`rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 font-mono text-[10px] font-semibold text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`}
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-                  disabled={page >= totalPages}
-                  className={`rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 font-mono text-[10px] font-semibold text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Error inspection dialog */}
-      {inspectingError && (
-        <ErrorDetailDialog
-          error={inspectingError}
-          onClose={() => setInspectingError(null)}
-        />
-      )}
-
-      {copyNotice ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded bg-inverse-surface px-4 py-2 font-mono text-xs text-inverse-on-surface"
-        >
-          <span
-            aria-hidden="true"
-            className="material-symbols-outlined text-[16px] text-tertiary-fixed"
-          >
-            {copyNotice === 'Job ID copied.' ? 'check_circle' : 'info'}
-          </span>
-          <span>{copyNotice}</span>
-        </div>
-      ) : null}
-    </div>
+    <ClientOnly fallback={<LoadingState label="Preparing history table…" />}>
+      <LazyAdminProviderHistoryDataTable
+        providerId={providerId}
+        providerName={providerName}
+        refreshKey={refreshKey}
+        onClose={onClose}
+      />
+    </ClientOnly>
   )
 }
 
@@ -740,7 +490,7 @@ function ProviderRow({
 /* -------------------------------------------------------------------------- */
 
 function AdminProvidersPage() {
-  const { providerId, page = 1 } = Route.useSearch()
+  const { providerId } = Route.useSearch()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [isStale, setIsStale] = useState(false)
@@ -859,13 +609,7 @@ function AdminProvidersPage() {
         <HistoryPanel
           providerId={selectedProvider.id}
           providerName={selectedProvider.name}
-          page={page}
-          onPageChange={(nextPage) => {
-            void navigate({
-              to: '/admin/providers',
-              search: { providerId: selectedProvider.id, page: nextPage },
-            })
-          }}
+          refreshKey={dataUpdatedAt}
           onClose={() => {
             void navigate({ to: '/admin/providers', search: {} })
           }}

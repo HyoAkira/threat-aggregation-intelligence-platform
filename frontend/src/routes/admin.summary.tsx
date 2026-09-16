@@ -191,9 +191,7 @@ function AdminSummaryPage() {
 
       {/* Metadata */}
       <div className="mt-3 flex items-center justify-between font-mono text-[10px] text-on-surface-variant">
-        <span>
-          Data represents exact API counts without client-side recomputation.
-        </span>
+
         <span>
           {dataUpdatedAt > 0
             ? `Retrieved ${new Date(dataUpdatedAt).toLocaleTimeString()}`

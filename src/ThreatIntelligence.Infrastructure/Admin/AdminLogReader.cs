@@ -26,6 +26,50 @@ public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
             return [];
         }
 
+        var entries = await ReadMatchingAsync(level, source, correlationId, null, null, cancellationToken);
+        return entries
+            .OrderByDescending(entry => entry.Timestamp)
+            .Take(count)
+            .ToList();
+    }
+
+    public async Task<AdminLogPage> ReadPageAsync(
+        int page,
+        int pageSize,
+        string? level,
+        string source,
+        string? correlationId,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        string orderDir,
+        CancellationToken cancellationToken)
+    {
+        var entries = await ReadMatchingAsync(
+            level,
+            source,
+            correlationId,
+            dateFrom,
+            dateTo,
+            cancellationToken);
+        var ordered = string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase)
+            ? entries.OrderBy(entry => entry.Timestamp)
+            : entries.OrderByDescending(entry => entry.Timestamp);
+
+        return new AdminLogPage(
+            ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+            page,
+            pageSize,
+            entries.Count);
+    }
+
+    private async Task<List<AdminLogEntry>> ReadMatchingAsync(
+        string? level,
+        string source,
+        string? correlationId,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        CancellationToken cancellationToken)
+    {
         var entries = new List<AdminLogEntry>();
         foreach (var file in CandidateFiles(source))
         {
@@ -50,17 +94,15 @@ public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
             {
                 if (TryParse(lines[index], out var entry)
                     && Matches(entry.Level, level)
-                    && MatchesCorrelation(entry.CorrelationId, correlationId))
+                    && MatchesCorrelation(entry.CorrelationId, correlationId)
+                    && MatchesDate(entry.Timestamp, dateFrom, dateTo))
                 {
                     entries.Add(entry);
                 }
             }
         }
 
-        return entries
-            .OrderByDescending(entry => entry.Timestamp)
-            .Take(count)
-            .ToList();
+        return entries;
     }
 
     private IEnumerable<string> CandidateFiles(string source)
@@ -95,6 +137,13 @@ public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
     private static bool MatchesCorrelation(string? entryValue, string? requestedValue) =>
         string.IsNullOrWhiteSpace(requestedValue)
         || string.Equals(entryValue, requestedValue.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private static bool MatchesDate(
+        DateTimeOffset timestamp,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo) =>
+        (!dateFrom.HasValue || timestamp >= dateFrom.Value)
+        && (!dateTo.HasValue || timestamp < dateTo.Value);
 
     private static bool TryParse(string line, out AdminLogEntry entry)
     {

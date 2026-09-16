@@ -125,6 +125,15 @@ export type AdminLogEntry = z.infer<typeof adminLogEntrySchema>
 
 export const adminLogListSchema = z.array(adminLogEntrySchema)
 
+export const adminLogPageSchema = z.object({
+  items: z.array(adminLogEntrySchema),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  totalCount: z.number().int(),
+})
+
+export type AdminLogPage = z.infer<typeof adminLogPageSchema>
+
 /* -------------------------------------------------------------------------- */
 /*  Settings (read + write)                                                  */
 /* -------------------------------------------------------------------------- */

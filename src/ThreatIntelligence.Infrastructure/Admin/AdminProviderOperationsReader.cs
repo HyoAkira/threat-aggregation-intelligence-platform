@@ -28,6 +28,10 @@ public sealed class AdminProviderOperationsReader(IDbContextFactory<ThreatIntell
         int providerId,
         int page,
         int pageSize,
+        DateTime? dateFrom,
+        DateTime? dateTo,
+        string orderBy,
+        string orderDir,
         CancellationToken cancellationToken)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -37,10 +41,25 @@ public sealed class AdminProviderOperationsReader(IDbContextFactory<ThreatIntell
         }
 
         var query = context.FetchHistory.AsNoTracking().Where(history => history.ProviderId == providerId);
+        if (dateFrom.HasValue)
+        {
+            query = query.Where(history => history.StartedAt >= dateFrom.Value);
+        }
+
+        if (dateTo.HasValue)
+        {
+            query = query.Where(history => history.StartedAt < dateTo.Value);
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query
-            .OrderByDescending(history => history.StartedAt)
-            .ThenByDescending(history => history.Id)
+        var ordered = orderBy == "finishedAt"
+            ? string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase)
+                ? query.OrderBy(history => history.FinishedAt).ThenBy(history => history.Id)
+                : query.OrderByDescending(history => history.FinishedAt).ThenByDescending(history => history.Id)
+            : string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase)
+                ? query.OrderBy(history => history.StartedAt).ThenBy(history => history.Id)
+                : query.OrderByDescending(history => history.StartedAt).ThenByDescending(history => history.Id);
+        var items = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
