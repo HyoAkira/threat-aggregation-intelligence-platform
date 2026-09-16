@@ -19,7 +19,8 @@ public sealed class BrowseIocsHandler(IIocQueryReader reader)
 
     private static IocBrowseCriteria BuildCriteria(BrowseIocsQuery request)
     {
-        var type = ParseType(request.Type);
+        var types = ParseTypes(request.Type);
+        var type = types.Count == 1 ? types[0] : (Domain.Enums.IocType?)null;
         var provider = NormalizeProvider(request.Provider);
         var orderBy = ParseOrderBy(request.OrderBy);
         var descending = ParseDirection(request.Dir);
@@ -51,24 +52,31 @@ public sealed class BrowseIocsHandler(IIocQueryReader reader)
             orderBy,
             descending,
             page,
-            pageSize);
+            pageSize,
+            types.Count > 1 ? types : null);
     }
 
-    private static Domain.Enums.IocType? ParseType(string? type)
+    private static IReadOnlyList<Domain.Enums.IocType> ParseTypes(string? type)
     {
         if (string.IsNullOrWhiteSpace(type))
         {
-            return null;
+            return [];
         }
 
-        if (IocTypeToken.TryParse(type, out var parsed))
+        var parsedTypes = new List<Domain.Enums.IocType>();
+        foreach (var token in type.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            return parsed;
+            if (!IocTypeToken.TryParse(token, out var parsed))
+            {
+                throw new IocQueryValidationException(
+                    IocErrorCodes.InvalidInput,
+                    "The type filter must be one of ipv4, ipv6, domain, or url.");
+            }
+
+            if (!parsedTypes.Contains(parsed)) parsedTypes.Add(parsed);
         }
 
-        throw new IocQueryValidationException(
-            IocErrorCodes.InvalidInput,
-            "The type filter must be one of ipv4, ipv6, domain, or url.");
+        return parsedTypes;
     }
 
     private static string? NormalizeProvider(string? provider)

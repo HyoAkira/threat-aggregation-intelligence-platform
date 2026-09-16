@@ -20,6 +20,13 @@ public sealed class IocQueryReader(
     IValueHasher hasher,
     FalsePositiveEvaluator falsePositiveEvaluator) : IIocQueryReader
 {
+    public async Task<IReadOnlyList<string>> GetProviderNamesAsync(
+        CancellationToken cancellationToken) =>
+        await dbContext.Providers.AsNoTracking()
+            .OrderBy(provider => provider.Name)
+            .Select(provider => provider.Name)
+            .ToListAsync(cancellationToken);
+
     public async Task<PagedResult<IocGroupResult>> SearchGroupsAsync(
         NormalizationResult identity,
         IocSourceFilter filter,
@@ -129,7 +136,11 @@ public sealed class IocQueryReader(
         CancellationToken cancellationToken)
     {
         var baseQuery = dbContext.Iocs.AsNoTracking().AsQueryable();
-        if (criteria.Type is IocType type)
+        if (criteria.Types is { Count: > 0 } types)
+        {
+            baseQuery = baseQuery.Where(i => types.Contains(i.IocType));
+        }
+        else if (criteria.Type is IocType type)
         {
             baseQuery = baseQuery.Where(i => i.IocType == type);
         }
@@ -280,6 +291,23 @@ public sealed class IocQueryReader(
         string provider,
         CancellationToken cancellationToken)
     {
+        var providerTokens = provider
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (providerTokens.Length > 1)
+        {
+            var resolved = new HashSet<int>();
+            foreach (var token in providerTokens)
+            {
+                var resolvedIds = await ResolveProviderIdsAsync(token, cancellationToken);
+                if (resolvedIds is not null) resolved.UnionWith(resolvedIds);
+            }
+
+            return resolved.Count == 0 ? null : resolved.ToArray();
+        }
+
         if (int.TryParse(provider, out var providerId) && providerId > 0)
         {
             return [providerId];
