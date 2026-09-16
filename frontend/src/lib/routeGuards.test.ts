@@ -1,10 +1,10 @@
 import { isRedirect } from '@tanstack/react-router'
+import { createSessionStorageStub, makeSession } from '../test/fixtures'
 import { useAuthStore } from './authStore'
-import { requireAdmin, requireSession } from './routeGuards'
 import { resolveLoginRedirect } from './loginRedirect'
 import { queryClient } from './queryClient'
+import { requireAdmin, requireSession } from './routeGuards'
 import { SESSION_STORAGE_KEY } from './session'
-import { createSessionStorageStub, makeSession } from '../test/fixtures'
 
 function catchRedirect(action: () => void): unknown {
   try {
@@ -80,6 +80,7 @@ describe('resolveLoginRedirect', () => {
   it('defaults to the search experience', () => {
     expect(resolveLoginRedirect(undefined)).toBe('/search')
     expect(resolveLoginRedirect('')).toBe('/search')
+    expect(resolveLoginRedirect(undefined, '/admin')).toBe('/admin')
   })
 
   it('resumes the originally requested protected page', () => {

@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import { z } from 'zod'
+import { focusRingClass } from '../components/AppShell'
+import { ErrorState } from '../components/uiStates'
 import { ApiError, login } from '../lib/apiClient'
 import { currentSession, startSession } from '../lib/authStore'
 import { resolveLoginRedirect } from '../lib/loginRedirect'
-import { focusRingClass } from '../components/AppShell'
-import { ErrorState } from '../components/uiStates'
 
 const loginSearchSchema = z.object({
   redirect: z.coerce.string().optional(),
@@ -14,9 +14,14 @@ const loginSearchSchema = z.object({
 export const Route = createFileRoute('/login')({
   validateSearch: loginSearchSchema,
   beforeLoad: ({ search }) => {
-    if (currentSession()) {
-      throw redirect({ to: resolveLoginRedirect(search.redirect) })
-    }
+    const session = currentSession()
+    if (session)
+      throw redirect({
+        to: resolveLoginRedirect(
+          search.redirect,
+          session.role === 'Admin' ? '/admin' : '/search',
+        ),
+      })
   },
   component: LoginPage,
 })
@@ -25,7 +30,7 @@ const inputClass = `w-full rounded-md border border-slate-400 px-3 py-2 text-sla
 
 function LoginPage() {
   const navigate = useNavigate()
-  const redirectTarget = resolveLoginRedirect(Route.useSearch().redirect)
+  const redirectParam = Route.useSearch().redirect
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [pending, setPending] = useState(false)
@@ -46,7 +51,12 @@ function LoginPage() {
     try {
       const response = await login(username.trim(), password)
       startSession(response)
-      await navigate({ to: redirectTarget as '/' })
+      await navigate({
+        to: resolveLoginRedirect(
+          redirectParam,
+          response.role === 'Admin' ? '/admin/providers' : '/search',
+        ) as '/',
+      })
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) {
         setError({ message: 'Invalid username or password.' })
