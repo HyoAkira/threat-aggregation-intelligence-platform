@@ -46,7 +46,7 @@ services:
         condition: service_healthy
     networks: [devNetwork]
     ports: ["8080:8080"]
-    volumes: [api_logs:/app/logs]
+    volumes: [shared_logs:/app/logs]
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health || exit 1"]
@@ -72,7 +72,7 @@ services:
     networks: [devNetwork]
     ports: ["8081:8080"]
     volumes:
-      - worker_logs:/app/logs
+      - shared_logs:/app/logs
       - worker_data:/app/data
     restart: unless-stopped
     healthcheck:
@@ -104,9 +104,8 @@ networks:
     driver: bridge
 
 volumes:
-  api_logs:
   db_mssql_data:
   db_testmssql_data:
   rabbitmq_data:
   worker_data:
-  worker_logs:
+  shared_logs:

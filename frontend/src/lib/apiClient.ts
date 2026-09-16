@@ -311,9 +311,11 @@ export function getAdminSummary(signal?: AbortSignal): Promise<AdminSummary> {
 export function getAdminLogs(
   count: number,
   level: string | null,
+  source: 'api' | 'worker' | 'all' = 'api',
+  correlationId: string | null = null,
   signal?: AbortSignal,
 ): Promise<AdminLogEntry[]> {
-  return apiFetch(`/admin/logs${buildQuery({ count, level })}`, {
+  return apiFetch(`/admin/logs${buildQuery({ count, level, source, correlationId })}`, {
     schema: adminLogListSchema,
     signal,
   })

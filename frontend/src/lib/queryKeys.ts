@@ -53,7 +53,11 @@ export const adminFetchJobKey = (jobId: string) =>
 
 export const adminSummaryKey = () => ['admin', 'summary'] as const
 
-export const adminLogsKey = (count: number, level: string | null) =>
-  ['admin', 'logs', count, level] as const
+export const adminLogsKey = (
+  count: number,
+  level: string | null,
+  source: string,
+  correlationId: string | null,
+) => ['admin', 'logs', count, level, source, correlationId] as const
 
 export const adminSettingsKey = () => ['admin', 'settings'] as const

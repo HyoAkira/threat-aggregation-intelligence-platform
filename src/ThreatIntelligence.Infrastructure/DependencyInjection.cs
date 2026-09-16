@@ -61,7 +61,9 @@ public static class DependencyInjection
         services.AddScoped<IAdminSummaryReader, AdminSummaryReader>();
         services.AddSingleton(new AdminLogOptions(
             configuration["Admin:LogDirectory"] is { Length: > 0 } logDirectory ? logDirectory : "logs",
-            configuration["Admin:LogFilePrefix"] is { Length: > 0 } logPrefix ? logPrefix : "api-"));
+            configuration["Admin:LogFilePrefix"] is { Length: > 0 } logPrefix ? logPrefix : "api-",
+            configuration["Admin:WorkerLogFilePrefix"] is { Length: > 0 } workerLogPrefix ? workerLogPrefix : "worker-",
+            configuration["Admin:WorkerLogDirectory"]));
         services.AddSingleton<IAdminLogReader, AdminLogReader>();
         services.AddSingleton(new RawStorageOptions(
             configuration["RawStorage:BasePath"] is { Length: > 0 } rawStoragePath ? rawStoragePath : "data/providers"));

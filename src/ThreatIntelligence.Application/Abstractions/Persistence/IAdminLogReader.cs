@@ -12,5 +12,7 @@ public interface IAdminLogReader
     Task<IReadOnlyList<AdminLogEntry>> ReadAsync(
         int count,
         string? level,
+        string source,
+        string? correlationId,
         CancellationToken cancellationToken);
 }

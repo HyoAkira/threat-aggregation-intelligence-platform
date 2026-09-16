@@ -279,7 +279,33 @@ function HistoryPanel({
   onClose: () => void
 }) {
   const [inspectingError, setInspectingError] = useState<string | null>(null)
+  const [copyNotice, setCopyNotice] = useState<string | null>(null)
+  const copyNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pageSize = 20
+
+  useEffect(() => {
+    return () => {
+      if (copyNoticeTimer.current) clearTimeout(copyNoticeTimer.current)
+    }
+  }, [])
+
+  function showCopyNotice(message: string) {
+    setCopyNotice(message)
+    if (copyNoticeTimer.current) clearTimeout(copyNoticeTimer.current)
+    copyNoticeTimer.current = setTimeout(() => setCopyNotice(null), 2500)
+  }
+
+  function copyJobId(jobId: string) {
+    const clipboard = navigator.clipboard as Clipboard | undefined
+    if (!clipboard?.writeText) {
+      showCopyNotice('Copy is not available in this browser.')
+      return
+    }
+    void clipboard.writeText(jobId).then(
+      () => showCopyNotice('Job ID copied.'),
+      () => showCopyNotice('Copy failed.'),
+    )
+  }
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: adminHistoryKey(providerId, page, pageSize),
@@ -352,11 +378,16 @@ function HistoryPanel({
                     key={item.jobId}
                     className="hover:bg-surface-container-low/50"
                   >
-                    <td
-                      className="px-4 py-2 font-mono text-[11px] text-on-surface-variant"
-                      title={item.jobId}
-                    >
-                      {item.jobId.slice(0, 8)}…
+                    <td className="px-4 py-2 font-mono text-[11px] text-on-surface-variant">
+                      <button
+                        type="button"
+                        onClick={() => copyJobId(item.jobId)}
+                        title={`Copy ${item.jobId}`}
+                        aria-label={`Copy job ID ${item.jobId}`}
+                        className={`max-w-28 truncate rounded px-1 text-left hover:bg-surface-container ${focusRingClass}`}
+                      >
+                        {item.jobId.slice(0, 8)}…
+                      </button>
                     </td>
                     <td className="px-4 py-2">
                       <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-on-surface-variant">
@@ -441,6 +472,19 @@ function HistoryPanel({
           onClose={() => setInspectingError(null)}
         />
       )}
+
+      {copyNotice ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded bg-inverse-surface px-4 py-2 font-mono text-xs text-inverse-on-surface"
+        >
+          <span aria-hidden="true" className="material-symbols-outlined text-[16px] text-tertiary-fixed">
+            {copyNotice === 'Job ID copied.' ? 'check_circle' : 'info'}
+          </span>
+          <span>{copyNotice}</span>
+        </div>
+      ) : null}
     </div>
   )
 }
