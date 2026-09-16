@@ -9,7 +9,7 @@ import type { IocGroup, PagedIocGroups } from './schemas'
  */
 export const browseTableColumns = [
   { name: 'iocValue', orderBy: 'iocValue', orderable: true, searchable: false },
-  { name: 'iocType', orderBy: 'iocType', orderable: false, searchable: false },
+  { name: 'iocType', orderBy: 'iocType', orderable: true, searchable: false },
   { name: 'threatLabel', orderBy: null, orderable: false, searchable: false },
   { name: 'providers', orderBy: null, orderable: false, searchable: false },
   {

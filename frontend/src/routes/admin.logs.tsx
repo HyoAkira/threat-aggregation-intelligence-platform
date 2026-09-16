@@ -130,9 +130,20 @@ function AdminLogsPage() {
     isFetching,
     dataUpdatedAt,
   } = useQuery({
-    queryKey: adminLogsKey(effectiveCount, effectiveLevel, source, effectiveCorrelationId),
+    queryKey: adminLogsKey(
+      effectiveCount,
+      effectiveLevel,
+      source,
+      effectiveCorrelationId,
+    ),
     queryFn: ({ signal }) =>
-      getAdminLogs(effectiveCount, effectiveLevel, source, effectiveCorrelationId, signal),
+      getAdminLogs(
+        effectiveCount,
+        effectiveLevel,
+        source,
+        effectiveCorrelationId,
+        signal,
+      ),
   })
 
   useEffect(() => {
@@ -142,7 +153,12 @@ function AdminLogsPage() {
 
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({
-      queryKey: adminLogsKey(effectiveCount, effectiveLevel, source, effectiveCorrelationId),
+      queryKey: adminLogsKey(
+        effectiveCount,
+        effectiveLevel,
+        source,
+        effectiveCorrelationId,
+      ),
     })
   }, [queryClient, effectiveCount, effectiveLevel])
 
@@ -205,8 +221,18 @@ function AdminLogsPage() {
       {/* Controls */}
       <div className="mt-4 flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1">
-          <label htmlFor="log-source" className="font-mono text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Source</label>
-          <select id="log-source" value={source} onChange={(e) => setSource(e.target.value as typeof source)} className="rounded border border-outline-variant bg-surface-container-lowest px-3 py-1.5 font-body text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+          <label
+            htmlFor="log-source"
+            className="font-mono text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant"
+          >
+            Source
+          </label>
+          <select
+            id="log-source"
+            value={source}
+            onChange={(e) => setSource(e.target.value as typeof source)}
+            className="rounded border border-outline-variant bg-surface-container-lowest px-3 py-1.5 font-body text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
             <option value="api">API logs</option>
             <option value="worker">Worker logs</option>
             <option value="all">API + Worker</option>
@@ -236,8 +262,19 @@ function AdminLogsPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="correlation-id" className="font-mono text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Correlation ID</label>
-          <input id="correlation-id" value={correlationId} onChange={(e) => setCorrelationId(e.target.value)} placeholder="Optional" className="w-52 rounded border border-outline-variant bg-surface-container-lowest px-3 py-1.5 font-mono text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+          <label
+            htmlFor="correlation-id"
+            className="font-mono text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant"
+          >
+            Correlation ID
+          </label>
+          <input
+            id="correlation-id"
+            value={correlationId}
+            onChange={(e) => setCorrelationId(e.target.value)}
+            placeholder="Optional"
+            className="w-52 rounded border border-outline-variant bg-surface-container-lowest px-3 py-1.5 font-mono text-[13px] text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
         </div>
 
         {/* Count */}

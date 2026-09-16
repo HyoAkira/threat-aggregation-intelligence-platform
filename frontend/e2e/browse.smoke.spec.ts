@@ -61,7 +61,10 @@ const longUrlGroup = {
 }
 
 async function mockBrowse(page: Page) {
-  await page.route('**/api/iocs**', async (route) => {
+  await page.route(/\/api\/iocs\/providers(\?.*)?$/, async (route) => {
+    await route.fulfill({ json: ['ThreatFox', 'PhishTank'] })
+  })
+  await page.route(/\/api\/iocs(\?.*)?$/, async (route) => {
     const url = new URL(route.request().url())
     const requestedPage = Number(url.searchParams.get('page') ?? '1')
     const pageSize = Number(url.searchParams.get('pageSize') ?? '20')
@@ -123,7 +126,10 @@ test('every table draw calls only GET /api/iocs with normalized bounded filters'
   })
 
   const iocRequests: URL[] = []
-  await page.route('**/api/iocs**', async (route) => {
+  await page.route(/\/api\/iocs\/providers(\?.*)?$/, async (route) => {
+    await route.fulfill({ json: ['ThreatFox', 'PhishTank'] })
+  })
+  await page.route(/\/api\/iocs(\?.*)?$/, async (route) => {
     const url = new URL(route.request().url())
     iocRequests.push(url)
     const requestedPage = Number(url.searchParams.get('page') ?? '1')
@@ -170,9 +176,12 @@ test('every table draw calls only GET /api/iocs with normalized bounded filters'
   }
 
   // The table never calls another API surface, and always uses GET.
+  // `/api/iocs/providers` is the public filter catalog, not a table request.
   expect(apiRequests.length).toBeGreaterThan(0)
   for (const request of apiRequests) {
     expect(request.method).toBe('GET')
-    expect(new URL(request.url).pathname).toBe('/api/iocs')
+    expect(['/api/iocs', '/api/iocs/providers']).toContain(
+      new URL(request.url).pathname,
+    )
   }
 })
