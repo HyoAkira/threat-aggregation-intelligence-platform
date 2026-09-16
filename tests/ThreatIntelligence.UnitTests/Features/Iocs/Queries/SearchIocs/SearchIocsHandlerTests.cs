@@ -28,14 +28,14 @@ public sealed class SearchIocsHandlerTests
             reader);
 
         var result = await handler.Handle(
-            new SearchIocsQuery("  EXAMPLE.com  ", " BotNet ", 2),
+            new SearchIocsQuery("  EXAMPLE.com  ", " BotNet ", "2"),
             CancellationToken.None);
 
         Assert.Same(Group, Assert.Single(result.Items));
         Assert.Equal(IocType.Domain, reader.Identity!.Type);
         Assert.Equal("example.com", reader.Identity.IocValue);
         Assert.Equal(" BotNet ", reader.Filter!.Tag);
-        Assert.Equal(2, reader.Filter.ProviderId);
+        Assert.Equal("2", reader.Filter.Provider);
     }
 
     [Fact]
