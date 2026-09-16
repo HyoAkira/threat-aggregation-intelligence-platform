@@ -4,8 +4,11 @@
  * accepts only same-application paths so a tampered parameter can never turn
  * login into an open redirect, and never loops back to login itself.
  */
-export function resolveLoginRedirect(raw: string | undefined): string {
-  if (!raw) return '/search'
+export function resolveLoginRedirect(
+  raw: string | undefined,
+  fallback = '/search',
+): string {
+  if (!raw) return fallback
   if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\'))
     return '/search'
   if (

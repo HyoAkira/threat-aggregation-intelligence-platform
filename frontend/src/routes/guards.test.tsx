@@ -1,12 +1,12 @@
+import { useAuthStore } from '../lib/authStore'
+import { queryClient } from '../lib/queryClient'
+import { iocDetailKey } from '../lib/queryKeys'
+import { makeSession, urlGroup } from '../test/fixtures'
 import {
   loadAppRoute,
   renderAppRoute,
   resetClientState,
 } from '../test/renderApp'
-import { useAuthStore } from '../lib/authStore'
-import { queryClient } from '../lib/queryClient'
-import { iocDetailKey } from '../lib/queryKeys'
-import { makeSession, urlGroup } from '../test/fixtures'
 
 function setState(session: ReturnType<typeof makeSession> | null) {
   useAuthStore.setState({ session })
@@ -93,6 +93,15 @@ describe('route guards through the real router', () => {
     expect(result.type).toBe('redirect')
     if (result.type !== 'redirect') return
     expect(result.to).toBe('/search')
+  })
+
+  it('a signed-in Admin opening /login is routed to the Admin experience', async () => {
+    setState(makeSession({ role: 'Admin' }))
+    const result = await loadAppRoute('/login')
+
+    expect(result.type).toBe('redirect')
+    if (result.type !== 'redirect') return
+    expect(result.to).toBe('/admin')
   })
 
   it('the entry route renders the public search hub instead of redirecting', async () => {
