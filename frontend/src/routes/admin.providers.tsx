@@ -479,7 +479,10 @@ function HistoryPanel({
           aria-live="polite"
           className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded bg-inverse-surface px-4 py-2 font-mono text-xs text-inverse-on-surface"
         >
-          <span aria-hidden="true" className="material-symbols-outlined text-[16px] text-tertiary-fixed">
+          <span
+            aria-hidden="true"
+            className="material-symbols-outlined text-[16px] text-tertiary-fixed"
+          >
             {copyNotice === 'Job ID copied.' ? 'check_circle' : 'info'}
           </span>
           <span>{copyNotice}</span>

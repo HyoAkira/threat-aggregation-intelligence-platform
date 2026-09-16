@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { queryClient } from './lib/queryClient'
 import { browseKey, iocDetailKey, iocRelationsKey } from './lib/queryKeys'
 import { defaultBrowseParams } from './lib/browseParams'
@@ -5,9 +7,9 @@ import { renderAppRoute, resetClientState } from './test/renderApp'
 import { ipv4Group, makePaged, urlGroup } from './test/fixtures'
 
 /**
- * Basic accessibility audit over the server-rendered application markup:
- * one h1 per page, labelled inputs, named interactive controls, a skip link,
- * landmark structure, sensible tab order, and visible keyboard focus styles.
+ * Basic accessibility audit over the rendered application markup: one h1 per
+ * page, labelled inputs, named interactive controls, a skip link, landmark
+ * structure, sensible tab order, and visible keyboard focus styles.
  */
 function auditPage(markup: string, name: string) {
   const issues: string[] = []
@@ -15,9 +17,6 @@ function auditPage(markup: string, name: string) {
   const h1Count = (markup.match(/<h1[\s>]/g) ?? []).length
   if (h1Count !== 1)
     issues.push(`${name}: expected exactly one h1, found ${h1Count}`)
-
-  if (!markup.includes('<html lang="en"'))
-    issues.push(`${name}: html lang attribute missing`)
 
   // Every input needs a programmatically associated label.
   const inputTags = markup.match(/<input\b[^>]*>/g) ?? []
@@ -125,5 +124,18 @@ describe('basic accessibility audit', () => {
       'detail',
     )
     expect(issues).toEqual([])
+  })
+})
+
+describe('static entry document', () => {
+  it('declares the language, head resources, and root mount point', () => {
+    const entry = readFileSync(join(__dirname, '..', 'index.html'), 'utf8')
+
+    expect(entry).toContain('<html lang="en"')
+    expect(entry).toContain('name="viewport"')
+    expect(entry).toContain('<title>Threat Intelligence</title>')
+    expect(entry).toContain('fonts.googleapis.com')
+    expect(entry).toContain('id="root"')
+    expect(entry).toContain('src="/src/main.tsx"')
   })
 })

@@ -16,7 +16,6 @@ import {
   createRouter,
 } from '@tanstack/react-router'
 import { routeTree } from '../routeTree.gen'
-import { Route as RootRoute } from './__root'
 import { ApiError } from '../lib/apiErrors'
 import type { BrowseParams } from '../lib/browseParams'
 import type { IocGroup, PagedIocGroups } from '../lib/schemas'
@@ -102,10 +101,6 @@ async function flush() {
 
 beforeAll(() => {
   window.scrollTo = jest.fn()
-  // The root route's shell renders a full <html> document, which cannot nest
-  // inside the test container and forces React to remount the subtree.
-  ;(RootRoute.options as { shellComponent?: unknown }).shellComponent =
-    undefined
 })
 
 beforeEach(() => {

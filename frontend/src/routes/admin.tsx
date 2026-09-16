@@ -8,11 +8,10 @@ import { requireAdmin } from '../lib/routeGuards'
 import { focusRingClass } from '../components/AppShell'
 
 export const Route = createFileRoute('/admin')({
-  // The session is kept in browser sessionStorage, which the server cannot
-  // read. Rendering this route client-only keeps the guard from running during
-  // SSR with an empty store, which would redirect a valid session to /login on
-  // every page refresh. Children inherit `ssr: false`.
-  ssr: false,
+  // Admin access is guarded in the browser: the session lives in sessionStorage,
+  // which the router restores before the first render, so a direct load with a
+  // valid Admin session is permitted while a missing or non-Admin session
+  // follows the existing guard redirects. Children inherit this guard.
   beforeLoad: ({ location }) => {
     requireAdmin(location)
   },

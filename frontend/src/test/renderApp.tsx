@@ -23,19 +23,19 @@ export function createAppRouter(path = '/'): ReturnType<typeof createRouter> {
   })
 }
 
-type ServerResult = {
+type LoadResult = {
   type?: string
   redirect?: { options?: { to?: string; search?: unknown; href?: string } }
 }
 
 /**
- * Loads one URL the way server-side rendering does: `beforeLoad` guards run and
- * any redirect they throw is reported instead of being silently committed.
+ * Loads one URL through the real router: `beforeLoad` guards run and any
+ * redirect they throw is reported instead of being silently committed.
  */
 export async function loadAppRoute(path: string): Promise<RouteLoadResult> {
   const router = createAppRouter(path)
   await router.load()
-  const result = (router as unknown as { _serverResult?: ServerResult })
+  const result = (router as unknown as { _serverResult?: LoadResult })
     ._serverResult
   if (result?.type === 'redirect') {
     return {
@@ -49,11 +49,11 @@ export async function loadAppRoute(path: string): Promise<RouteLoadResult> {
 }
 
 /**
- * Renders one URL of the real application route tree (including the root
- * document, shell, and providers) into static markup, following up to three
- * redirects the way a browser follows a 3xx. Query results must be seeded into
- * the shared query cache beforehand; no network calls happen in the Node test
- * environment.
+ * Renders one URL of the real application route tree (the SPA root route with
+ * its providers and shell, plus the matched route) to static markup, following
+ * up to three redirects the way a browser follows a 3xx. Query results must be
+ * seeded into the shared query cache beforehand; no network calls happen in the
+ * Node test environment.
  */
 export async function renderAppRoute(
   path: string,

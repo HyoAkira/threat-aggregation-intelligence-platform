@@ -1,7 +1,7 @@
 import { devtools } from '@tanstack/devtools-vite'
 import { defineConfig } from 'vite'
 
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 import tailwindcss from '@tailwindcss/vite'
 import viteReact from '@vitejs/plugin-react'
@@ -18,7 +18,15 @@ const config = defineConfig({
       },
     },
   },
-  plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
+  plugins: [
+    devtools(),
+    // Generate the type-safe file route tree before React transforms the
+    // route modules. `autoCodeSplitting` keeps the existing route-level lazy
+    // chunking that the Start plugin previously provided.
+    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    tailwindcss(),
+    viteReact(),
+  ],
 })
 
 export default config
