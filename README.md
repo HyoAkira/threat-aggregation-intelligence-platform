@@ -41,7 +41,7 @@ Threat Aggregation Intelligence Platform is a threat-intelligence ingestion and 
 ### Prerequisites
 
 - .NET SDK 10
-- Node.js and pnpm
+- Node.js and npm
 - Docker with Docker Compose
 
 ### Configure the environment
@@ -75,8 +75,8 @@ The API initializes the database on startup. Its development URL is `http://loca
 
 ```bash
 cd frontend
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 The frontend is served at `http://localhost:3000` and uses the local API target configured in `frontend/vite.config.ts`.
@@ -86,9 +86,9 @@ The frontend is served at `http://localhost:3000` and uses the local API target 
 ```bash
 dotnet test
 cd frontend
-pnpm test
-pnpm lint
-pnpm build
+npm test
+npm run lint
+npm run build
 ```
 
 Integration tests that require an isolated SQL Server can use the Compose test profile:
@@ -118,7 +118,7 @@ Scalar is intentionally not mapped in other environments by this application. Fo
 
 Docker Compose runs the backend stack as containers: SQL Server, RabbitMQ, the
 API, and the Worker. The frontend is not part of the current Compose file, so
-run it separately with pnpm.
+run it separately with npm.
 
 ### Start the containerized backend
 
@@ -173,8 +173,8 @@ With the Compose backend running, start the frontend in another terminal:
 
 ```bash
 cd frontend
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 The frontend remains available at `http://localhost:3000`; its Vite proxy sends

@@ -98,7 +98,7 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         var reader = CreateReader(fixture.CreateContext());
         var result = await reader.SearchGroupsAsync(
             new NormalizationResult(IocType.Ipv4, "7.7.7.7", null, null, null),
-            new IocSourceFilter(ProviderId: 1),
+            new IocSourceFilter(Provider: "1"),
             1,
             20,
             CancellationToken.None);
@@ -328,7 +328,7 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
 
         var reader = CreateReader(fixture.CreateContext());
         var page = await reader.BrowseAsync(
-            new IocBrowseCriteria(IocType.Url, 1, "phishing", null, null, null, null,
+            new IocBrowseCriteria(IocType.Url, "1", "phishing", null, null, null, null,
                 IocBrowseOrderBy.LastSeenUtc, true, 1, 20),
             CancellationToken.None);
 

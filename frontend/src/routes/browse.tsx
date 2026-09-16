@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { ApiError, browseIocs } from '../lib/apiClient'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  Link,
+  ClientOnly,
+  createFileRoute,
+  useNavigate,
+} from '@tanstack/react-router'
+import { ApiError } from '../lib/apiClient'
 import {
   browseDirOptions,
   browseOrderByOptions,
   browsePageSizeOptions,
   browseParamsToSearch,
-  defaultBrowseParams,
   hasActiveBrowseFilters,
   observedPeriodFrom,
   observedPeriodPresets,
@@ -16,22 +19,18 @@ import {
 } from '../lib/browseParams'
 import type { BrowseParams } from '../lib/browseParams'
 import { iocTypeTokens } from '../lib/schemas'
-import type { IocGroup } from '../lib/schemas'
-import { browseKey } from '../lib/queryKeys'
-import {
-  formatShortLocal,
-  iocTypeBadgeClass,
-  iocTypeLabels,
-  threatLabel,
-} from '../lib/iocPresentation'
+import { iocTypeLabels } from '../lib/iocPresentation'
 import { focusRingClass } from '../components/AppShell'
-import { Pagination } from '../components/Pagination'
 import {
   EmptyState,
   ErrorState,
   ForbiddenState,
   LoadingState,
 } from '../components/uiStates'
+import type {
+  BrowseTableHandle,
+  BrowseTableStatus,
+} from '../components/BrowseDataTable'
 
 export const Route = createFileRoute('/browse')({
   validateSearch: rawBrowseSearchSchema,
@@ -42,6 +41,9 @@ const controlClass =
   'mt-1 w-full rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-xs text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 const fieldLabelClass =
   'font-mono text-[10px] font-semibold uppercase tracking-wider text-outline'
+
+// Browser-only: the DataTables module is loaded dynamically beneath ClientOnly.
+const LazyBrowseTable = lazy(() => import('../components/BrowseDataTable'))
 
 function providerDraftValue(params: BrowseParams | null): string {
   return params?.provider ?? ''
@@ -63,9 +65,16 @@ function fromDatetimeLocalValue(value: string): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
-/** Distinct provider names contributing to one group, in first-seen order. */
-function providersOf(group: IocGroup): string[] {
-  return Array.from(new Set(group.sources.map((source) => source.provider)))
+function BrowseTableFallback() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="px-4 py-6 font-mono text-xs uppercase tracking-wider text-on-surface-variant"
+    >
+      Preparing the indicator table…
+    </div>
+  )
 }
 
 function BrowsePage() {
@@ -99,12 +108,23 @@ function BrowsePage() {
     setToDraft(toDatetimeLocalValue(params?.lastSeenTo ?? null))
   }, [params?.tag, params?.provider, params?.lastSeenFrom, params?.lastSeenTo])
 
-  const resolvedParams = params ?? defaultBrowseParams
-  const results = useQuery({
-    queryKey: browseKey(resolvedParams),
-    queryFn: ({ signal }) => browseIocs(resolvedParams, signal),
-    enabled: params !== null,
+  const [tableStatus, setTableStatus] = useState<BrowseTableStatus>({
+    kind: 'pending',
   })
+  const tableHandleRef = useRef<BrowseTableHandle | null>(null)
+
+  const handleTableParams = useCallback(
+    (next: BrowseParams) => {
+      void navigate({ to: '/browse', search: browseParamsToSearch(next) })
+    },
+    [navigate],
+  )
+  const openDetail = useCallback(
+    (id: number) => {
+      void navigate({ to: '/iocs/$id', params: { id: String(id) } })
+    },
+    [navigate],
+  )
 
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -131,7 +151,8 @@ function BrowsePage() {
     )
   }
 
-  const rows = results.data?.items ?? []
+  const showTable =
+    tableStatus.kind === 'pending' || tableStatus.kind === 'success'
 
   return (
     <section aria-labelledby="browse-heading">
@@ -145,9 +166,9 @@ function BrowsePage() {
             >
               Browse indicators
             </h1>
-            {results.data ? (
+            {tableStatus.kind === 'success' ? (
               <span className="rounded-full bg-surface-container-high px-2.5 py-0.5 font-mono text-[11px] font-semibold text-on-surface-variant">
-                {results.data.totalCount.toLocaleString('en-US')} IOCs
+                {tableStatus.totalCount.toLocaleString('en-US')} IOCs
               </span>
             ) : null}
           </div>
@@ -414,103 +435,71 @@ function BrowsePage() {
             </form>
           </aside>
 
-          <div className="min-w-0 flex-1">
-            {results.isPending ? (
+          <div className="w-full min-w-0 flex-1">
+            {tableStatus.kind === 'pending' ? (
               <LoadingState label="Loading indicators…" />
             ) : null}
-            {results.isError ? (
+            {tableStatus.kind === 'error' ? (
               <BrowseErrorState
-                error={results.error}
-                onRetry={() => void results.refetch()}
+                error={tableStatus.error}
+                onRetry={() => tableHandleRef.current?.reload()}
+              />
+            ) : null}
+            {tableStatus.kind === 'forbidden' ? (
+              <ForbiddenState message="You do not have permission to browse indicators." />
+            ) : null}
+            {tableStatus.kind === 'empty' ? (
+              <EmptyState
+                title="No indicators found"
+                message="No stored indicators match the current filters."
+                action={
+                  hasActiveBrowseFilters(params) ? (
+                    <Link
+                      to="/browse"
+                      search={() => ({})}
+                      className={`font-medium text-primary underline underline-offset-2 ${focusRingClass}`}
+                    >
+                      Clear filters
+                    </Link>
+                  ) : undefined
+                }
               />
             ) : null}
 
-            {results.data ? (
-              results.data.items.length === 0 ? (
-                <EmptyState
-                  title="No indicators found"
-                  message="No stored indicators match the current filters."
-                  action={
-                    hasActiveBrowseFilters(params) ? (
-                      <Link
-                        to="/browse"
-                        search={() => ({})}
-                        className={`font-medium text-primary underline underline-offset-2 ${focusRingClass}`}
-                      >
-                        Clear filters
-                      </Link>
-                    ) : undefined
-                  }
-                />
-              ) : (
-                <div className="overflow-hidden rounded border border-outline-variant bg-surface-container-lowest">
-                  <div className="w-full overflow-x-auto">
-                    <table className="w-full border-collapse text-left">
-                      <thead>
-                        <tr className="h-9 select-none border-b border-outline-variant/60 bg-surface-container-low font-mono text-[10px] uppercase tracking-wider text-outline">
-                          <th scope="col" className="px-3 py-2 font-semibold">
-                            Indicator
-                          </th>
-                          <th scope="col" className="px-2 py-2 font-semibold">
-                            Type
-                          </th>
-                          <th scope="col" className="px-2 py-2 font-semibold">
-                            Threat family / campaign
-                          </th>
-                          <th scope="col" className="px-2 py-2 font-semibold">
-                            Providers
-                          </th>
-                          <th scope="col" className="px-2 py-2 font-semibold">
-                            First seen
-                          </th>
-                          <th scope="col" className="px-2 py-2 font-semibold">
-                            Last seen
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-3 py-2 text-right font-semibold"
-                          >
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-outline-variant/40">
-                        {rows.map((group) => (
-                          <ExplorerRow
-                            key={group.id}
-                            group={group}
-                            onCopy={copyIndicator}
-                          />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-outline-variant/60 bg-surface-container-low/40 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
-                    <span className="flex items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className="h-2 w-2 rounded-full bg-tertiary"
-                      />
-                      Showing {rows.length} of{' '}
-                      {results.data.totalCount.toLocaleString('en-US')} matched
-                      indicators
-                    </span>
-                    <span>Source-attributed · page {results.data.page}</span>
-                  </div>
-                </div>
-              )
-            ) : null}
-
-            {results.data && results.data.items.length > 0 ? (
-              <div className="mt-4 overflow-hidden rounded border border-outline-variant">
-                <Pagination
-                  page={results.data.page}
-                  pageSize={results.data.pageSize}
-                  totalCount={results.data.totalCount}
-                  onPage={(page) => goTo({ page })}
-                />
+            <div
+              className={`overflow-hidden rounded border border-outline-variant bg-surface-container-lowest ${
+                showTable ? '' : 'hidden'
+              }`}
+            >
+              <div className="w-full overflow-x-auto">
+                <ClientOnly fallback={<BrowseTableFallback />}>
+                  <Suspense fallback={<BrowseTableFallback />}>
+                    <LazyBrowseTable
+                      ref={tableHandleRef}
+                      params={params}
+                      onTableParams={handleTableParams}
+                      onStatus={setTableStatus}
+                      onCopy={copyIndicator}
+                      onOpenDetail={openDetail}
+                    />
+                  </Suspense>
+                </ClientOnly>
               </div>
-            ) : null}
+              {tableStatus.kind === 'success' ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-outline-variant/60 bg-surface-container-low/40 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
+                  <span className="flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 rounded-full bg-tertiary"
+                    />
+                    Showing {tableStatus.shown} of{' '}
+                    {tableStatus.totalCount.toLocaleString('en-US')} matched
+                    indicators
+                  </span>
+                  <span>Source-attributed · page {tableStatus.page}</span>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       )}
@@ -531,99 +520,6 @@ function BrowsePage() {
         </div>
       ) : null}
     </section>
-  )
-}
-
-function ExplorerRow({
-  group,
-  onCopy,
-}: {
-  group: IocGroup
-  onCopy: (value: string) => void
-}) {
-  const label = threatLabel(group)
-  const providers = providersOf(group)
-
-  return (
-    <tr className="group align-top transition-colors hover:bg-surface-container-low/60">
-      <td className="px-3 py-2.5">
-        <div className="flex items-center gap-2">
-          <Link
-            to="/iocs/$id"
-            params={{ id: String(group.id) }}
-            className={`max-w-[16rem] truncate font-mono text-xs font-semibold text-on-surface underline-offset-2 hover:text-primary hover:underline ${focusRingClass}`}
-          >
-            {group.iocValue}
-          </Link>
-          <button
-            type="button"
-            aria-label={`Copy ${group.iocValue}`}
-            onClick={() => onCopy(group.iocValue)}
-            className={`rounded p-1 text-outline opacity-0 transition-all hover:bg-surface-container hover:text-on-surface group-hover:opacity-100 focus-visible:opacity-100 ${focusRingClass}`}
-          >
-            <span
-              aria-hidden="true"
-              className="material-symbols-outlined text-[14px]"
-            >
-              content_copy
-            </span>
-          </button>
-        </div>
-      </td>
-      <td className="px-2 py-2.5">
-        <span
-          className={`rounded px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${iocTypeBadgeClass[group.iocType]}`}
-        >
-          {iocTypeLabels[group.iocType]}
-        </span>
-      </td>
-      <td className="px-2 py-2.5">
-        {label ? (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-on-surface">
-            <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full bg-error"
-            />
-            {label}
-          </span>
-        ) : (
-          <span className="text-xs text-outline">—</span>
-        )}
-      </td>
-      <td className="px-2 py-2.5">
-        <div className="flex flex-wrap items-center gap-1">
-          {providers.map((provider) => (
-            <span
-              key={provider}
-              className="rounded bg-surface-container-high px-1.5 py-0.5 font-mono text-[10px] font-medium text-on-surface-variant"
-            >
-              {provider}
-            </span>
-          ))}
-        </div>
-      </td>
-      <td className="px-2 py-2.5 font-mono text-[10px] text-outline">
-        {formatShortLocal(group.firstSeenUtc) ?? '—'}
-      </td>
-      <td className="px-2 py-2.5 font-mono text-[10px] text-outline">
-        {formatShortLocal(group.lastSeenUtc ?? null) ?? '—'}
-      </td>
-      <td className="px-3 py-2.5 text-right">
-        <Link
-          to="/iocs/$id"
-          params={{ id: String(group.id) }}
-          className={`inline-flex items-center gap-1 rounded px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-surface-container ${focusRingClass}`}
-        >
-          Analyze
-          <span
-            aria-hidden="true"
-            className="material-symbols-outlined text-[14px]"
-          >
-            arrow_forward
-          </span>
-        </Link>
-      </td>
-    </tr>
   )
 }
 

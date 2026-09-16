@@ -90,6 +90,195 @@
   }
 }
 
+/*
+ * DataTables unstyled core generates structural DOM (container, layout rows,
+ * pager, processing indicator, header wrappers). These rules map that structure
+ * onto the existing design tokens; no DataTables theme CSS is imported.
+ */
+@layer components {
+  .dt-container {
+    position: relative;
+  }
+
+  table.dataTable {
+    width: 100%;
+  }
+
+  /* DataTables generates the body cells, so their padding lives here rather
+   * than in the React slots. Matches the header's px-3/py-2 rhythm with extra
+   * vertical room so the first row does not sit against the header. */
+  table.dataTable tbody td {
+    padding: 0.625rem 0.5rem;
+  }
+
+  table.dataTable tbody td:first-child {
+    padding-inline-start: 0.75rem;
+  }
+
+  table.dataTable tbody td:last-child {
+    padding-inline-end: 0.75rem;
+  }
+
+  .dt-column-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .dt-column-order {
+    position: relative;
+    display: inline-block;
+    width: 0.8em;
+    height: 1.25em;
+    flex: none;
+  }
+
+  .dt-column-order::before,
+  .dt-column-order::after {
+    position: absolute;
+    left: 0.05em;
+    font-size: 8px;
+    line-height: 1;
+    color: var(--color-outline);
+    opacity: 0;
+    transition: opacity 100ms ease;
+  }
+
+  .dt-column-order::before {
+    content: '\25B2';
+    top: 0;
+  }
+
+  .dt-column-order::after {
+    content: '\25BC';
+    bottom: 0;
+  }
+
+  th.dt-orderable-none .dt-column-order {
+    display: none;
+  }
+
+  th.dt-orderable-asc,
+  th.dt-orderable-desc {
+    cursor: pointer;
+  }
+
+  /* Sortable columns show a faint, separated up/down hint. */
+  th.dt-orderable-asc .dt-column-order::before,
+  th.dt-orderable-desc .dt-column-order::after {
+    opacity: 0.3;
+  }
+
+  th.dt-orderable-asc:hover .dt-column-order::before,
+  th.dt-orderable-desc:hover .dt-column-order::after {
+    opacity: 0.8;
+  }
+
+  /* When sorted, only the active direction is visible. */
+  th.dt-ordering-asc .dt-column-order::before {
+    color: var(--color-primary);
+    opacity: 1;
+  }
+
+  th.dt-ordering-asc .dt-column-order::after {
+    opacity: 0;
+  }
+
+  th.dt-ordering-desc .dt-column-order::after {
+    color: var(--color-primary);
+    opacity: 1;
+  }
+
+  th.dt-ordering-desc .dt-column-order::before {
+    opacity: 0;
+  }
+
+  .dt-layout-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-top: 1px solid
+      color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--color-surface-container-low) 40%,
+      transparent
+    );
+    padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-on-surface-variant);
+  }
+
+  .dt-layout-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .dt-paging {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .dt-paging-button {
+    cursor: pointer;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: 0.25rem;
+    background-color: var(--color-surface-container-lowest);
+    padding: 0.375rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-on-surface);
+    transition: background-color 120ms ease;
+  }
+
+  .dt-paging-button:hover:not(.disabled):not(.current) {
+    background-color: var(--color-surface-container-low);
+  }
+
+  .dt-paging-button.current {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+
+  .dt-paging-button.disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .dt-paging-button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .dt-processing {
+    position: absolute;
+    top: 0;
+    inset-inline: 0;
+    margin: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: var(--color-inverse-surface);
+    padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-inverse-on-surface);
+    display: none;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

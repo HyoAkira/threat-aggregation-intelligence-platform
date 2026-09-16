@@ -6,6 +6,7 @@ export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['<rootDir>/src/**/*.test.{js,jsx,ts,tsx}'],
+  setupFiles: ['<rootDir>/src/test/globals.ts'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json' }],
   },

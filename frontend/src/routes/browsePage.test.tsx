@@ -1,6 +1,4 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { queryClient } from '../lib/queryClient'
-import { browseKey } from '../lib/queryKeys'
 import { ApiError } from '../lib/apiErrors'
 import { BrowseErrorState } from './browse'
 import {
@@ -9,52 +7,33 @@ import {
   parseBrowseParams,
 } from '../lib/browseParams'
 import type { BrowseParams } from '../lib/browseParams'
-import { renderAppRoute, resetClientState } from '../test/renderApp'
-import { makePaged, urlGroup, ipv4Group } from '../test/fixtures'
+import { renderAppRoute } from '../test/renderApp'
 
-describe('browse page render', () => {
-  beforeEach(() => resetClientState())
-  afterEach(() => resetClientState())
-
-  it('renders the default view with controls and one page of results', async () => {
-    queryClient.setQueryData(
-      browseKey(defaultBrowseParams),
-      makePaged([urlGroup, ipv4Group], 1, 20, 45),
-    )
-
+describe('browse page server render', () => {
+  it('renders the shell and an accessible client-only fallback without touching the DOM', async () => {
+    // The Node environment has no `window`/`document`; a successful render
+    // proves the browse route keeps browser-only DataTables code isolated.
     const markup = await renderAppRoute('/browse')
 
     expect(markup).toContain('Browse indicators')
-    expect(markup).toContain(urlGroup.iocValue)
-    expect(markup).toContain(ipv4Group.iocValue)
-    expect(markup).toContain('Threat family / campaign')
-    expect(markup).toMatch(/<!-- -->1<!-- --> of <!-- -->3/)
-    expect(markup).toMatch(/<!-- -->45<!-- --> total/)
-    expect(markup).toContain('Previous page')
-    expect(markup).toContain('Next page')
+    expect(markup).toContain('Filter Telemetry')
+    expect(markup).toContain('Apply filters')
+    expect(markup).toContain('Loading indicators')
+    expect(markup).toContain('Preparing the indicator table')
+    expect(markup).toContain('role="status"')
   })
 
-  it('restores an active view from the URL (reload, Back, Forward, shared links)', async () => {
+  it('renders the deterministic fallback instead of server-rendered rows', async () => {
+    const markup = await renderAppRoute('/browse')
+
+    // The DataTables surface is client-only, so no IOC rows are in the SSR HTML.
+    expect(markup).not.toContain('https://evil.example/x')
+    expect(markup).not.toContain('<tbody')
+  })
+
+  it('restores active controls from the URL (reload, Back, Forward, shared links)', async () => {
     const url =
       '/browse?type=url&provider=1&tag=phishing&orderBy=iocValue&dir=asc&page=2&pageSize=10'
-    const parsed = parseBrowseParams({
-      // The router coerces numeric params to strings before validateSearch output.
-      type: 'url',
-      provider: '1',
-      tag: 'phishing',
-      orderBy: 'iocValue',
-      dir: 'asc',
-      page: '2',
-      pageSize: '10',
-    })
-    expect(parsed.issues).toEqual([])
-    if (!parsed.params)
-      throw new Error('expected the URL to parse into browse params')
-    queryClient.setQueryData(
-      browseKey(parsed.params),
-      makePaged([urlGroup], 2, 10, 45),
-    )
-
     const markup = await renderAppRoute(url)
 
     // Every control reflects the URL state.
@@ -64,42 +43,6 @@ describe('browse page render', () => {
     expect(markup).toContain('<option value="10" selected="">')
     expect(markup).toContain('value="phishing"')
     expect(markup).toContain('value="1"')
-    // The seeded page-two data renders.
-    expect(markup).toContain(urlGroup.iocValue)
-    expect(markup).toMatch(/<!-- -->2<!-- --> of <!-- -->5/)
-    expect(markup).not.toContain(ipv4Group.iocValue)
-  })
-
-  it('distinguishes empty data from a request failure', async () => {
-    const filtered = { ...defaultBrowseParams, type: 'url' as const }
-    queryClient.setQueryData(browseKey(filtered), makePaged([], 1, 20, 0))
-
-    const emptyMarkup = await renderAppRoute('/browse?type=url')
-
-    expect(emptyMarkup).toContain('No indicators found')
-    expect(emptyMarkup).toContain('role="status"')
-    expect(emptyMarkup).not.toContain('role="alert"')
-    expect(emptyMarkup).not.toContain('Loading indicators')
-    // With filters active, the empty state offers to clear them.
-    expect(emptyMarkup).toContain('Clear filters')
-  })
-
-  it('empty data with no active filters offers no clear-filters action', async () => {
-    queryClient.setQueryData(
-      browseKey(defaultBrowseParams),
-      makePaged([], 1, 20, 0),
-    )
-    const markup = await renderAppRoute('/browse')
-
-    expect(markup).toContain('No indicators found')
-    expect(markup).not.toContain('Clear filters')
-  })
-
-  it('renders the pending state while results load', async () => {
-    const markup = await renderAppRoute('/browse')
-
-    expect(markup).toContain('Loading indicators')
-    expect(markup).toContain('Indicator type')
   })
 
   it('shows an invalid-filters state with a reset affordance for unsupported URL values', async () => {
@@ -108,8 +51,9 @@ describe('browse page render', () => {
     expect(markup).toContain('Unsupported filters')
     expect(markup).toContain('email')
     expect(markup).toContain('Reset to the default view')
-    // No request ran for invalid filters.
+    // No table is mounted and no pending state is shown for invalid filters.
     expect(markup).not.toContain('Loading indicators')
+    expect(markup).not.toContain('Preparing the indicator table')
   })
 
   it('exposes every control the E09 browse contract supports', async () => {
