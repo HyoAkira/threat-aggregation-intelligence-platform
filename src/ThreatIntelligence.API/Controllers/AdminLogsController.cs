@@ -17,10 +17,17 @@ public sealed class AdminLogsController(IAdminLogReader reader) : ControllerBase
         "Verbose", "Debug", "Information", "Warning", "Error", "Fatal"
     };
 
+    private static readonly HashSet<string> Sources = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "api", "worker", "all"
+    };
+
     [HttpGet("logs")]
     public async Task<ActionResult<IReadOnlyList<AdminLogEntry>>> Logs(
         [FromQuery] int? count,
         [FromQuery] string? level,
+        [FromQuery] string? source,
+        [FromQuery] string? correlationId,
         CancellationToken cancellationToken)
     {
         var resolvedCount = count ?? DefaultCount;
@@ -44,9 +51,22 @@ public sealed class AdminLogsController(IAdminLogReader reader) : ControllerBase
                 "The level must be one of Verbose, Debug, Information, Warning, Error, or Fatal.");
         }
 
+        var resolvedSource = string.IsNullOrWhiteSpace(source) ? "api" : source.Trim().ToLowerInvariant();
+        if (!Sources.Contains(resolvedSource))
+        {
+            return ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status400BadRequest,
+                "invalid_log_query",
+                "Invalid log query",
+                "The source must be api, worker, or all.");
+        }
+
         return Ok(await reader.ReadAsync(
             resolvedCount,
             string.IsNullOrWhiteSpace(level) ? null : level,
+            resolvedSource,
+            string.IsNullOrWhiteSpace(correlationId) ? null : correlationId,
             cancellationToken));
     }
 }

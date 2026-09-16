@@ -17,15 +17,17 @@ public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
     public async Task<IReadOnlyList<AdminLogEntry>> ReadAsync(
         int count,
         string? level,
+        string source,
+        string? correlationId,
         CancellationToken cancellationToken)
     {
-        if (count < 1 || !Directory.Exists(options.Directory))
+        if (count < 1)
         {
             return [];
         }
 
-        var entries = new List<AdminLogEntry>(count);
-        foreach (var file in CandidateFiles())
+        var entries = new List<AdminLogEntry>();
+        foreach (var file in CandidateFiles(source))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -44,29 +46,40 @@ public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
                 continue;
             }
 
-            for (var index = lines.Length - 1; index >= 0 && entries.Count < count; index--)
+            for (var index = lines.Length - 1; index >= 0; index--)
             {
-                if (TryParse(lines[index], out var entry) && Matches(entry.Level, level))
+                if (TryParse(lines[index], out var entry)
+                    && Matches(entry.Level, level)
+                    && MatchesCorrelation(entry.CorrelationId, correlationId))
                 {
                     entries.Add(entry);
                 }
             }
-
-            if (entries.Count >= count)
-            {
-                break;
-            }
         }
 
-        return entries;
+        return entries
+            .OrderByDescending(entry => entry.Timestamp)
+            .Take(count)
+            .ToList();
     }
 
-    private IEnumerable<string> CandidateFiles()
+    private IEnumerable<string> CandidateFiles(string source)
     {
         try
         {
-            return Directory.EnumerateFiles(options.Directory, options.FileNamePrefix + "*.json")
+            var workerDirectory = options.WorkerDirectory ?? options.Directory;
+            (string Directory, string Prefix)[] files = source switch
+            {
+                "worker" => [(workerDirectory, options.WorkerFileNamePrefix)],
+                "all" => [(options.Directory, options.FileNamePrefix), (workerDirectory, options.WorkerFileNamePrefix)],
+                _ => [(options.Directory, options.FileNamePrefix)]
+            };
+
+            return files
+                .Where(file => Directory.Exists(file.Directory))
+                .SelectMany(file => Directory.EnumerateFiles(file.Directory, file.Prefix + "*.json"))
                 .OrderByDescending(file => Path.GetFileName(file), StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(file => file, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
         catch (DirectoryNotFoundException)
@@ -78,6 +91,10 @@ public sealed class AdminLogReader(AdminLogOptions options) : IAdminLogReader
     private static bool Matches(string entryLevel, string? requestedLevel) =>
         string.IsNullOrEmpty(requestedLevel)
         || string.Equals(entryLevel, requestedLevel, StringComparison.OrdinalIgnoreCase);
+
+    private static bool MatchesCorrelation(string? entryValue, string? requestedValue) =>
+        string.IsNullOrWhiteSpace(requestedValue)
+        || string.Equals(entryValue, requestedValue.Trim(), StringComparison.OrdinalIgnoreCase);
 
     private static bool TryParse(string line, out AdminLogEntry entry)
     {
