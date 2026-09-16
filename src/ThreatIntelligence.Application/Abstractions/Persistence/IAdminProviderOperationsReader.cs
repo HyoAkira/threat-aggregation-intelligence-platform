@@ -16,6 +16,10 @@ public interface IAdminProviderOperationsReader
         int providerId,
         int page,
         int pageSize,
+        DateTime? dateFrom,
+        DateTime? dateTo,
+        string orderBy,
+        string orderDir,
         CancellationToken cancellationToken);
 
     /// <summary>Returns null when no logical job matches the id.</summary>

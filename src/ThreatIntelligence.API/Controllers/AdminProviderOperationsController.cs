@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using ThreatIntelligence.Application.Abstractions.Persistence;
 using ThreatIntelligence.Application.Admin;
 using ThreatIntelligence.API.Errors;
@@ -87,7 +88,11 @@ public sealed class AdminProviderOperationsController(
         int providerId,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] string? dateFrom = null,
+        [FromQuery] string? dateTo = null,
+        [FromQuery] string? orderBy = null,
+        [FromQuery] string? orderDir = null)
     {
         var resolvedPage = page ?? DefaultPage;
         var resolvedPageSize = pageSize ?? DefaultPageSize;
@@ -101,10 +106,55 @@ public sealed class AdminProviderOperationsController(
                 $"The page must be at least 1 and pageSize must be between 1 and {MaxPageSize}.");
         }
 
-        var result = await reader.GetProviderHistoryAsync(providerId, resolvedPage, resolvedPageSize, cancellationToken);
+        if (!TryParseDate(dateFrom, out var resolvedDateFrom)
+            || !TryParseDate(dateTo, out var resolvedDateTo)
+            || (resolvedDateFrom.HasValue && resolvedDateTo.HasValue && resolvedDateFrom > resolvedDateTo))
+        {
+            return ApiProblemFactory.Result(
+                HttpContext,
+                StatusCodes.Status400BadRequest,
+                "invalid_history_query",
+                "Invalid history query",
+                "The date range is invalid.");
+        }
+
+        var resolvedOrderBy = string.Equals(orderBy, "finishedAt", StringComparison.OrdinalIgnoreCase)
+            ? "finishedAt"
+            : "startedAt";
+        var resolvedOrderDir = string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase)
+            ? "asc"
+            : "desc";
+
+        var result = await reader.GetProviderHistoryAsync(
+            providerId,
+            resolvedPage,
+            resolvedPageSize,
+            resolvedDateFrom,
+            resolvedDateTo,
+            resolvedOrderBy,
+            resolvedOrderDir,
+            cancellationToken);
         return result is null
             ? ProviderNotFound()
             : Ok(result);
+    }
+
+    private static bool TryParseDate(string? value, out DateTime? result)
+    {
+        result = null;
+        if (string.IsNullOrWhiteSpace(value)) return true;
+
+        if (!DateTime.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var parsed))
+        {
+            return false;
+        }
+
+        result = parsed;
+        return true;
     }
 
     [HttpGet("fetch-history/{jobId:guid}")]
