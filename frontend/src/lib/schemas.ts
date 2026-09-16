@@ -72,6 +72,9 @@ export const pagedIocGroupsSchema = z.object({
   totalCount: z.number().int(),
 })
 
+/** Public provider catalog used by browse column filters. */
+export const iocProviderNamesSchema = z.array(z.string().min(1))
+
 export type PagedIocGroups = z.infer<typeof pagedIocGroupsSchema>
 
 /** `POST /api/auth/login` success response; role is `User` or `Admin`. */

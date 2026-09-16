@@ -6,6 +6,7 @@ using ThreatIntelligence.Application.Features.Iocs.Queries.BrowseIocs;
 using ThreatIntelligence.Application.Features.Iocs.Queries.GetIocDetail;
 using ThreatIntelligence.Application.Features.Iocs.Queries.GetIocRelations;
 using ThreatIntelligence.Application.Features.Iocs.Queries.SearchIocs;
+using ThreatIntelligence.Application.Abstractions.Persistence;
 
 namespace ThreatIntelligence.API.Controllers;
 
@@ -16,8 +17,13 @@ namespace ThreatIntelligence.API.Controllers;
 [ApiController]
 [Route("api/iocs")]
 [AllowAnonymous]
-public sealed class IocsController(ISender sender) : ControllerBase
+public sealed class IocsController(ISender sender, IIocQueryReader queryReader) : ControllerBase
 {
+    [HttpGet("providers")]
+    public async Task<ActionResult<IReadOnlyList<string>>> Providers(
+        CancellationToken cancellationToken) =>
+        Ok(await queryReader.GetProviderNamesAsync(cancellationToken));
+
     [HttpGet("search")]
     public async Task<ActionResult<PagedResult<IocGroupResult>>> Search(
         [FromQuery] string? q,

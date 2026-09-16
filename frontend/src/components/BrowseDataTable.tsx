@@ -5,13 +5,14 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import type { RefObject } from 'react'
 import DataTables from 'datatables.net-react'
 import type { DataTableRef } from 'datatables.net-react'
 import DT from 'datatables.net'
 import type { Config } from 'datatables.net'
-import { ApiError, browseIocs } from '../lib/apiClient'
+import { ApiError, browseIocs, getIocProviderNames } from '../lib/apiClient'
 import type { BrowseParams } from '../lib/browseParams'
 import type { IocGroup } from '../lib/schemas'
 import {
@@ -196,6 +197,37 @@ function ActionCell({
   )
 }
 
+function ColumnFilterMenu({
+  label,
+  filter,
+  active,
+  icon = active ? 'filter_alt' : 'filter_list',
+}: {
+  label: string
+  filter: 'type' | 'provider'
+  active: boolean
+  icon?: 'filter_alt' | 'filter_list'
+}) {
+  return (
+    <span className="relative inline-flex items-center gap-1">
+      <span>{label}</span>
+      <button
+        type="button"
+        data-column-filter={filter}
+        aria-label={`Filter ${label}`}
+        className={`inline-flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-surface-container-high hover:text-on-surface ${focusRingClass} ${active ? 'text-primary' : 'text-outline'}`}
+      >
+        <span
+          aria-hidden="true"
+          className="material-symbols-outlined text-[15px]"
+        >
+          {icon}
+        </span>
+      </button>
+    </span>
+  )
+}
+
 /**
  * Client-only DataTables surface. It is the sole owner of browse-data requests:
  * DataTables invokes the Ajax function for the initial draw and for each page,
@@ -207,6 +239,8 @@ const BrowseDataTable = forwardRef<BrowseTableHandle, BrowseDataTableProps>(
     ref,
   ) {
     const wrapperRef = useRef<DataTableRef | null>(null)
+    const tableHostRef = useRef<HTMLDivElement | null>(null)
+    const [providerOptions, setProviderOptions] = useState<string[]>([])
     const paramsRef = useRef(params)
     // Mirrors the latest prop without being clobbered by an in-flight draw.
     const latestParamsRef = useRef(params)
@@ -230,6 +264,214 @@ const BrowseDataTable = forwardRef<BrowseTableHandle, BrowseDataTableProps>(
 
     // The table is initialized once from the first represented view.
     const initialTableState = useRef(browseTableStateFromParams(params)).current
+
+    useEffect(() => {
+      const controller = new AbortController()
+      getIocProviderNames(controller.signal).then(
+        (names) => setProviderOptions(names),
+        () => {
+          if (!controller.signal.aborted) setProviderOptions([])
+        },
+      )
+      return () => controller.abort()
+    }, [])
+
+    useEffect(() => {
+      const host = tableHostRef.current
+      if (!host) return
+
+      const removePopover = () => {
+        host.querySelector('[data-column-filter-popover]')?.remove()
+      }
+
+      const styleButton = (button: HTMLButtonElement, active: boolean) => {
+        button.type = 'button'
+        button.className = `block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-surface-container${active ? ' font-semibold text-primary' : ''}`
+      }
+
+      const openPopover = (button: HTMLButtonElement, filter: string) => {
+        removePopover()
+        const popover = document.createElement('div')
+        popover.dataset.columnFilterPopover = ''
+        popover.setAttribute('role', 'menu')
+        popover.className =
+          'absolute z-50 min-w-44 rounded border border-outline-variant bg-surface-container-lowest p-2 text-left text-on-surface shadow-lg'
+        const hostRect = host.getBoundingClientRect()
+        const buttonRect = button.getBoundingClientRect()
+        popover.style.left = `${buttonRect.left - hostRect.left}px`
+        popover.style.top = `${buttonRect.bottom - hostRect.top + 8}px`
+
+        if (filter === 'type') {
+          const title = document.createElement('p')
+          title.className =
+            'px-2 pb-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-outline'
+          title.textContent = 'Indicator type'
+          popover.append(title)
+
+          const selected = new Set(
+            (params.type ?? '').split(',').filter(Boolean),
+          )
+          const options = [
+            ['IPv4', 'ipv4'],
+            ['IPv6', 'ipv6'],
+            ['Domain', 'domain'],
+            ['URL', 'url'],
+          ] as const
+          const selection = document.createElement('div')
+          selection.className = 'flex flex-wrap gap-1'
+          const apply = document.createElement('button')
+          apply.type = 'button'
+          apply.textContent = 'Apply'
+          apply.className =
+            'mt-2 w-full rounded bg-primary px-2 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-on-primary hover:opacity-90'
+          const renderSelection = () => {
+            selection.replaceChildren()
+            for (const value of selected) {
+              const chip = document.createElement('button')
+              chip.type = 'button'
+              chip.textContent = `${value} ×`
+              chip.className =
+                'rounded-full bg-primary-fixed px-2 py-1 font-mono text-[10px] font-semibold text-on-primary-fixed'
+              chip.addEventListener('click', () => {
+                selected.delete(value)
+                renderSelection()
+              })
+              selection.append(chip)
+            }
+          }
+          for (const [label, value] of options) {
+            const option = document.createElement('button')
+            styleButton(option, selected.has(value))
+            option.textContent = label
+            option.addEventListener('click', () => {
+              if (selected.has(value)) selected.delete(value)
+              else selected.add(value)
+              option.classList.toggle('font-semibold', selected.has(value))
+              option.classList.toggle('text-primary', selected.has(value))
+              renderSelection()
+            })
+            popover.append(option)
+          }
+          const clear = document.createElement('button')
+          clear.type = 'button'
+          clear.textContent = 'Clear'
+          clear.className =
+            'mt-2 rounded px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-outline hover:bg-surface-container'
+          clear.addEventListener('click', () => {
+            selected.clear()
+            renderSelection()
+          })
+          apply.addEventListener('click', () => {
+            removePopover()
+            onTableParams({
+              ...params,
+              type: selected.size ? Array.from(selected).join(',') : null,
+              page: 1,
+            })
+          })
+          renderSelection()
+          popover.append(selection, clear, apply)
+        } else {
+          const form = document.createElement('form')
+          form.className = 'space-y-2'
+          const label = document.createElement('label')
+          label.className =
+            'block px-2 pb-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-outline'
+          label.textContent = 'Provider'
+          const selected = new Set(
+            (params.provider ?? '').split(',').filter(Boolean),
+          )
+          const options = document.createElement('div')
+          options.className = 'mt-2 max-h-36 space-y-1 overflow-y-auto'
+          const selection = document.createElement('div')
+          selection.className = 'flex flex-wrap gap-1'
+          const renderSelection = () => {
+            selection.replaceChildren()
+            for (const value of selected) {
+              const chip = document.createElement('button')
+              chip.type = 'button'
+              chip.textContent = `${value} ×`
+              chip.className =
+                'rounded-full bg-surface-container-high px-2 py-1 font-mono text-[10px] font-semibold text-on-surface-variant'
+              chip.addEventListener('click', () => {
+                selected.delete(value)
+                renderSelection()
+              })
+              selection.append(chip)
+            }
+          }
+          for (const value of providerOptions) {
+            const option = document.createElement('button')
+            styleButton(option, selected.has(value))
+            option.textContent = value
+            option.addEventListener('click', () => {
+              if (selected.has(value)) selected.delete(value)
+              else selected.add(value)
+              option.classList.toggle('font-semibold', selected.has(value))
+              option.classList.toggle('text-primary', selected.has(value))
+              renderSelection()
+            })
+            options.append(option)
+          }
+          const actions = document.createElement('div')
+          actions.className = 'flex items-center justify-end gap-1'
+          const clear = document.createElement('button')
+          clear.type = 'button'
+          clear.className =
+            'rounded px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-outline hover:bg-surface-container'
+          clear.textContent = 'Clear'
+          clear.addEventListener('click', () => {
+            selected.clear()
+            renderSelection()
+            removePopover()
+            onTableParams({ ...params, provider: null, page: 1 })
+          })
+          const apply = document.createElement('button')
+          apply.type = 'submit'
+          apply.className =
+            'rounded bg-primary px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-on-primary hover:opacity-90'
+          apply.textContent = 'Apply'
+          actions.append(clear, apply)
+          form.append(label, actions)
+          form.addEventListener('submit', (event) => {
+            event.preventDefault()
+            removePopover()
+            onTableParams({
+              ...params,
+              provider: selected.size ? Array.from(selected).join(',') : null,
+              page: 1,
+            })
+          })
+          renderSelection()
+          form.prepend(selection)
+          popover.append(options, form)
+        }
+        host.append(popover)
+      }
+
+      const handleClick = (event: Event) => {
+        const target = event.target
+        if (!(target instanceof Element)) return
+        if (target.closest('[data-column-filter-popover]')) return
+        const button = target.closest<HTMLButtonElement>(
+          'button[data-column-filter]',
+        )
+        if (!button) {
+          removePopover()
+          return
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        event.stopImmediatePropagation()
+        openPopover(button, button.dataset.columnFilter ?? '')
+      }
+
+      host.addEventListener('click', handleClick, true)
+      return () => {
+        host.removeEventListener('click', handleClick, true)
+        removePopover()
+      }
+    }, [onTableParams, params, providerOptions])
 
     const ajax = useCallback(
       (data: unknown, callback: (json: unknown) => void) => {
@@ -399,40 +641,51 @@ const BrowseDataTable = forwardRef<BrowseTableHandle, BrowseDataTableProps>(
     )
 
     return (
-      <DataTables
-        ref={wrapperRef}
-        options={options}
-        ajax={ajax}
-        columns={columns}
-        slots={slots}
-        className="w-full border-collapse text-left"
-      >
-        <thead>
-          <tr className="h-9 select-none border-b border-outline-variant/60 bg-surface-container-low font-mono text-[10px] uppercase tracking-wider text-outline">
-            <th scope="col" className={headerClass}>
-              Indicator
-            </th>
-            <th scope="col" className={headerClass}>
-              Type
-            </th>
-            <th scope="col" className={headerClass}>
-              Threat family / campaign
-            </th>
-            <th scope="col" className={headerClass}>
-              Providers
-            </th>
-            <th scope="col" className={headerClass}>
-              First seen
-            </th>
-            <th scope="col" className={headerClass}>
-              Last seen
-            </th>
-            <th scope="col" className={`${headerClass} text-right`}>
-              Action
-            </th>
-          </tr>
-        </thead>
-      </DataTables>
+      <div ref={tableHostRef} className="relative">
+        <DataTables
+          ref={wrapperRef}
+          options={options}
+          ajax={ajax}
+          columns={columns}
+          slots={slots}
+          className="w-full border-collapse text-left"
+        >
+          <thead>
+            <tr className="h-9 select-none border-b border-outline-variant/60 bg-surface-container-low font-mono text-[10px] uppercase tracking-wider text-outline">
+              <th scope="col" className={headerClass}>
+                Indicator
+              </th>
+              <th scope="col" className={headerClass}>
+                <ColumnFilterMenu
+                  label="Type"
+                  filter="type"
+                  active={params.type !== null}
+                />
+              </th>
+              <th scope="col" className={headerClass}>
+                Threat family / campaign
+              </th>
+              <th scope="col" className={headerClass}>
+                <ColumnFilterMenu
+                  label="Providers"
+                  filter="provider"
+                  active={params.provider !== null}
+                  icon="filter_alt"
+                />
+              </th>
+              <th scope="col" className={headerClass}>
+                First seen
+              </th>
+              <th scope="col" className={headerClass}>
+                Last seen
+              </th>
+              <th scope="col" className={`${headerClass} text-right`}>
+                Action
+              </th>
+            </tr>
+          </thead>
+        </DataTables>
+      </div>
     )
   },
 )

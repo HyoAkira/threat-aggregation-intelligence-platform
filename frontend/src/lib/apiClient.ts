@@ -6,6 +6,7 @@ import { browseParamsToSearch } from './browseParams'
 import type { BrowseParams } from './browseParams'
 import {
   iocGroupSchema,
+  iocProviderNamesSchema,
   loginResponseSchema,
   pagedIocGroupsSchema,
 } from './schemas'
@@ -225,6 +226,14 @@ export function browseIocs(
   })
 }
 
+/** `GET /api/iocs/providers` — public provider-name catalog for browse filters. */
+export function getIocProviderNames(signal?: AbortSignal): Promise<string[]> {
+  return apiFetch('/iocs/providers', {
+    schema: iocProviderNamesSchema,
+    signal,
+  })
+}
+
 /** `POST /api/auth/login` — a 401 here only means invalid credentials. */
 export function login(
   username: string,
@@ -315,10 +324,13 @@ export function getAdminLogs(
   correlationId: string | null = null,
   signal?: AbortSignal,
 ): Promise<AdminLogEntry[]> {
-  return apiFetch(`/admin/logs${buildQuery({ count, level, source, correlationId })}`, {
-    schema: adminLogListSchema,
-    signal,
-  })
+  return apiFetch(
+    `/admin/logs${buildQuery({ count, level, source, correlationId })}`,
+    {
+      schema: adminLogListSchema,
+      signal,
+    },
+  )
 }
 
 /** `GET /api/admin/settings` — current non-secret runtime settings. */

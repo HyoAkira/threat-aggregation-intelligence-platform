@@ -39,4 +39,5 @@ public sealed record IocBrowseCriteria(
     IocBrowseOrderBy OrderBy,
     bool Descending,
     int Page,
-    int PageSize);
+    int PageSize,
+    IReadOnlyList<IocType>? Types = null);

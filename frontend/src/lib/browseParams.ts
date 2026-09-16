@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import { iocTypeTokens } from './schemas'
-import type { IocTypeToken } from './schemas'
 
 export const browseOrderByOptions = [
   'lastSeenUtc',
@@ -43,7 +42,8 @@ export function observedPeriodFrom(
 
 /** Fully normalized browse state; every value is one the E09 contract accepts. */
 export type BrowseParams = {
-  type: IocTypeToken | null
+  /** Comma-separated IOC type tokens for the browse multi-filter. */
+  type: string | null
   provider: string | null
   tag: string | null
   lastSeenFrom: string | null
@@ -103,8 +103,18 @@ export function parseBrowseParams(raw: RawBrowseSearch): ParsedBrowseParams {
 
   const type = raw.type?.trim()
   if (type) {
-    if ((iocTypeTokens as readonly string[]).includes(type)) {
-      params.type = type as IocTypeToken
+    const types = Array.from(
+      new Set(
+        type
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    )
+    if (
+      types.every((item) => (iocTypeTokens as readonly string[]).includes(item))
+    ) {
+      params.type = types.join(',')
     } else {
       issues.push(`Unsupported indicator type “${type}”.`)
     }
