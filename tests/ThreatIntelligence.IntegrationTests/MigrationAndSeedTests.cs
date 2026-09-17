@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using ThreatIntelligence.Domain.Entities;
 using ThreatIntelligence.Domain.Enums;
 using ThreatIntelligence.Infrastructure.Persistence;
@@ -22,12 +23,16 @@ public class MigrationAndSeedTests(SqlServerFixture fixture)
         Assert.Contains("users", tables);
         Assert.Contains("settings", tables);
         Assert.Contains("tags", tables);
+        Assert.Contains("encryptedSecrets", tables);
+        Assert.Contains("aiConnectionSettings", tables);
+        Assert.Contains("aiReportPolicyVersions", tables);
+        Assert.Contains("aiReportPolicyActive", tables);
 
         var applied = await context.Database
             .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM __EFMigrationsHistory")
             .ToListAsync();
         Assert.Single(applied);
-        Assert.Equal(2, applied[0]);
+        Assert.Equal(context.Database.GetMigrations().Count(), applied[0]);
     }
 
     [Fact]
@@ -35,12 +40,44 @@ public class MigrationAndSeedTests(SqlServerFixture fixture)
     {
         await using var context = fixture.CreateContext();
         var countBefore = await context.Providers.CountAsync();
+        var iocCountBefore = await context.Iocs.CountAsync();
 
         await context.Database.MigrateAsync();
 
         var countAfter = await context.Providers.CountAsync();
         Assert.Equal(countBefore, countAfter);
-        Assert.Equal(2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM __EFMigrationsHistory").SingleAsync());
+        Assert.Equal(iocCountBefore, await context.Iocs.CountAsync());
+        Assert.Equal(
+            context.Database.GetMigrations().Count(),
+            await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM __EFMigrationsHistory").SingleAsync());
+    }
+
+    [Fact]
+    public async Task Migration_does_not_alter_existing_ioc_or_provider_rows()
+    {
+        await using var context = fixture.CreateContext();
+        var providersBefore = await context.Providers.OrderBy(p => p.Id).ToListAsync();
+        var providerSnapshot = providersBefore
+            .Select(p => (p.Id, p.Name, p.BaseUrl, p.IsEnabled, p.IntervalMinutes))
+            .ToList();
+        var iocRowsBefore = await context.Iocs.CountAsync();
+
+        await context.Database.MigrateAsync();
+
+        context.ChangeTracker.Clear();
+        var providersAfter = await context.Providers.OrderBy(p => p.Id).ToListAsync();
+        var providerSnapshotAfter = providersAfter
+            .Select(p => (p.Id, p.Name, p.BaseUrl, p.IsEnabled, p.IntervalMinutes))
+            .ToList();
+        Assert.Equal(providerSnapshot, providerSnapshotAfter);
+        Assert.Equal(iocRowsBefore, await context.Iocs.CountAsync());
+
+        var aiSettingsRows = await context.AiConnectionSettings.CountAsync();
+        var policyVersions = await context.AiReportPolicyVersions.CountAsync();
+        var activePointer = await context.AiReportPolicyActive.CountAsync();
+        Assert.Equal(0, aiSettingsRows);
+        Assert.Equal(0, policyVersions);
+        Assert.Equal(0, activePointer);
     }
 
     [Fact]

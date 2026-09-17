@@ -18,6 +18,9 @@ public class ThreatIntelligenceDbContext(DbContextOptions<ThreatIntelligenceDbCo
     public DbSet<User> Users => Set<User>();
     public DbSet<Settings> Settings => Set<Settings>();
     public DbSet<EncryptedSecret> EncryptedSecrets => Set<EncryptedSecret>();
+    public DbSet<AiConnectionSettings> AiConnectionSettings => Set<AiConnectionSettings>();
+    public DbSet<AiReportPolicyVersion> AiReportPolicyVersions => Set<AiReportPolicyVersion>();
+    public DbSet<AiReportPolicyActive> AiReportPolicyActive => Set<AiReportPolicyActive>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

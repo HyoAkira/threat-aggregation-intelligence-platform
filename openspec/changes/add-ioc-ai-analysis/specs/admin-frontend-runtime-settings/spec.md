@@ -2,7 +2,7 @@
 
 ### Requirement: Non-secret settings form
 
-`/admin/settings` SHALL render the supported non-secret global log level, provider enabled/interval/capability fields, and a separate AI configuration area for Base URL, model ID, enabled state, published report instruction text/version, and write-only API credential controls. It SHALL never request or display environment values, plaintext credentials, connection strings, JWT settings, admin passwords, or file paths. The AI settings and report instructions SHALL use their own Admin endpoints and SHALL not be included in the existing complete provider/log settings PUT snapshot.
+`/admin/settings` SHALL render the supported non-secret global log level and provider enabled/interval/capability fields under a Runtime section, and a separate AI analysis section for Base URL, model ID, enabled state, published report instruction text/version, and write-only API credential controls. It SHALL never request or display environment values, plaintext credentials, connection strings, JWT settings, admin passwords, or file paths. The AI settings and report instructions SHALL use their own Admin endpoints and SHALL not be included in the existing complete provider/log settings PUT snapshot.
 
 #### Scenario: Settings load succeeds
 - **WHEN** an Admin opens the settings route

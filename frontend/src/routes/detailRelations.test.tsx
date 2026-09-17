@@ -36,8 +36,8 @@ describe('IOC detail page', () => {
     expect(markup).toContain('2026-07-01 08:00:00 UTC')
     expect(markup).toContain('Source: ThreatFox')
     expect(markup).toContain('Source: PhishTank')
-    expect(markup).toContain('Not marked false positive')
-    expect(markup).toContain('Marked false positive')
+    // Application-derived status moved to the IOC header badge.
+    expect(markup).toContain('1 source marked false positive')
   })
 
   it('rejects a malformed id locally without calling the API', async () => {

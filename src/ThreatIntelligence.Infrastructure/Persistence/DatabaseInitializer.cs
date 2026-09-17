@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ThreatIntelligence.Infrastructure.AI;
 
 namespace ThreatIntelligence.Infrastructure.Persistence;
 
@@ -10,7 +11,8 @@ public sealed class DatabaseInitializer(
     ThreatIntelligenceDbContext dbContext,
     Seeding.ProviderSeeder providerSeeder,
     Seeding.AdminSeeder adminSeeder,
-    Seeding.LegacySecretImporter legacySecretImporter)
+    Seeding.LegacySecretImporter legacySecretImporter,
+    AiReportPolicySeeder aiReportPolicySeeder)
 {
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
@@ -18,5 +20,6 @@ public sealed class DatabaseInitializer(
         await providerSeeder.SeedAsync(cancellationToken);
         await adminSeeder.SeedAsync(cancellationToken);
         await legacySecretImporter.ImportAsync(cancellationToken);
+        await aiReportPolicySeeder.SeedAsync(cancellationToken);
     }
 }

@@ -1,20 +1,24 @@
 ## Purpose
 
-Bir IOC grubunun mevcut, kaynaklara atfedilmiş kanıtından kullanıcı isteğiyle Türkçe AI raporu üretir ve raporun dayandığı veri ile kuralları denetlenebilir biçimde gösterir.
+Bir IOC grubunun mevcut, kaynaklara atfedilmiş kanıtından kullanıcı isteğiyle AI raporu üretir ve raporun dayandığı veri ile kuralları denetlenebilir biçimde gösterir.
 
 ## ADDED Requirements
 
-### Requirement: Authenticated on-demand generation
+### Requirement: Public on-demand generation
 
-`POST /api/iocs/{id}/ai/reports` SHALL require an authenticated user and SHALL resolve the same complete IOC group represented by `GET /api/iocs/{id}`. The request SHALL accept the IOC id only, not client-supplied evidence or prompt text. Unknown or malformed ids SHALL use the existing 404 or 400 error semantics. Generation SHALL be initiated only by an explicit user action; anonymous IOC detail browsing SHALL remain available.
+`POST /api/iocs/{id}/ai/reports` SHALL allow anonymous and authenticated callers and SHALL resolve the same complete IOC group represented by `GET /api/iocs/{id}`. The request SHALL contain no body: the URL IOC id is the only client input; evidence, report instructions, and prompt text SHALL be server-owned. Unknown or malformed ids SHALL use the existing 404 or 400 error semantics. Generation SHALL be initiated only by an explicit user action; anonymous IOC detail browsing SHALL remain available.
 
 #### Scenario: Signed-in analyst generates a report
 - **WHEN** a signed-in user clicks the report action for an existing IOC while AI is configured
-- **THEN** the server builds the report from that IOC group's source-attributed snapshot and streams the response
+- **THEN** the server builds the report from that IOC group's source-attributed, request-scoped evidence projection and streams the response
 
 #### Scenario: Anonymous visitor views IOC detail
 - **WHEN** an anonymous visitor opens an IOC detail page
-- **THEN** the IOC data remains visible and report generation is offered through sign-in, without an anonymous model call
+- **THEN** the IOC data remains visible and the report action can start an anonymous model call
+
+#### Scenario: Non-Admin user generates a report
+- **WHEN** a signed-in User (not an Admin) clicks the report action for an existing IOC
+- **THEN** the same authenticated report endpoint accepts the request and the server builds the report from its own IOC snapshot
 
 ### Requirement: Evidence-bounded report
 
@@ -28,27 +32,22 @@ The model SHALL receive only a size-bounded, deterministic projection of the sel
 - **WHEN** the IOC has more source data than the configured input budget
 - **THEN** the server applies a deterministic limit and the report identifies how many sources were omitted
 
-### Requirement: Streaming lifecycle and completed report record
+### Requirement: Streaming lifecycle and local download
 
-The generation response SHALL use a documented same-origin event stream with `meta`, `delta`, `complete`, and `error` events. A pre-stream validation failure SHALL use the shared ProblemDetails format; an error after streaming begins SHALL emit a safe `error` event and SHALL not emit `complete`. Only a fully received and validated report SHALL be stored with its owner, IOC identity, frozen evidence snapshot, model ID, instruction version, and timestamp. A cancelled or failed stream SHALL not create a completed report. The client SHALL treat text as provisional until `complete`.
+The generation response SHALL use a documented same-origin event stream with `meta`, `delta`, `complete`, and `error` events. A pre-stream validation failure SHALL use the shared ProblemDetails format; an error after streaming begins SHALL emit a safe `error` event and SHALL not emit `complete`. The client SHALL treat text as provisional until `complete`; after final validation, it SHALL display the report and offer a local download. The server SHALL not persist the report text, evidence snapshot, or report history.
 
 #### Scenario: Upstream fails mid-stream
 - **WHEN** the upstream model fails after the first delta
-- **THEN** the client receives an error event, displays the run as failed, and cannot open it as a completed report
+- **THEN** the client receives an error event, displays the run as failed, and does not offer a download
 
 #### Scenario: Report completes
 - **WHEN** the model finishes and required sections and source references validate
-- **THEN** the server stores the report and emits `complete` with its report id
+- **THEN** the server emits `complete` and the client displays the report and enables download
 
-### Requirement: Report access, freshness, and resource bounds
+### Requirement: Ephemeral report and resource bounds
 
-Reading a stored report SHALL require authentication and ownership. The UI SHALL display the report's model, instruction version, generation time, and whether the current IOC evidence differs from its frozen snapshot. Generation SHALL enforce per-user request rate, concurrent-run, input-size, output-size, and timeout limits and SHALL return a stable 429 or safe failure when exceeded. Output SHALL render without raw HTML or executable links. AI input, output, and API keys SHALL be absent from routine request logs.
+The validated report SHALL remain available only in the current browser page session, with instruction version and generation time shown. The model identifier SHALL remain server-owned and SHALL not be displayed in the IOC-page AI component. Reloading or leaving the page SHALL discard the report. Generation SHALL enforce per-user request rate, concurrent-run, input-size, output-size, and timeout limits and SHALL return a stable 429 or safe failure when exceeded. Output SHALL render without raw HTML or executable links. AI input, output, and API keys SHALL be absent from routine request logs.
 
-#### Scenario: Another user requests a report
-- **WHEN** a different signed-in user requests a report id they do not own
-- **THEN** the API denies access without returning report content
-
-#### Scenario: IOC evidence changes after report generation
-- **WHEN** a provider record changes after a report was completed
-- **THEN** the existing report remains linked to its original snapshot and the UI indicates that a new report is needed for current evidence
-
+#### Scenario: User returns to the detail page
+- **WHEN** a user reloads or leaves an IOC detail page after a completed report
+- **THEN** no prior report is retrieved and the user can deliberately generate a new one

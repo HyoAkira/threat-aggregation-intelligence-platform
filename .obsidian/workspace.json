@@ -11,10 +11,14 @@
             "id": "30696cf7ec4b37ac",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "src/ThreatIntelligence.Infrastructure/AI/Prompts/default-report.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "default-report"
             }
           }
         ]
@@ -51,7 +55,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "türkçe",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -75,7 +79,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -186,17 +191,34 @@
   },
   "active": "30696cf7ec4b37ac",
   "lastOpenFiles": [
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260914T142937Z.json",
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260914T141937Z.json",
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260914T133936Z.json",
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260914T135936Z.json",
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260914T140936Z.json",
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260914T134936Z.json",
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260914T132936Z.json",
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260914T131936Z.json",
-    "graphify-out/cache/stat-index.waa5ymta.tmp",
-    "graphify-out/cache/stat-index.p_g36mko.tmp",
-    "graphify-out/cache/ast/v0.9.55-s2/4574456d9f4ac650eb63a99b3069e6ed6b4e6071d6704f7f0a7807eb1be471a4.json",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T201449Z.json",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T201449Z.json.tmp",
+    "frontend/graphify-out/cache/stat-index.gip8e6fj.tmp",
+    "graphify-out/cache/stat-index.tjksn6d_.tmp",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T200849Z.json",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T200849Z.json.tmp",
+    "graphify-out/cache/stat-index.nctziqud.tmp",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T200249Z.json",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T200249Z.json.tmp",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T195648Z.json",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T195648Z.json.tmp",
+    "openspec/changes/add-ioc-ai-analysis/specs/ioc-ai-reporting/spec.md",
+    "frontend/node_modules/dayjs/README.md",
+    "openspec/changes/add-ioc-ai-analysis/adrs/0007-generation-limits.md",
+    "openspec/changes/add-ioc-ai-analysis/adrs/0006-output-validation.md",
+    "openspec/changes/add-ioc-ai-analysis/adrs/0005-evidence-truncation.md",
+    "openspec/changes/add-ioc-ai-analysis/adrs/0004-report-evidence-scope.md",
+    "openspec/changes/add-ioc-ai-analysis/adrs/0003-report-identity.md",
+    "openspec/changes/add-ioc-ai-analysis/adrs/0002-model-destination.md",
+    "openspec/changes/add-ioc-ai-analysis/adrs/0001-report-role.md",
+    "openspec/changes/add-ioc-ai-analysis/tasks.md",
+    "openspec/changes/add-ioc-ai-analysis/proposal.md",
+    "openspec/changes/add-ioc-ai-analysis/glossary.md",
+    "openspec/changes/add-ioc-ai-analysis/design.md",
+    "openspec/changes/add-ioc-ai-analysis/decision-tree.md",
+    "openspec/changes/add-ioc-ai-analysis/specs/ai-report-policy-management/spec.md",
+    "openspec/changes/add-ioc-ai-analysis/specs/ai-provider-configuration/spec.md",
+    "openspec/changes/add-ioc-ai-analysis/specs/admin-frontend-runtime-settings/spec.md",
     "openspec/changes/e11-user-frontend/design.md",
     "openspec/changes/archive/2026-09-14-e11-user-frontend/specs/user-frontend-shell-auth/spec.md",
     "openspec/changes/archive/2026-09-14-e11-user-frontend/specs/user-frontend-search/spec.md",
@@ -205,23 +227,6 @@
     "openspec/changes/archive/2026-09-14-e11-user-frontend/proposal.md",
     "openspec/changes/archive/2026-09-14-e11-user-frontend/design.md",
     "openspec/specs/user-frontend-shell-auth/spec.md",
-    "openspec/specs/user-frontend-search/spec.md",
-    "openspec/specs/user-frontend-exploration/spec.md",
-    "openspec/changes/e11-user-frontend/proposal.md",
-    "frontend/node_modules/caniuse-lite/README.md",
-    "frontend/node_modules/eslint/README.md",
-    "frontend/node_modules/@sinclair/typebox/readme.md",
-    "frontend/node_modules/zod/README.md",
-    "frontend/node_modules/@tanstack/react-query/README.md",
-    "frontend/node_modules/@tanstack/react-query/build/codemods/src/v5/keep-previous-data/README.md",
-    "frontend/node_modules/@tanstack/router-core/skills/router-core/search-params/references/validation-patterns.md",
-    "frontend/node_modules/@tanstack/router-core/skills/router-core/ssr/SKILL.md",
-    "frontend/node_modules/@tanstack/router-core/skills/router-core/type-safety/SKILL.md",
-    "frontend/node_modules/@tanstack/router-core/skills/router-core/path-params/SKILL.md",
-    "frontend/node_modules/@tanstack/router-core/skills/router-core/search-params/SKILL.md",
-    "frontend/node_modules/@tanstack/router-core/skills/router-core/navigation/SKILL.md",
-    "frontend/node_modules/@tanstack/router-core/skills/router-core/not-found-and-errors/SKILL.md",
-    "frontend/node_modules/@tanstack/router-core/skills/router-core/data-loading/SKILL.md",
     "frontend/node_modules/@tanstack/devtools/src/components/tanstack-logo.png",
     "frontend/node_modules/@jest/reporters/assets/jest_logo.png",
     "frontend/node_modules/istanbul-reports/lib/html/assets/sort-arrow-sprite.png",
