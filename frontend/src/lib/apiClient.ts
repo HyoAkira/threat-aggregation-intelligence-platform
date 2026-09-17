@@ -21,6 +21,7 @@ import {
   adminLogPageSchema,
   settingsResponseSchema,
   fetchQueuedResponseSchema,
+  credentialStatusSchema,
 } from './adminSchemas'
 import type {
   AdminProviderDashboardItem,
@@ -32,6 +33,7 @@ import type {
   SettingsResponse,
   SettingsRequest,
   FetchQueuedResponse,
+  CredentialStatus,
 } from './adminSchemas'
 
 export { ApiError }
@@ -431,6 +433,30 @@ export function putAdminSettings(
     schema: z.undefined(),
     method: 'PUT',
     body,
+    signal,
+  })
+}
+
+export function getAdminCredential(identity: string, signal?: AbortSignal): Promise<CredentialStatus> {
+  return apiFetch(`/admin/credentials/${encodeURIComponent(identity)}`, {
+    schema: credentialStatusSchema,
+    signal,
+  })
+}
+
+export function putAdminCredential(identity: string, value: string, signal?: AbortSignal): Promise<CredentialStatus> {
+  return apiFetch(`/admin/credentials/${encodeURIComponent(identity)}`, {
+    schema: credentialStatusSchema,
+    method: 'PUT',
+    body: { value },
+    signal,
+  })
+}
+
+export function clearAdminCredential(identity: string, signal?: AbortSignal): Promise<void> {
+  return apiFetch(`/admin/credentials/${encodeURIComponent(identity)}`, {
+    schema: z.undefined(),
+    method: 'DELETE',
     signal,
   })
 }

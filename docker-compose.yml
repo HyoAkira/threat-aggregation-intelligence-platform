@@ -39,6 +39,8 @@ services:
       ASPNETCORE_URLS: http://+:8080
       DATABASE__CONNECTIONSTRING: Server=mssql,1433;Database=ThreatIntelligence;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;Encrypt=False
       RABBITMQ__HOST: rabbitmq
+      ENCRYPTION__KEYVERSION: ${ENCRYPTION__KEYVERSION:-1}
+      ENCRYPTION__ROOTKEYFILE: /run/secrets/threatintel-encryption-root-key
     depends_on:
       mssql:
         condition: service_healthy
@@ -47,6 +49,8 @@ services:
     networks: [devNetwork]
     ports: ["8080:8080"]
     volumes: [shared_logs:/app/logs]
+    secrets:
+      - threatintel-encryption-root-key
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health || exit 1"]
@@ -64,6 +68,8 @@ services:
       ASPNETCORE_URLS: http://+:8080
       DATABASE__CONNECTIONSTRING: Server=mssql,1433;Database=ThreatIntelligence;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;Encrypt=False
       RABBITMQ__HOST: rabbitmq
+      ENCRYPTION__KEYVERSION: ${ENCRYPTION__KEYVERSION:-1}
+      ENCRYPTION__ROOTKEYFILE: /run/secrets/threatintel-encryption-root-key
     depends_on:
       mssql:
         condition: service_healthy
@@ -74,6 +80,8 @@ services:
     volumes:
       - shared_logs:/app/logs
       - worker_data:/app/data
+    secrets:
+      - threatintel-encryption-root-key
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health || exit 1"]
@@ -109,3 +117,7 @@ volumes:
   rabbitmq_data:
   worker_data:
   shared_logs:
+
+secrets:
+  threatintel-encryption-root-key:
+    file: ./secrets/encryption-root-key

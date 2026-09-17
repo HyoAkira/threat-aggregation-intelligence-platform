@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Net;
 using System.Net.Sockets;
+using ThreatIntelligence.Application.Abstractions.Secrets;
 
 namespace ThreatIntelligence.Application.Fetches;
 
@@ -26,6 +27,7 @@ public static class FetchErrorClassifier
         TimeoutException => true,
         DbException => true,
         ProviderFetchHttpException { StatusCode: >= HttpStatusCode.InternalServerError } => true,
+        ProviderCredentialMissingException => false,
         _ => false
     };
 

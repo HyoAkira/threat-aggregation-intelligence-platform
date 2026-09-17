@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using ThreatIntelligence.Infrastructure.Configuration;
 
 namespace ThreatIntelligence.Infrastructure.Persistence;
 
@@ -10,8 +11,14 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Thr
 {
     public ThreatIntelligenceDbContext CreateDbContext(string[] args)
     {
+        EnvironmentConfiguration.LoadDotEnv();
+
+        var connectionString = Environment.GetEnvironmentVariable("DATABASE__CONNECTIONSTRING")
+            ?? throw new InvalidOperationException(
+                "DATABASE__CONNECTIONSTRING is not configured. Set it in .env or the environment.");
+
         var options = new DbContextOptionsBuilder<ThreatIntelligenceDbContext>()
-            .UseSqlServer("Server=localhost;Database=ThreatIntelligence;User Id=sa;Password=design-time-only;TrustServerCertificate=True")
+            .UseSqlServer(connectionString)
             .Options;
 
         return new ThreatIntelligenceDbContext(options);

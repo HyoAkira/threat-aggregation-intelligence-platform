@@ -10,6 +10,8 @@ public sealed record ThreatIntelligenceOptions(
     PasswordHashOptions PasswordHash,
     ThreatFoxOptions ThreatFox,
     PhishTankOptions PhishTank,
+    EncryptionOptions Encryption,
+    OpenAiCompatibleOptions OpenAiCompatible,
     AdminSeedOptions AdminSeed,
     LoggingOptions Logging)
 {
@@ -29,8 +31,10 @@ public sealed record ThreatIntelligenceOptions(
                 Required(configuration, "Jwt:Audience"),
                 IntegerOrDefault(configuration, "Jwt:ExpiryMinutes", 480)),
             new PasswordHashOptions(IntegerOrDefault(configuration, "Auth:PasswordWorkFactor", 12)),
-            new ThreatFoxOptions(Required(configuration, "ThreatFox:ApiKey")),
+            new ThreatFoxOptions(Optional(configuration, "ThreatFox:ApiKey")),
             new PhishTankOptions(Optional(configuration, "PhishTank:AppKey")),
+            EncryptionOptions.FromConfiguration(configuration),
+            new OpenAiCompatibleOptions(Optional(configuration, "OpenAICompatible:BaseUrl")),
             new AdminSeedOptions(
                 Required(configuration, "Admin:Username"),
                 Required(configuration, "Admin:Password")),
@@ -87,7 +91,9 @@ public sealed record JwtOptions(string Secret, string Issuer, string Audience, i
 
 public sealed record PasswordHashOptions(int WorkFactor);
 
-public sealed record ThreatFoxOptions(string ApiKey);
+public sealed record ThreatFoxOptions(string? ApiKey = null);
+
+public sealed record OpenAiCompatibleOptions(string? BaseUrl = null);
 
 public sealed record AdminSeedOptions(string Username, string Password);
 

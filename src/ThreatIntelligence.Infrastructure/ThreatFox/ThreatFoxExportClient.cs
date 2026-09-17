@@ -21,7 +21,7 @@ public sealed class ThreatFoxExportClient : IThreatFoxExportClient
     private const string FullExportFileName = "full.json.zip";
 
     private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
+    private readonly string? _legacyApiKey;
     private readonly string _baseUrl;
     private readonly ILogger<ThreatFoxExportClient> _logger;
 
@@ -32,7 +32,7 @@ public sealed class ThreatFoxExportClient : IThreatFoxExportClient
         ILogger<ThreatFoxExportClient>? logger = null)
     {
         _httpClient = httpClient;
-        _apiKey = options.ApiKey;
+        _legacyApiKey = options.ApiKey;
         _baseUrl = baseUrl;
         _logger = logger ?? NullLogger<ThreatFoxExportClient>.Instance;
 
@@ -45,18 +45,27 @@ public sealed class ThreatFoxExportClient : IThreatFoxExportClient
     }
 
     public Task<ThreatFoxExportStream> FetchRecentAsync(CancellationToken cancellationToken)
-        => FetchAsync(RecentExportFileName, cancellationToken);
+        => FetchAsync(RecentExportFileName, _legacyApiKey, cancellationToken);
 
     public Task<ThreatFoxExportStream> FetchFullAsync(CancellationToken cancellationToken)
-        => FetchAsync(FullExportFileName, cancellationToken);
+        => FetchAsync(FullExportFileName, _legacyApiKey, cancellationToken);
+
+    public Task<ThreatFoxExportStream> FetchRecentAsync(string? apiKey, CancellationToken cancellationToken)
+        => FetchAsync(RecentExportFileName, apiKey, cancellationToken);
+
+    public Task<ThreatFoxExportStream> FetchFullAsync(string? apiKey, CancellationToken cancellationToken)
+        => FetchAsync(FullExportFileName, apiKey, cancellationToken);
 
     /// <summary>The deterministic export URI for a file name; visible for tests.</summary>
-    internal Uri BuildExportUri(string fileName)
-        => new($"{_baseUrl.TrimEnd('/')}/v2/files/exports/{_apiKey}/{fileName}");
-
-    private async Task<ThreatFoxExportStream> FetchAsync(string fileName, CancellationToken cancellationToken)
+    internal Uri BuildExportUri(string fileName, string? apiKey = null)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, BuildExportUri(fileName));
+        var keySegment = string.IsNullOrWhiteSpace(apiKey) ? string.Empty : $"{apiKey}/";
+        return new Uri($"{_baseUrl.TrimEnd('/')}/v2/files/exports/{keySegment}{fileName}");
+    }
+
+    private async Task<ThreatFoxExportStream> FetchAsync(string fileName, string? apiKey, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, BuildExportUri(fileName, apiKey));
 
         _logger.LogInformation("ThreatFox export request starting FileName={FileName}", fileName);
 

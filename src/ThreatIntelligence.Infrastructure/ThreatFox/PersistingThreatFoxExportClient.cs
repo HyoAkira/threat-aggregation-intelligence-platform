@@ -20,6 +20,12 @@ public sealed class PersistingThreatFoxExportClient(
     public Task<ThreatFoxExportStream> FetchFullAsync(CancellationToken cancellationToken)
         => FetchAndPersistAsync(RawFeedCategory.Full, inner.FetchFullAsync, cancellationToken);
 
+    public Task<ThreatFoxExportStream> FetchRecentAsync(string? apiKey, CancellationToken cancellationToken)
+        => FetchAndPersistAsync(RawFeedCategory.Recent, ct => inner.FetchRecentAsync(apiKey, ct), cancellationToken);
+
+    public Task<ThreatFoxExportStream> FetchFullAsync(string? apiKey, CancellationToken cancellationToken)
+        => FetchAndPersistAsync(RawFeedCategory.Full, ct => inner.FetchFullAsync(apiKey, ct), cancellationToken);
+
     private async Task<ThreatFoxExportStream> FetchAndPersistAsync(
         RawFeedCategory category,
         Func<CancellationToken, Task<ThreatFoxExportStream>> fetch,

@@ -6,6 +6,7 @@ using ThreatIntelligence.Application.Abstractions.Hashing;
 using ThreatIntelligence.Application.Abstractions.Persistence;
 using ThreatIntelligence.Application.BatchWriter;
 using ThreatIntelligence.Application.Fetches;
+using ThreatIntelligence.Application.Abstractions.Secrets;
 using ThreatIntelligence.Application.Normalization;
 using ThreatIntelligence.Application.ProviderRecords;
 using ThreatIntelligence.Infrastructure.Admin;
@@ -22,6 +23,7 @@ using ThreatIntelligence.Infrastructure.PublicSuffix;
 using ThreatIntelligence.Infrastructure.PhishTank;
 using ThreatIntelligence.Infrastructure.Storage;
 using ThreatIntelligence.Infrastructure.ThreatFox;
+using ThreatIntelligence.Infrastructure.Secrets;
 
 namespace ThreatIntelligence.Infrastructure;
 
@@ -40,6 +42,12 @@ public static class DependencyInjection
         services.AddSingleton(options.PasswordHash);
         services.AddSingleton(options.ThreatFox);
         services.AddSingleton(options.PhishTank);
+        services.AddSingleton(options.Encryption);
+        services.AddSingleton(options.OpenAiCompatible);
+        services.AddSingleton<ISecretProtector, AesGcmSecretProtector>();
+        services.AddScoped<ISecretStore, EncryptedSecretStore>();
+        services.AddScoped<IProviderCredentialResolver, ProviderCredentialResolver>();
+        services.AddScoped<ISecretRotationService, SecretRotationService>();
         services.AddSingleton(options.AdminSeed);
         services.AddSingleton(options.Logging);
 
@@ -53,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<DatabaseInitializer>();
         services.AddScoped<ProviderSeeder>();
         services.AddScoped<AdminSeeder>();
+        services.AddScoped<LegacySecretImporter>();
 
         services.AddScoped<IIocRepository, IocRepository>();
         services.AddScoped<IIocQueryReader, IocQueryReader>();

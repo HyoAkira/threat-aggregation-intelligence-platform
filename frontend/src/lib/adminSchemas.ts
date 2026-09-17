@@ -40,6 +40,10 @@ export const adminProviderDashboardItemSchema = z.object({
   recentCooldownMinutes: omittedNullableIntegerSchema,
   fullCooldownMinutes: omittedNullableIntegerSchema,
   minimumIntervalMinutes: z.number().int(),
+  requiresApiKey: z.boolean().default(false),
+  credentialConfigured: z.boolean().default(false),
+  credentialKeyVersion: omittedNullableIntegerSchema,
+  credentialUpdatedAt: omittedNullableStringSchema,
 })
 
 export type AdminProviderDashboardItem = z.infer<
@@ -144,6 +148,7 @@ export const providerSettingResponseSchema = z.object({
   isEnabled: z.boolean(),
   intervalMinutes: z.number().int(),
   minimumIntervalMinutes: z.number().int(),
+  requiresApiKey: z.boolean().default(false),
 })
 
 export type ProviderSettingResponse = z.infer<
@@ -161,6 +166,7 @@ export const providerSettingRequestSchema = z.object({
   id: z.number().int(),
   isEnabled: z.boolean(),
   intervalMinutes: z.number().int(),
+  requiresApiKey: z.boolean().optional(),
 })
 
 export type ProviderSettingRequest = z.infer<
@@ -173,6 +179,15 @@ export const settingsRequestSchema = z.object({
 })
 
 export type SettingsRequest = z.infer<typeof settingsRequestSchema>
+
+export const credentialStatusSchema = z.object({
+  identity: z.string(),
+  configured: z.boolean(),
+  keyVersion: omittedNullableIntegerSchema,
+  updatedAt: omittedNullableStringSchema,
+})
+
+export type CredentialStatus = z.infer<typeof credentialStatusSchema>
 
 /* -------------------------------------------------------------------------- */
 /*  Validation helpers                                                       */

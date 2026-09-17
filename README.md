@@ -46,11 +46,13 @@ Threat Aggregation Intelligence Platform is a threat-intelligence ingestion and 
 
 ### Configure the environment
 
-Copy the example environment file and replace every placeholder, especially database, RabbitMQ, provider, JWT, and administrator credentials:
+Copy the example environment file and replace every placeholder, especially database, RabbitMQ, JWT, administrator credentials, and the external encryption-root secret file:
 
 ```bash
 cp .env.example .env
 ```
+
+Provider API keys are managed from Admin → Settings through a write-only credential section. They are encrypted with AES-256-GCM before SQL Server persistence. Keep the 32-byte root key in a deployment secret file, never in the repository or database; the migration/import and rotation procedure is documented in [ProjectDocs/Provider-Credential-Migration-Runbook.md](ProjectDocs/Provider-Credential-Migration-Runbook.md).
 
 ### Start dependencies
 

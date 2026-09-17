@@ -12,7 +12,8 @@ namespace ThreatIntelligence.Application.Abstractions.Persistence;
 public interface IIocQueryReader
 {
     /// <summary>Returns the public provider-name catalog used by browse filters.</summary>
-    Task<IReadOnlyList<string>> GetProviderNamesAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<string>> GetProviderNamesAsync(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
 
     /// <summary>
     /// Resolves groups for a normalized indicator and narrows their sources by the optional filter.

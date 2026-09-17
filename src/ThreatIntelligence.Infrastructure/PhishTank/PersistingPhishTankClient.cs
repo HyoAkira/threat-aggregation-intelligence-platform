@@ -13,8 +13,20 @@ public sealed class PersistingPhishTankClient(
     internal const string ProviderSlug = "phishtank";
 
     public async Task<PhishTankFeedStream> FetchFeedAsync(CancellationToken cancellationToken)
+        => await PersistAsync(
+            inner.FetchFeedAsync(cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+
+    public async Task<PhishTankFeedStream> FetchFeedAsync(string? appKey, CancellationToken cancellationToken)
+        => await PersistAsync(
+            inner.FetchFeedAsync(appKey, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+
+    private async Task<PhishTankFeedStream> PersistAsync(
+        Task<PhishTankFeedStream> feedTask,
+        CancellationToken cancellationToken)
     {
-        var feed = await inner.FetchFeedAsync(cancellationToken).ConfigureAwait(false);
+        var feed = await feedTask.ConfigureAwait(false);
 
         await using (feed.Content)
         {

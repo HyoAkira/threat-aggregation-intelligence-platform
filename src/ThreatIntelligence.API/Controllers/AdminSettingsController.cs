@@ -26,7 +26,8 @@ public sealed class AdminSettingsController(ThreatIntelligenceDbContext dbContex
                 provider.Name,
                 provider.IsEnabled,
                 provider.IntervalMinutes,
-                provider.MinimumIntervalMinutes))
+                provider.MinimumIntervalMinutes,
+                provider.RequiresApiKey))
             .ToListAsync(cancellationToken);
         return Ok(new SettingsResponse(logLevel, providers));
     }
@@ -65,6 +66,7 @@ public sealed class AdminSettingsController(ThreatIntelligenceDbContext dbContex
             var provider = providers.Single(provider => provider.Id == input.Id);
             provider.SetEnabled(input.IsEnabled);
             provider.SetIntervalMinutes(input.IntervalMinutes);
+            provider.SetRequiresApiKey(input.RequiresApiKey);
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -85,11 +87,12 @@ public sealed class AdminSettingsController(ThreatIntelligenceDbContext dbContex
 }
 
 public sealed record SettingsRequest(string LogLevel, List<ProviderSettingRequest> Providers);
-public sealed record ProviderSettingRequest(int Id, bool IsEnabled, int IntervalMinutes);
+public sealed record ProviderSettingRequest(int Id, bool IsEnabled, int IntervalMinutes, bool RequiresApiKey = false);
 public sealed record SettingsResponse(string LogLevel, IReadOnlyList<ProviderSettingResponse> Providers);
 public sealed record ProviderSettingResponse(
     int Id,
     string Name,
     bool IsEnabled,
     int IntervalMinutes,
-    int MinimumIntervalMinutes);
+    int MinimumIntervalMinutes,
+    bool RequiresApiKey = false);

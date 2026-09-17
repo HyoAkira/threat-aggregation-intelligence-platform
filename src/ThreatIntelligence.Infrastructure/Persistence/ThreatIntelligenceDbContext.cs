@@ -17,6 +17,7 @@ public class ThreatIntelligenceDbContext(DbContextOptions<ThreatIntelligenceDbCo
     public DbSet<FetchHistory> FetchHistory => Set<FetchHistory>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Settings> Settings => Set<Settings>();
+    public DbSet<EncryptedSecret> EncryptedSecrets => Set<EncryptedSecret>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

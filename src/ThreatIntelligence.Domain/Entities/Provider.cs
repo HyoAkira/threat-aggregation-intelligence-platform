@@ -21,7 +21,8 @@ public class Provider
         ProviderFetchModes supportedModes = ProviderFetchModes.Recent | ProviderFetchModes.Full,
         int? recentCooldownMinutes = null,
         int? fullCooldownMinutes = null,
-        int? minimumIntervalMinutes = null)
+        int? minimumIntervalMinutes = null,
+        bool requiresApiKey = false)
     {
         Name = Guard.Required(name, 255, nameof(name));
         BaseUrl = Guard.Required(baseUrl, 255, nameof(baseUrl));
@@ -38,6 +39,7 @@ public class Provider
             : null;
         LastFetchAt = Guard.UtcOrNull(lastFetchAt, nameof(lastFetchAt));
         NextFetchTime = Guard.UtcOrNull(nextFetchTime, nameof(nextFetchTime));
+        RequiresApiKey = requiresApiKey;
         Configure(
             defaultMode,
             supportedModes,
@@ -59,6 +61,7 @@ public class Provider
     public int? RecentCooldownMinutes { get; private set; }
     public int? FullCooldownMinutes { get; private set; }
     public int MinimumIntervalMinutes { get; private set; }
+    public bool RequiresApiKey { get; private set; }
 
     public bool HasMode(FetchMode mode) => (SupportedModes & mode.ToProviderMode()) != ProviderFetchModes.None;
 
@@ -115,6 +118,8 @@ public class Provider
     }
 
     public void SetEnabled(bool isEnabled) => IsEnabled = isEnabled;
+
+    public void SetRequiresApiKey(bool requiresApiKey) => RequiresApiKey = requiresApiKey;
 
     public void SetIntervalMinutes(int intervalMinutes)
     {

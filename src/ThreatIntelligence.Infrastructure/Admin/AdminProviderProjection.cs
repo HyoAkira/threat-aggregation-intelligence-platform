@@ -24,7 +24,11 @@ internal static class AdminProviderProjection
         FetchTokens.Mode(provider.DefaultMode),
         provider.RecentCooldownMinutes,
         provider.FullCooldownMinutes,
-        provider.MinimumIntervalMinutes);
+        provider.MinimumIntervalMinutes,
+        provider.RequiresApiKey,
+        false,
+        null,
+        null);
 
     private static IReadOnlyList<string> SupportedModes(Provider provider) =>
         Enum.GetValues<FetchMode>()

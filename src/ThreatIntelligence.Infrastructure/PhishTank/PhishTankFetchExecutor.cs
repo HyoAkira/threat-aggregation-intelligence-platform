@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using ThreatIntelligence.Application.BatchWriter;
+using ThreatIntelligence.Application.Abstractions.Secrets;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Application.ProviderRecords;
 using ThreatIntelligence.Domain.Enums;
@@ -13,7 +14,8 @@ public sealed class PhishTankFetchExecutor(
     PhishTankFeedParser parser,
     ProviderRecordValidator validator,
     IIocBatchWriter batchWriter,
-    ILogger<PhishTankFetchExecutor>? logger = null) : IProviderFetchExecutor
+    ILogger<PhishTankFetchExecutor>? logger = null,
+    IProviderCredentialResolver? credentialResolver = null) : IProviderFetchExecutor
 {
     private readonly ILogger<PhishTankFetchExecutor> _logger =
         logger ?? NullLogger<PhishTankFetchExecutor>.Instance;
@@ -38,10 +40,16 @@ public sealed class PhishTankFetchExecutor(
             job.ProviderId,
             job.Mode);
 
+        var credential = credentialResolver is null
+            ? null
+            : await credentialResolver.ResolveAsync(job.ProviderId, cancellationToken).ConfigureAwait(false);
+
         PhishTankFeedStream feed;
         try
         {
-            feed = await client.FetchFeedAsync(cancellationToken).ConfigureAwait(false);
+            feed = credentialResolver is null
+                ? await client.FetchFeedAsync(cancellationToken).ConfigureAwait(false)
+                : await client.FetchFeedAsync(credential?.Value, cancellationToken).ConfigureAwait(false);
         }
         catch (PhishTankQuotaException ex)
         {

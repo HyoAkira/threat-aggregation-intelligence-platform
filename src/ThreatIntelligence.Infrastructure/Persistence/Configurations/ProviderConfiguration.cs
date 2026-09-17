@@ -34,6 +34,7 @@ public sealed class ProviderConfiguration : IEntityTypeConfiguration<Provider>
         builder.Property(p => p.RecentCooldownMinutes);
         builder.Property(p => p.FullCooldownMinutes);
         builder.Property(p => p.MinimumIntervalMinutes).IsRequired();
+        builder.Property(p => p.RequiresApiKey).IsRequired();
 
         builder.Property(p => p.LastFetchStatus)
             .HasConversion<byte?>();
