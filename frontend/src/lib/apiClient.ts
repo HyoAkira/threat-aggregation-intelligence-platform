@@ -22,6 +22,8 @@ import {
   settingsResponseSchema,
   fetchQueuedResponseSchema,
   credentialStatusSchema,
+  aiSettingsSchema,
+  aiReportPolicySchema,
 } from './adminSchemas'
 import type {
   AdminProviderDashboardItem,
@@ -34,6 +36,10 @@ import type {
   SettingsRequest,
   FetchQueuedResponse,
   CredentialStatus,
+  AiSettings,
+  AiSettingsRequest,
+  AiReportPolicy,
+  AiReportPolicyPublishRequest,
 } from './adminSchemas'
 
 export { ApiError }
@@ -457,6 +463,48 @@ export function clearAdminCredential(identity: string, signal?: AbortSignal): Pr
   return apiFetch(`/admin/credentials/${encodeURIComponent(identity)}`, {
     schema: z.undefined(),
     method: 'DELETE',
+    signal,
+  })
+}
+
+/** `GET /api/admin/ai/settings` — non-secret AI connection settings plus credential status. */
+export function getAiSettings(signal?: AbortSignal): Promise<AiSettings> {
+  return apiFetch('/admin/ai/settings', {
+    schema: aiSettingsSchema,
+    signal,
+  })
+}
+
+/** `PUT /api/admin/ai/settings` — atomic AI connection update; returns the saved snapshot. */
+export function putAiSettings(
+  body: AiSettingsRequest,
+  signal?: AbortSignal,
+): Promise<AiSettings> {
+  return apiFetch('/admin/ai/settings', {
+    schema: aiSettingsSchema,
+    method: 'PUT',
+    body,
+    signal,
+  })
+}
+
+/** `GET /api/admin/ai/report-policy` — active report instruction plus version history. */
+export function getAiReportPolicy(signal?: AbortSignal): Promise<AiReportPolicy> {
+  return apiFetch('/admin/ai/report-policy', {
+    schema: aiReportPolicySchema,
+    signal,
+  })
+}
+
+/** `PUT /api/admin/ai/report-policy` — publishes a new immutable instruction version. */
+export function putAiReportPolicy(
+  body: AiReportPolicyPublishRequest,
+  signal?: AbortSignal,
+): Promise<AiReportPolicy> {
+  return apiFetch('/admin/ai/report-policy', {
+    schema: aiReportPolicySchema,
+    method: 'PUT',
+    body,
     signal,
   })
 }

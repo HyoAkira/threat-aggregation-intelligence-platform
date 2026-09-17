@@ -22,6 +22,95 @@ namespace ThreatIntelligence.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.AiConnectionSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
+                        .HasColumnName("baseUrl");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("ModelId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("modelId");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updatedAt");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("aiConnectionSettings", (string)null);
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.AiReportPolicyActive", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ActiveVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("activeVersion");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updatedAt");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveVersion");
+
+                    b.ToTable("aiReportPolicyActive", (string)null);
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.AiReportPolicyVersion", b =>
+                {
+                    b.Property<int>("Version")
+                        .HasColumnType("int")
+                        .HasColumnName("version");
+
+                    b.Property<string>("AuthorUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("authorUserId");
+
+                    b.Property<DateTime>("PublishedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("publishedAt");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Version");
+
+                    b.ToTable("aiReportPolicyVersions", (string)null);
+                });
+
             modelBuilder.Entity("ThreatIntelligence.Domain.Entities.EncryptedSecret", b =>
                 {
                     b.Property<int>("Id")
@@ -486,6 +575,15 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                         .HasDatabaseName("IX_users_Username");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.AiReportPolicyActive", b =>
+                {
+                    b.HasOne("ThreatIntelligence.Domain.Entities.AiReportPolicyVersion", null)
+                        .WithMany()
+                        .HasForeignKey("ActiveVersion")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ThreatIntelligence.Domain.Entities.FetchHistory", b =>

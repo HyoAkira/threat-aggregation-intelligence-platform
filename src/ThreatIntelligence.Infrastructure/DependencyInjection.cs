@@ -18,12 +18,14 @@ using ThreatIntelligence.Infrastructure.HealthChecks;
 using ThreatIntelligence.Infrastructure.Persistence;
 using ThreatIntelligence.Infrastructure.Persistence.Repositories;
 using ThreatIntelligence.Infrastructure.Persistence.Seeding;
+using ThreatIntelligence.Infrastructure.Persistence.RateLimiting;
 using ThreatIntelligence.Infrastructure.Pipeline;
 using ThreatIntelligence.Infrastructure.PublicSuffix;
 using ThreatIntelligence.Infrastructure.PhishTank;
 using ThreatIntelligence.Infrastructure.Storage;
 using ThreatIntelligence.Infrastructure.ThreatFox;
 using ThreatIntelligence.Infrastructure.Secrets;
+using ThreatIntelligence.Infrastructure.AI;
 
 namespace ThreatIntelligence.Infrastructure;
 
@@ -62,6 +64,19 @@ public static class DependencyInjection
         services.AddScoped<ProviderSeeder>();
         services.AddScoped<AdminSeeder>();
         services.AddScoped<LegacySecretImporter>();
+        services.AddScoped<ThreatIntelligence.Infrastructure.AI.AiReportPolicySeeder>();
+        services.AddSingleton(AiClientOptions.Default);
+        services.AddSingleton<AiReportThrottle>();
+        services.AddScoped<ThreatIntelligence.Application.AI.IAiConfigurationReader, AiConfigurationReader>();
+        services.AddScoped<ThreatIntelligence.Application.AI.AiReportGenerator>();
+        services.AddHttpClient<ThreatIntelligence.Application.AI.IChatCompletionClient, OpenAiCompatibleChatClient>(
+            static client =>
+            {
+                // The per-request timeout is enforced around the whole streaming operation; the
+                // handler timeout stays infinite so a healthy long stream is never aborted.
+                client.Timeout = Timeout.InfiniteTimeSpan;
+            })
+            .RemoveAllLoggers();
 
         services.AddScoped<IIocRepository, IocRepository>();
         services.AddScoped<IIocQueryReader, IocQueryReader>();

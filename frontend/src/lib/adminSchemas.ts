@@ -190,6 +190,57 @@ export const credentialStatusSchema = z.object({
 export type CredentialStatus = z.infer<typeof credentialStatusSchema>
 
 /* -------------------------------------------------------------------------- */
+/*  AI Settings                                                              */
+/* -------------------------------------------------------------------------- */
+
+export const aiSettingsSchema = z.object({
+  baseUrl: omittedNullableStringSchema,
+  modelId: omittedNullableStringSchema,
+  enabled: z.boolean(),
+  apiKeyConfigured: z.boolean(),
+})
+
+export type AiSettings = z.infer<typeof aiSettingsSchema>
+
+export const aiSettingsRequestSchema = z.object({
+  baseUrl: z.string().nullish(),
+  modelId: z.string().nullish(),
+  enabled: z.boolean(),
+})
+
+export type AiSettingsRequest = z.infer<typeof aiSettingsRequestSchema>
+
+export const aiReportPolicyVersionSchema = z.object({
+  version: z.number().int(),
+  text: z.string(),
+  authorUserId: omittedNullableStringSchema,
+  publishedAt: omittedNullableStringSchema,
+})
+
+export type AiReportPolicyVersion = z.infer<
+  typeof aiReportPolicyVersionSchema
+>
+
+export const aiReportPolicySchema = z.object({
+  activeVersion: z.number().int(),
+  text: z.string(),
+  authorUserId: omittedNullableStringSchema,
+  publishedAt: omittedNullableStringSchema,
+  history: z.array(aiReportPolicyVersionSchema),
+})
+
+export type AiReportPolicy = z.infer<typeof aiReportPolicySchema>
+
+export const aiReportPolicyPublishRequestSchema = z.object({
+  text: z.string(),
+  expectedVersion: z.number().int().nullish(),
+})
+
+export type AiReportPolicyPublishRequest = z.infer<
+  typeof aiReportPolicyPublishRequestSchema
+>
+
+/* -------------------------------------------------------------------------- */
 /*  Validation helpers                                                       */
 /* -------------------------------------------------------------------------- */
 

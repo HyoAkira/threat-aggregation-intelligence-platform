@@ -77,10 +77,16 @@ public sealed class AdminProviderOperationsControllerTests(SqlServerFixture fixt
         Assert.Equal("success", threatFox.LastFetchStatus);
         Assert.NotNull(threatFox.LastFetchAt);
         Assert.NotNull(threatFox.NextFetchTime);
+        // The dashboard may expose only non-sensitive credential status metadata (flags, key
+        // versions, timestamps). No string-typed property may carry a credential value.
         Assert.DoesNotContain(
             typeof(AdminProviderDashboardItem).GetProperties(),
-            property => property.Name.Contains("key", StringComparison.OrdinalIgnoreCase)
-                || property.Name.Contains("secret", StringComparison.OrdinalIgnoreCase));
+            property => property.PropertyType == typeof(string)
+                && (property.Name.Contains("key", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Contains("secret", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Contains("credential", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Contains("password", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Contains("token", StringComparison.OrdinalIgnoreCase)));
     }
 
     [Fact]

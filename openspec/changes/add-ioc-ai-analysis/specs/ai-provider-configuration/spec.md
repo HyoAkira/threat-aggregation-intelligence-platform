@@ -16,23 +16,18 @@ Yöneticinin IOC analizi için kullanılacak OpenAI uyumlu sunucuyu güvenli bi�
 - **WHEN** an anonymous or non-Admin caller reads or changes AI settings
 - **THEN** the API returns 401 or 403 and no configuration changes
 
-### Requirement: Safe connection target and configuration validation
+### Requirement: OpenAI-compatible endpoint configuration
 
-The server SHALL reject an empty model ID when AI analysis is enabled and SHALL reject a Base URL with credentials, query, fragment, unsupported scheme, or an unapproved destination. Public destinations SHALL require HTTPS; private, loopback, or plain-HTTP destinations SHALL require an explicit deployment-controlled allowlist entry. Validation SHALL be enforced again when making the outbound request, including resolved addresses and redirects. Invalid updates SHALL preserve the previous settings.
+The server SHALL reject an empty model ID when AI analysis is enabled and SHALL require an absolute HTTP or HTTPS Base URL. An Admin MAY configure any OpenAI-compatible endpoint, including public, private-network, loopback, container-service, and plain-HTTP addresses. The server SHALL append the fixed chat-completions operation path and SHALL not apply an outbound destination allowlist or address filter. Invalid updates SHALL preserve the previous settings.
 
-#### Scenario: Dangerous URL is rejected
-- **WHEN** an Admin submits a metadata-service, loopback, or private-network URL that has not been explicitly allowed by deployment configuration
-- **THEN** the API returns 400 and makes no outbound request
-
-#### Scenario: Local model is explicitly allowed
-- **WHEN** an Admin selects an allowed local HTTP origin and a model ID
-- **THEN** the configuration is accepted and inference requests are restricted to that configured origin
+#### Scenario: Admin configures a local model
+- **WHEN** an Admin supplies `http://ollama:11434` and a model ID
+- **THEN** the configuration is accepted and report generation calls that OpenAI-compatible server
 
 ### Requirement: Missing or unavailable AI configuration fails closed
 
-AI report and chat generation SHALL not contact an upstream model while the feature is disabled, its connection settings are incomplete, or a required configured credential cannot be resolved. The API SHALL return a stable non-secret error; ordinary IOC browsing SHALL remain available.
+AI report generation SHALL not contact an upstream model while the feature is disabled, its connection settings are incomplete, or a required configured credential cannot be resolved. The API SHALL return a stable non-secret error; ordinary IOC browsing SHALL remain available.
 
 #### Scenario: Credential store is unavailable
 - **WHEN** the configured AI connection requires a stored key and that key cannot be resolved
 - **THEN** generation fails before an upstream request and the response contains no key material
-

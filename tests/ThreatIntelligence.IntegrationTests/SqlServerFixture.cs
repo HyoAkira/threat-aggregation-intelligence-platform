@@ -1,8 +1,11 @@
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using ThreatIntelligence.Application.Abstractions.Secrets;
+using ThreatIntelligence.Infrastructure.Configuration;
 using ThreatIntelligence.Infrastructure.Persistence;
 using ThreatIntelligence.Infrastructure.Persistence.Seeding;
+using ThreatIntelligence.Infrastructure.Secrets;
 
 namespace ThreatIntelligence.IntegrationTests;
 
@@ -14,8 +17,17 @@ namespace ThreatIntelligence.IntegrationTests;
 public sealed class SqlServerFixture : IAsyncLifetime
 {
     private const string DatabaseName = "ThreatIntelligenceTests";
+    private static readonly byte[] TestRootKey =
+    [
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+        0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20
+    ];
 
     public string ConnectionString { get; private set; } = null!;
+
+    public ISecretStore SecretStore { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
@@ -50,6 +62,11 @@ public sealed class SqlServerFixture : IAsyncLifetime
         await context.Database.MigrateAsync();
 
         await new ProviderSeeder(context).SeedAsync(CancellationToken.None);
+        SecretStore = new EncryptedSecretStore(
+            CreateContextFactory(),
+            new AesGcmSecretProtector(new EncryptionOptions(TestRootKey, 1, null)),
+            new EncryptionOptions(TestRootKey, 1, null),
+            TimeProvider.System);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -75,6 +92,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
         await using var context = CreateContext();
         await context.Database.ExecuteSqlRawAsync(
             "DELETE FROM iocTags; DELETE FROM iocs; DELETE FROM fetchHistory; DELETE FROM tags; DELETE FROM users; DELETE FROM settings;");
+        await context.Database.ExecuteSqlRawAsync(
+            "DELETE FROM aiReportPolicyActive; DELETE FROM aiReportPolicyVersions; DELETE FROM aiConnectionSettings; DELETE FROM encryptedSecrets;");
         await context.Database.ExecuteSqlRawAsync(
             "UPDATE providers SET nextFetchTime = NULL, lastFetchAt = NULL, lastFetchStatus = NULL, isEnabled = 1, " +
             "intervalMinutes = CASE WHEN id = 1 THEN 5 ELSE 480 END;");

@@ -1,29 +1,27 @@
 ## Why
 
-IOC detay ekranı kaynaklara atfedilmiş kanıtı gösteriyor, fakat analistin bu kanıttan tutarlı ve izlenebilir bir değerlendirme üretmesi için akış sunmuyor. Yönetici tarafından seçilen OpenAI uyumlu bir modelle, mevcut kanıta dayalı Türkçe rapor ve rapora bağlı soru-cevap akışı eklenmeli.
+The IOC detail page presents source-attributed evidence, but it offers no workflow for turning that evidence into a consistent analyst assessment. The platform needs an on-demand Turkish report using an OpenAI-compatible model configured by an administrator.
 
 ## What Changes
 
-- Yöneticinin AI sunucusu Base URL ve model kimliğini ayrı bir ayar alanında yönetmesini; API anahtarını mevcut şifreli, yalnızca yazılabilir credential uç noktasıyla kaydetmesini sağla.
-- Varsayılan sürümlü rapor yönergelerini `system.md` benzeri bir dosyayla dağıt; Admin panelinden metni görüntüleme, değiştirme ve yeni sürüm olarak yayımlama imkânı sağla. Değişmez güvenlik/veri erişim sınırları bu metinden ayrı tutulur.
-- IOC detayında kimliği doğrulanmış kullanıcı için isteğe bağlı rapor oluşturma düğmesi ekle. Backend, IOC grubunun kaynaklara atfedilmiş ve sınırlandırılmış anlık görüntüsünü alıp yayımlanmış rapor kurallarıyla modele gönderir; yanıtı akışla iletir ve yalnızca tamamlanmış raporu saklar.
-- Raporu gözlem, analist çıkarımı, belirsizlik ve önerilen aksiyon olarak ayır; desteklenen iddialarda kaynak kimlikleri göster ve eksik kanıtı açıkça belirt. IOC adreslerine kendiliğinden ağ isteği, harici zenginleştirme, otomatik bloklama veya kural yürütme yapılmaz.
-- Tamamlanmış rapora bağlı, yalnızca o raporun IOC kanıtı ve rapor içeriğiyle beslenen sınırlı sohbet ekle. Sohbet yalnızca oturum sahibi tarafından kullanılır; mesajlar ve model çıktısı boyut ve hız sınırlarına tabidir.
-- AI üretim uç noktalarını kimlik doğrulama, kullanıcı başına hız/eşzamanlılık sınırları, güvenli hedef doğrulaması, gizli veri redaksiyonu ve akış hatası sözleşmesiyle koru.
+- Let administrators configure the AI server Base URL and model ID in a separate settings area, while storing the API key through the existing encrypted, write-only credential endpoint.
+- Ship default, versioned report instructions in a `system.md`-style file. Let administrators review, edit, and publish new versions from the Admin panel, while keeping non-editable security and data-access boundaries separate.
+- Add an on-demand report action for everyone on the IOC detail page. The backend sends a bounded, source-attributed snapshot of the IOC group and the published report instructions to the model, streams the response, and lets the user download the completed report.
+- Separate observations, analyst inferences, uncertainty, and recommended actions in each report. Cite source identifiers for supported claims and disclose missing evidence. Do not automatically fetch IOC URLs, perform external enrichment, block indicators, or execute detection rules.
+- Protect AI generation endpoints with server-side rate and concurrency limits, secret-safe logging, and a defined streaming error contract; authentication is optional for the public report action.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `ai-provider-configuration`: Admin'e özel OpenAI uyumlu sunucu ayarları, bağlantı hedefi politikası ve credential durumu.
-- `ai-report-policy-management`: Admin tarafından düzenlenebilen ve sürümlenen rapor yönergeleri; değişmez uygulama güvenliği kurallarından ayrım.
-- `ioc-ai-reporting`: IOC kanıtından istek üzerine, kaynak gösteren ve akışla iletilen Türkçe rapor üretimi, saklama ve görüntüleme.
-- `ioc-ai-chat`: Tamamlanmış rapora ve tek IOC kanıtına bağlı, yetkilendirilmiş sınırlı sohbet.
+- `ai-provider-configuration`: Admin-only OpenAI-compatible server settings and credential status.
+- `ai-report-policy-management`: Administrator-edited, versioned report instructions kept separate from immutable application security controls.
+- `ioc-ai-reporting`: On-demand, source-cited Turkish reports generated from IOC evidence, streamed, displayed, and downloadable without server-side report history.
 
 ### Modified Capabilities
 
-- `admin-frontend-runtime-settings`: `/admin/settings` sayfası ayrı bir AI yapılandırma bölümü gösterir; tam provider/log ayarları PUT sözleşmesine AI anahtarı veya yapılandırması eklemez.
+- `admin-frontend-runtime-settings`: Add a separate AI configuration area to `/admin/settings` without adding the AI key or configuration to the existing provider/log settings PUT contract.
 
 ## Impact
 
-.NET API/Application/Infrastructure katmanlarında yeni AI ayar, rapor yönergesi, rapor, sohbet ve OpenAI uyumlu istemci sözleşmeleri; SQL Server şema değişiklikleri; `/api/admin/ai/*` ve `/api/iocs/{id}/ai/*` uç noktaları; React IOC detay ve Admin ayarlar arayüzleri etkilenir. Mevcut `OpenAICompatible.ServerApiKey` secret kimliği, `ISecretStore` ve JWT kimlik doğrulaması kullanılır. Devam eden `migrate-provider-api-keys-to-encrypted-storage` değişikliği secret depolama bağımlılığıdır; bu değişiklik onun şifreleme uygulamasını yeniden tanımlamaz.
+The .NET API, Application, and Infrastructure layers gain AI settings, report-instruction, reporting, and OpenAI-compatible client contracts. The change adds only the database storage needed for non-secret AI settings and report-policy versions, `/api/admin/ai/*` and `/api/iocs/{id}/ai/*` endpoints, and React updates to the IOC detail and Admin settings pages. It reuses the existing `OpenAICompatible.ServerApiKey` secret identity, `ISecretStore`, and JWT authentication. The in-progress `migrate-provider-api-keys-to-encrypted-storage` change is a dependency; this change does not redefine its encryption implementation.

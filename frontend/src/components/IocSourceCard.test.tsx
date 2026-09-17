@@ -64,16 +64,16 @@ describe('IocSourceCard', () => {
     expect(phishTankMarkup).not.toContain('Port:')
   })
 
-  it('renders the false-positive state per source', () => {
+  it('keeps the application-derived false-positive state out of provider evidence', () => {
     const fresh = renderToStaticMarkup(
       <IocSourceCard source={asSource(threatFoxSource)} />,
     )
-    expect(fresh).toContain('Not marked false positive')
+    expect(fresh).not.toContain('false positive')
 
     const stale = renderToStaticMarkup(
       <IocSourceCard source={asSource(phishTankSource)} />,
     )
-    expect(stale).toContain('Marked false positive')
+    expect(stale).not.toContain('false positive')
   })
 
   it('keeps each source’s tags on its own card', () => {

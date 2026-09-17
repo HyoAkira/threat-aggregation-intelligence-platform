@@ -12,8 +12,10 @@ import {
   threatLabel,
 } from '../lib/iocPresentation'
 import { focusRingClass } from '../components/AppShell'
+import { IocAiReport } from '../components/IocAiReport'
 import { IocGroupCard } from '../components/IocGroupCard'
 import { IocSourceCard } from '../components/IocSourceCard'
+import { IocFalsePositiveBadge } from '../components/IocFalsePositiveBadge'
 import { Pagination } from '../components/Pagination'
 import {
   EmptyState,
@@ -110,10 +112,11 @@ function ForensicDetail({
   relPage: number
 }) {
   const [copyLabel, setCopyLabel] = useState('Copy')
+  const [isAiWorkspaceOpen, setIsAiWorkspaceOpen] = useState(false)
+  // The left pane is only half the viewport while analysis is open, so it
+  // needs its own compact breakpoint instead of inheriting the full-page one.
+  const compactDetail = isAiWorkspaceOpen
   const label = threatLabel(group)
-  const falsePositiveCount = group.sources.filter(
-    (source) => source.isFalsePositive,
-  ).length
   const ports = Array.from(
     new Set(
       group.sources
@@ -131,7 +134,7 @@ function ForensicDetail({
     })
   }
 
-  return (
+  const detailContent = (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -151,10 +154,22 @@ function ForensicDetail({
       <header className="relative overflow-hidden rounded border border-outline-variant bg-surface-container-lowest">
         <div aria-hidden="true" className="h-1 bg-primary" />
         <div className="space-y-5 p-5">
-          <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+          <div
+            className={`flex flex-col justify-between gap-4 ${
+              compactDetail
+                ? '2xl:flex-row 2xl:items-start'
+                : 'xl:flex-row xl:items-start'
+            }`}
+          >
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="break-all font-mono text-2xl font-bold tracking-tight text-on-surface md:text-3xl">
+                <h2
+                  className={`break-all font-mono font-bold tracking-tight text-on-surface ${
+                    compactDetail
+                      ? 'text-xl md:text-2xl 2xl:text-3xl'
+                      : 'text-2xl md:text-3xl'
+                  }`}
+                >
                   {group.iocValue}
                 </h2>
                 <button
@@ -178,13 +193,7 @@ function ForensicDetail({
                   {iocTypeLabels[group.iocType]} indicator
                 </span>
                 {label ? (
-                  <span className="flex items-center gap-1 rounded bg-error-container px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-on-error-container">
-                    <span
-                      aria-hidden="true"
-                      className="material-symbols-outlined text-[12px]"
-                    >
-                      security
-                    </span>
+                  <span className="rounded bg-error-container px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-on-error-container">
                     Threat: {label}
                   </span>
                 ) : null}
@@ -192,12 +201,7 @@ function ForensicDetail({
                   {group.sources.length} provider source
                   {group.sources.length === 1 ? '' : 's'}
                 </span>
-                {falsePositiveCount > 0 ? (
-                  <span className="rounded bg-warning-container px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-on-warning-container">
-                    {falsePositiveCount} source
-                    {falsePositiveCount === 1 ? '' : 's'} marked false positive
-                  </span>
-                ) : null}
+                <IocFalsePositiveBadge sources={group.sources} />
               </div>
             </div>
 
@@ -256,12 +260,31 @@ function ForensicDetail({
                 {group.sources.length}
               </dd>
             </div>
+            <div className="ml-auto">
+              <button
+                type="button"
+                onClick={() => setIsAiWorkspaceOpen(true)}
+                className={`inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-on-primary transition-colors hover:bg-primary/90 ${focusRingClass}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[15px]"
+                >
+                  auto_awesome
+                </span>
+                Analyze with AI
+              </button>
+            </div>
           </dl>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <div className="space-y-6 xl:col-span-7">
+      <div
+        className={`grid grid-cols-1 ${
+          compactDetail ? 'gap-5' : 'gap-6 xl:grid-cols-12'
+        }`}
+      >
+        <div className={`space-y-6 ${compactDetail ? '' : 'xl:col-span-7'}`}>
           <section className="rounded border border-outline-variant bg-surface-container-lowest">
             <div className="flex items-start justify-between gap-3 border-b border-outline-variant/60 px-4 py-3">
               <div>
@@ -269,11 +292,13 @@ function ForensicDetail({
                   Provider evidence
                 </h2>
                 <p className="mt-0.5 text-xs text-on-surface-variant">
-                  Fields, tags, and false-positive state stay with the provider
-                  that supplied them.
+                  The raw indicator records submitted by external threat
+                  intelligence sources, showing which providers have reported
+                  the same IOC and supporting the claim with attributable source
+                  data.
                 </p>
               </div>
-              <span className="rounded bg-surface-container px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
+              <span className="whitespace-nowrap rounded bg-surface-container px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">
                 {group.sources.length} records
               </span>
             </div>
@@ -296,15 +321,12 @@ function ForensicDetail({
           />
         </div>
 
-        <aside className="space-y-6 xl:col-span-5">
+        <aside className={`space-y-6 ${compactDetail ? '' : 'xl:col-span-5'}`}>
           <section className="rounded border border-outline-variant bg-surface-container-lowest">
             <div className="border-b border-outline-variant/60 px-4 py-3">
               <h2 className="text-base font-semibold tracking-tight text-on-surface">
-                Normalized IOC context
+                IOC context
               </h2>
-              <p className="mt-0.5 text-xs text-on-surface-variant">
-                Stable query fields derived from the normalized indicator.
-              </p>
             </div>
             <dl className="space-y-2 p-4 text-xs">
               <ContextRow
@@ -323,7 +345,6 @@ function ForensicDetail({
               <ContextRow label="IOC identifier" value={String(group.id)} />
             </dl>
           </section>
-
           <section className="rounded border border-outline-variant bg-surface-container-lowest p-4">
             <span className={sectionTitleClass}>Investigation notes</span>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant">
@@ -337,6 +358,23 @@ function ForensicDetail({
       </div>
     </div>
   )
+
+  if (isAiWorkspaceOpen) {
+    return (
+      <div className="grid min-h-[calc(100vh-10rem)] grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="min-w-0">{detailContent}</div>
+        <aside className="min-w-0 xl:sticky xl:top-6 xl:self-start">
+          <IocAiReport
+            iocId={group.id}
+            autoGenerate
+            onClose={() => setIsAiWorkspaceOpen(false)}
+          />
+        </aside>
+      </div>
+    )
+  }
+
+  return detailContent
 }
 
 function ContextRow({ label, value }: { label: string; value: string | null }) {

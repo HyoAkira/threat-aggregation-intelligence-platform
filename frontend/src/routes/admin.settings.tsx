@@ -1,7 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useBlocker } from '@tanstack/react-router'
+import { createFileRoute, Link, useBlocker } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { z } from 'zod'
 import { focusRingClass } from '../components/AppShell'
+import { AdminAiSettings } from '../components/AdminAiSettings'
 import { ErrorState, LoadingState } from '../components/uiStates'
 import type {
   ProviderSettingRequest,
@@ -17,9 +20,16 @@ import {
   putAdminCredential,
   putAdminSettings,
 } from '../lib/apiClient'
-import { adminCredentialKey, adminProviderListKey, adminSettingsKey } from '../lib/queryKeys'
+import {
+  adminCredentialKey,
+  adminProviderListKey,
+  adminSettingsKey,
+} from '../lib/queryKeys'
 
 export const Route = createFileRoute('/admin/settings')({
+  validateSearch: z.object({
+    section: z.enum(['runtime', 'ai']).optional(),
+  }),
   component: AdminSettingsPage,
 })
 
@@ -144,7 +154,58 @@ function hasErrors(errors: FieldErrors): boolean {
 /*  Page component                                                           */
 /* -------------------------------------------------------------------------- */
 
+const settingsTabBaseClass =
+  'px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors rounded'
+const settingsTabActiveClass = `${settingsTabBaseClass} bg-primary text-on-primary`
+const settingsTabInactiveClass = `${settingsTabBaseClass} text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface`
+
 function AdminSettingsPage() {
+  const search = Route.useSearch()
+
+  return (
+    <div>
+      <div>
+        <h2 className="text-lg font-semibold text-on-surface">Settings</h2>
+        <p className="mt-0.5 text-sm text-on-surface-variant">
+          Manage runtime behavior and AI report generation configuration.
+        </p>
+      </div>
+
+      <nav
+        aria-label="Settings sections"
+        className="mt-4 flex flex-wrap gap-1 border-b border-outline-variant"
+      >
+        <SettingsSectionLink section="runtime">Runtime</SettingsSectionLink>
+        <SettingsSectionLink section="ai">AI analysis</SettingsSectionLink>
+      </nav>
+
+      {search.section === 'ai' ? <AdminAiSettings /> : <RuntimeSettingsPanel />}
+    </div>
+  )
+}
+
+function SettingsSectionLink({
+  section,
+  children,
+}: {
+  section: 'runtime' | 'ai'
+  children: ReactNode
+}) {
+  const currentSection = Route.useSearch().section ?? 'runtime'
+  const isActive = currentSection === section
+  return (
+    <Link
+      to="/admin/settings"
+      search={{ section }}
+      className={`${isActive ? settingsTabActiveClass : settingsTabInactiveClass} ${focusRingClass} -mb-px`}
+      aria-current={isActive ? 'page' : undefined}
+    >
+      {children}
+    </Link>
+  )
+}
+
+function RuntimeSettingsPanel() {
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [baseline, setBaseline] = useState<Draft | null>(null)
@@ -152,7 +213,9 @@ function AdminSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [credentialDrafts, setCredentialDrafts] = useState<Record<string, string>>({})
+  const [credentialDrafts, setCredentialDrafts] = useState<
+    Record<string, string>
+  >({})
   const [credentialBusy, setCredentialBusy] = useState<string | null>(null)
   const [credentialFeedback, setCredentialFeedback] =
     useState<CredentialFeedback | null>(null)
@@ -321,7 +384,9 @@ function AdminSettingsPage() {
     try {
       await putAdminCredential(identity, value)
       setCredentialDrafts((current) => ({ ...current, [identity]: '' }))
-      void queryClient.invalidateQueries({ queryKey: adminCredentialKey(identity) })
+      void queryClient.invalidateQueries({
+        queryKey: adminCredentialKey(identity),
+      })
       void queryClient.invalidateQueries({ queryKey: adminProviderListKey() })
       setCredentialFeedback({
         kind: 'success',
@@ -330,7 +395,8 @@ function AdminSettingsPage() {
     } catch (err) {
       setCredentialFeedback({
         kind: 'error',
-        message: err instanceof ApiError ? err.message : 'Credential update failed.',
+        message:
+          err instanceof ApiError ? err.message : 'Credential update failed.',
       })
     } finally {
       setCredentialBusy(null)
@@ -339,7 +405,8 @@ function AdminSettingsPage() {
 
   const clearCredential = async (identity: string) => {
     const providerLabel =
-      credentialIdentities.find(([, key]) => key === identity)?.[0] ?? 'provider'
+      credentialIdentities.find(([, key]) => key === identity)?.[0] ??
+      'provider'
     const confirmed = window.confirm(
       `Clear the ${providerLabel} credential? This action cannot be undone.`,
     )
@@ -351,7 +418,9 @@ function AdminSettingsPage() {
     try {
       await clearAdminCredential(identity)
       setCredentialDrafts((current) => ({ ...current, [identity]: '' }))
-      void queryClient.invalidateQueries({ queryKey: adminCredentialKey(identity) })
+      void queryClient.invalidateQueries({
+        queryKey: adminCredentialKey(identity),
+      })
       void queryClient.invalidateQueries({ queryKey: adminProviderListKey() })
       setCredentialFeedback({
         kind: 'success',
@@ -360,7 +429,8 @@ function AdminSettingsPage() {
     } catch (err) {
       setCredentialFeedback({
         kind: 'error',
-        message: err instanceof ApiError ? err.message : 'Credential clear failed.',
+        message:
+          err instanceof ApiError ? err.message : 'Credential clear failed.',
       })
     } finally {
       setCredentialBusy(null)
@@ -538,7 +608,10 @@ function AdminSettingsPage() {
                     type="checkbox"
                     checked={provider.requiresApiKey}
                     onChange={(e) =>
-                      updateProviderRequiresApiKey(provider.id, e.target.checked)
+                      updateProviderRequiresApiKey(
+                        provider.id,
+                        e.target.checked,
+                      )
                     }
                   />
                   Requires API key
@@ -583,7 +656,8 @@ function AdminSettingsPage() {
       <div className="mt-4 rounded border border-outline-variant bg-surface-container-lowest p-4">
         <h3 className="font-semibold text-on-surface">Provider Credentials</h3>
         <p className="mt-1 text-sm text-on-surface-variant">
-          Credentials are write-only. They are encrypted before storage and are never shown here.
+          Credentials are write-only. They are encrypted before storage and are
+          never shown here.
         </p>
         {credentialFeedback && (
           <div
@@ -596,7 +670,9 @@ function AdminSettingsPage() {
             }`}
           >
             <span className="font-semibold">
-              {credentialFeedback.kind === 'error' ? 'Credential update failed.' : 'Credential updated.'}
+              {credentialFeedback.kind === 'error'
+                ? 'Credential update failed.'
+                : 'Credential updated.'}
             </span>{' '}
             {credentialFeedback.message}
           </div>
@@ -606,12 +682,16 @@ function AdminSettingsPage() {
             const provider = draft.providers.find((item) => item.name === label)
             if (!provider?.requiresApiKey) return null
 
-            const status = identity === 'ThreatFox.ApiKey'
-              ? threatFoxCredential.data
-              : phishTankCredential.data
+            const status =
+              identity === 'ThreatFox.ApiKey'
+                ? threatFoxCredential.data
+                : phishTankCredential.data
             const busy = credentialBusy === identity
             return (
-              <div key={identity} className="flex flex-wrap items-end gap-3 border-t border-outline-variant pt-3">
+              <div
+                key={identity}
+                className="flex flex-wrap items-end gap-3 border-t border-outline-variant pt-3"
+              >
                 <div className="min-w-[150px] flex-1">
                   <div className="font-semibold text-on-surface">{label}</div>
                   <div className="font-mono text-[10px] text-on-surface-variant">
@@ -635,10 +715,20 @@ function AdminSettingsPage() {
                   placeholder="Enter new credential"
                   className="credential-input min-w-[220px] flex-1 rounded border border-outline-variant bg-surface-container-low px-3 py-1.5 font-mono text-[13px] text-on-surface"
                 />
-                <button type="button" disabled={busy} onClick={() => void saveCredential(identity)} className={`rounded bg-primary px-3 py-1.5 font-mono text-[11px] font-semibold text-on-primary disabled:opacity-50 ${focusRingClass}`}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void saveCredential(identity)}
+                  className={`rounded bg-primary px-3 py-1.5 font-mono text-[11px] font-semibold text-on-primary disabled:opacity-50 ${focusRingClass}`}
+                >
                   {busy ? 'Saving…' : 'Set / replace'}
                 </button>
-                <button type="button" disabled={busy || !status?.configured} onClick={() => void clearCredential(identity)} className={`rounded border border-outline-variant px-3 py-1.5 font-mono text-[11px] font-semibold text-on-surface disabled:opacity-50 ${focusRingClass}`}>
+                <button
+                  type="button"
+                  disabled={busy || !status?.configured}
+                  onClick={() => void clearCredential(identity)}
+                  className={`rounded border border-outline-variant px-3 py-1.5 font-mono text-[11px] font-semibold text-on-surface disabled:opacity-50 ${focusRingClass}`}
+                >
                   Clear
                 </button>
               </div>

@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { IocGroup } from '../lib/schemas'
 import { formatLocalDateTime } from '../lib/format'
 import { IocSourceCard } from './IocSourceCard'
+import { IocFalsePositiveBadge } from './IocFalsePositiveBadge'
 
 const typeBadgeClass: Record<IocGroup['iocType'], string> = {
   ipv4: 'bg-primary-fixed text-on-primary-fixed',
@@ -55,9 +56,12 @@ export function IocGroupCard({
             {group.iocType}
           </span>
         </Heading>
-        <span className="font-mono text-[10px] uppercase tracking-wider text-outline">
-          Group #{group.id}
-        </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <IocFalsePositiveBadge sources={group.sources} />
+          <span className="font-mono text-[10px] uppercase tracking-wider text-outline">
+            Group #{group.id}
+          </span>
+        </div>
       </div>
 
       <dl className="flex flex-wrap gap-x-6 gap-y-2 px-4 py-3 text-xs">

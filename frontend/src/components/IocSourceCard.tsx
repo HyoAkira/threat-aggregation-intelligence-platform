@@ -1,24 +1,20 @@
 import type { IocSource } from '../lib/schemas'
-import {
-  formatFalsePositive,
-  formatFieldValue,
-  formatLocalDateTime,
-} from '../lib/format'
+import { formatFieldValue, formatLocalDateTime } from '../lib/format'
 
 const cardClass =
   'rounded border border-outline-variant bg-surface-container-lowest'
 const fieldRowClass =
-  'grid grid-cols-[minmax(7rem,auto)_1fr] items-baseline gap-x-3 gap-y-0.5 py-1 text-xs'
+  'grid min-w-0 grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] items-baseline gap-x-3 gap-y-0.5 py-1 text-xs'
 const fieldLabelClass =
   'font-mono text-[10px] uppercase tracking-wider text-outline'
-const fieldValueClass = 'break-words font-mono text-on-surface'
+const fieldValueClass = 'min-w-0 break-words font-mono text-on-surface'
 const tagClass =
   'rounded-full bg-surface-container px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-on-surface-variant'
 
 /**
  * One labelled source entry: provider attribution, record id, port, first/last
- * seen, false-positive state, tags, external details link, and the provider's
- * typed fields. Null properties produce no label; stored false, zero, and empty
+ * seen, tags, external details link, and the provider's typed fields. Null
+ * properties produce no label; stored false, zero, and empty
  * values stay visible and understandable. Provider-specific fields always stay
  * on their own card.
  */
@@ -35,15 +31,6 @@ export function IocSourceCard({ source }: { source: IocSource }) {
             record {source.providerRecordId}
           </span>
         </h4>
-        <p
-          className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${
-            source.isFalsePositive
-              ? 'bg-warning-container text-on-warning-container'
-              : 'bg-tertiary-container/10 text-tertiary'
-          }`}
-        >
-          {formatFalsePositive(source.isFalsePositive)}
-        </p>
       </header>
 
       <dl className="grid grid-cols-1 gap-x-6 px-3 py-2 sm:grid-cols-2">
