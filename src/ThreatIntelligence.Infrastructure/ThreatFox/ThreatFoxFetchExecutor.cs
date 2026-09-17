@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using ThreatIntelligence.Application.BatchWriter;
+using ThreatIntelligence.Application.Abstractions.Secrets;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Application.ProviderRecords;
 using ThreatIntelligence.Domain.Enums;
@@ -13,7 +14,8 @@ public sealed class ThreatFoxFetchExecutor(
     ThreatFoxFullParser fullParser,
     ProviderRecordValidator validator,
     IIocBatchWriter batchWriter,
-    ILogger<ThreatFoxFetchExecutor>? logger = null) : IProviderFetchExecutor
+    ILogger<ThreatFoxFetchExecutor>? logger = null,
+    IProviderCredentialResolver? credentialResolver = null) : IProviderFetchExecutor
 {
     private readonly ILogger<ThreatFoxFetchExecutor> _logger =
         logger ?? NullLogger<ThreatFoxFetchExecutor>.Instance;
@@ -32,10 +34,14 @@ public sealed class ThreatFoxFetchExecutor(
             job.ProviderId,
             job.Mode);
 
+        var credential = credentialResolver is null
+            ? null
+            : await credentialResolver.ResolveAsync(job.ProviderId, cancellationToken).ConfigureAwait(false);
+
         var records = job.Mode switch
         {
-            FetchMode.Recent => await FetchRecentAsync(cancellationToken).ConfigureAwait(false),
-            FetchMode.Full => await FetchFullAsync(cancellationToken).ConfigureAwait(false),
+            FetchMode.Recent => await FetchRecentAsync(credential?.Value, credentialResolver is not null, cancellationToken).ConfigureAwait(false),
+            FetchMode.Full => await FetchFullAsync(credential?.Value, credentialResolver is not null, cancellationToken).ConfigureAwait(false),
             _ => throw new TerminalFetchException($"ThreatFox executor does not support mode {job.Mode}.")
         };
 
@@ -57,14 +63,16 @@ public sealed class ThreatFoxFetchExecutor(
         return new FetchExecutionResult(result.Added, result.Updated);
     }
 
-    private async Task<List<NormalizedProviderRecord>> FetchRecentAsync(CancellationToken ct)
+    private async Task<List<NormalizedProviderRecord>> FetchRecentAsync(string? apiKey, bool dynamicCredential, CancellationToken ct)
     {
         _logger.LogInformation("Fetching ThreatFox recent export");
 
         ThreatFoxExportStream stream;
         try
         {
-            stream = await client.FetchRecentAsync(ct).ConfigureAwait(false);
+            stream = dynamicCredential
+                ? await client.FetchRecentAsync(apiKey, ct).ConfigureAwait(false)
+                : await client.FetchRecentAsync(ct).ConfigureAwait(false);
         }
         catch (ProviderFetchHttpException ex)
         {
@@ -89,12 +97,14 @@ public sealed class ThreatFoxFetchExecutor(
         return records;
     }
 
-    private async Task<List<NormalizedProviderRecord>> FetchFullAsync(CancellationToken ct)
+    private async Task<List<NormalizedProviderRecord>> FetchFullAsync(string? apiKey, bool dynamicCredential, CancellationToken ct)
     {
         ThreatFoxExportStream stream;
         try
         {
-            stream = await client.FetchFullAsync(ct).ConfigureAwait(false);
+            stream = dynamicCredential
+                ? await client.FetchFullAsync(apiKey, ct).ConfigureAwait(false)
+                : await client.FetchFullAsync(ct).ConfigureAwait(false);
         }
         catch (ProviderFetchHttpException ex)
         {

@@ -41,7 +41,8 @@ public sealed class AdminProviderRepository(IDbContextFactory<ThreatIntelligence
                 supportedModes: supportedModes,
                 recentCooldownMinutes: request.RecentCooldownMinutes,
                 fullCooldownMinutes: request.FullCooldownMinutes,
-                minimumIntervalMinutes: request.MinimumIntervalMinutes);
+                minimumIntervalMinutes: request.MinimumIntervalMinutes,
+                requiresApiKey: request.RequiresApiKey);
         }
         catch (ArgumentException)
         {
@@ -86,6 +87,7 @@ public sealed class AdminProviderRepository(IDbContextFactory<ThreatIntelligence
                 request.MinimumIntervalMinutes);
             provider.SetEnabled(request.IsEnabled);
             provider.SetIntervalMinutes(request.IntervalMinutes);
+            provider.SetRequiresApiKey(request.RequiresApiKey);
         }
         catch (ArgumentException)
         {

@@ -13,4 +13,10 @@ public interface IThreatFoxExportClient
     Task<ThreatFoxExportStream> FetchRecentAsync(CancellationToken cancellationToken);
 
     Task<ThreatFoxExportStream> FetchFullAsync(CancellationToken cancellationToken);
+
+    Task<ThreatFoxExportStream> FetchRecentAsync(string? apiKey, CancellationToken cancellationToken) =>
+        FetchRecentAsync(cancellationToken);
+
+    Task<ThreatFoxExportStream> FetchFullAsync(string? apiKey, CancellationToken cancellationToken) =>
+        FetchFullAsync(cancellationToken);
 }

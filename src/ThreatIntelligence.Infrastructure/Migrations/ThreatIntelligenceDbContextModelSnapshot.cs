@@ -22,6 +22,68 @@ namespace ThreatIntelligence.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.EncryptedSecret", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<byte[]>("AuthenticationTag")
+                        .IsRequired()
+                        .HasColumnType("binary(16)")
+                        .HasColumnName("authenticationTag");
+
+                    b.Property<byte[]>("Ciphertext")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)")
+                        .HasColumnName("ciphertext");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("createdAt");
+
+                    b.Property<int>("FormatVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("formatVersion");
+
+                    b.Property<int>("KeyVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("keyVersion");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<byte[]>("Nonce")
+                        .IsRequired()
+                        .HasColumnType("binary(12)")
+                        .HasColumnName("nonce");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updatedAt");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_encryptedSecrets_Name");
+
+                    b.ToTable("encryptedSecrets", (string)null);
+                });
+
             modelBuilder.Entity("ThreatIntelligence.Domain.Entities.FetchHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -317,6 +379,10 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                     b.Property<int?>("RecentCooldownMinutes")
                         .HasColumnType("int")
                         .HasColumnName("recentCooldownMinutes");
+
+                    b.Property<bool>("RequiresApiKey")
+                        .HasColumnType("bit")
+                        .HasColumnName("requiresApiKey");
 
                     b.Property<int>("SupportedModes")
                         .HasColumnType("int")

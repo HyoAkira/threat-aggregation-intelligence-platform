@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ThreatIntelligence.Application.Abstractions.Persistence;
+using ThreatIntelligence.Application.Abstractions.Secrets;
 using ThreatIntelligence.Application.Admin;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Domain.Entities;
@@ -11,7 +12,9 @@ namespace ThreatIntelligence.Infrastructure.Admin;
 /// EF Core read model for Admin provider operations. All reads are no-tracking and never create or
 /// mutate history rows; secrets (API keys, connection strings) are never projected.
 /// </summary>
-public sealed class AdminProviderOperationsReader(IDbContextFactory<ThreatIntelligenceDbContext> contextFactory)
+public sealed class AdminProviderOperationsReader(
+    IDbContextFactory<ThreatIntelligenceDbContext> contextFactory,
+    ISecretStore? secretStore = null)
     : IAdminProviderOperationsReader
 {
     public async Task<IReadOnlyList<AdminProviderDashboardItem>> GetProvidersAsync(CancellationToken cancellationToken)
@@ -21,7 +24,28 @@ public sealed class AdminProviderOperationsReader(IDbContextFactory<ThreatIntell
             .OrderBy(provider => provider.Id)
             .ToListAsync(cancellationToken);
 
-        return providers.Select(AdminProviderProjection.Project).ToList();
+        var result = new List<AdminProviderDashboardItem>(providers.Count);
+        foreach (var provider in providers)
+        {
+            var projected = AdminProviderProjection.Project(provider);
+            var identity = provider.Name switch
+            {
+                "ThreatFox" => ManagedSecretNames.ThreatFoxApiKey,
+                "PhishTank" => ManagedSecretNames.PhishTankAppKey,
+                _ => null
+            };
+            var status = identity is null || secretStore is null
+                ? null
+                : await secretStore.GetStatusAsync(identity, cancellationToken);
+            result.Add(projected with
+            {
+                CredentialConfigured = status is not null,
+                CredentialKeyVersion = status?.KeyVersion,
+                CredentialUpdatedAt = status?.UpdatedAt
+            });
+        }
+
+        return result;
     }
 
     public async Task<AdminProviderHistoryPage?> GetProviderHistoryAsync(

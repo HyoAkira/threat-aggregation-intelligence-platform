@@ -61,3 +61,6 @@ export const adminLogsKey = (
 ) => ['admin', 'logs', count, level, source, correlationId] as const
 
 export const adminSettingsKey = () => ['admin', 'settings'] as const
+
+export const adminCredentialKey = (identity: string) =>
+  ['admin', 'credential', identity] as const

@@ -15,7 +15,7 @@ public sealed class PhishTankClient : IPhishTankClient
     private const string FeedFileName = "online-valid.json.gz";
 
     private readonly HttpClient _httpClient;
-    private readonly string? _appKey;
+    private readonly string? _legacyAppKey;
     private readonly string _baseUrl;
     private readonly ILogger<PhishTankClient> _logger;
 
@@ -26,7 +26,7 @@ public sealed class PhishTankClient : IPhishTankClient
         ILogger<PhishTankClient>? logger = null)
     {
         _httpClient = httpClient;
-        _appKey = options.AppKey;
+        _legacyAppKey = options.AppKey;
         _baseUrl = baseUrl;
         _logger = logger ?? NullLogger<PhishTankClient>.Instance;
         if (_httpClient.DefaultRequestHeaders.UserAgent.Count > 0) return;
@@ -34,8 +34,11 @@ public sealed class PhishTankClient : IPhishTankClient
     }
 
     public async Task<PhishTankFeedStream> FetchFeedAsync(CancellationToken cancellationToken)
+        => await FetchFeedAsync(_legacyAppKey, cancellationToken).ConfigureAwait(false);
+
+    public async Task<PhishTankFeedStream> FetchFeedAsync(string? appKey, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, BuildFeedUri());
+        using var request = new HttpRequestMessage(HttpMethod.Get, BuildFeedUri(appKey));
 
         _logger.LogInformation("PhishTank feed request starting FileName={FileName}", FeedFileName);
 
@@ -93,12 +96,12 @@ public sealed class PhishTankClient : IPhishTankClient
         return new PhishTankFeedStream(FeedFileName, content);
     }
 
-    internal Uri BuildFeedUri()
+    internal Uri BuildFeedUri(string? appKey = null)
     {
         var baseUri = new Uri(_baseUrl.TrimEnd('/'));
-        var path = string.IsNullOrEmpty(_appKey)
+        var path = string.IsNullOrEmpty(appKey)
             ? $"{FeedPathPrefix}/{FeedFileName}"
-            : $"{FeedPathPrefix}/{_appKey}/{FeedFileName}";
+            : $"{FeedPathPrefix}/{appKey}/{FeedFileName}";
         return new Uri(baseUri, path);
     }
 
@@ -132,6 +135,9 @@ public sealed class PhishTankClient : IPhishTankClient
 public interface IPhishTankClient
 {
     Task<PhishTankFeedStream> FetchFeedAsync(CancellationToken cancellationToken);
+
+    Task<PhishTankFeedStream> FetchFeedAsync(string? appKey, CancellationToken cancellationToken) =>
+        FetchFeedAsync(cancellationToken);
 }
 
 public sealed record PhishTankFeedStream(string Name, Stream Content);

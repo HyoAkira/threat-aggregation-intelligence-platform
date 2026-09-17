@@ -27,6 +27,7 @@ public sealed class ProviderSeeder(ThreatIntelligenceDbContext dbContext)
             recentCooldownMinutes: 5,
             fullCooldownMinutes: 60,
             minimumIntervalMinutes: 5,
+            requiresApiKey: true,
             cancellationToken);
 
         await SeedProviderAsync(
@@ -39,6 +40,7 @@ public sealed class ProviderSeeder(ThreatIntelligenceDbContext dbContext)
             recentCooldownMinutes: null,
             fullCooldownMinutes: null,
             minimumIntervalMinutes: 480,
+            requiresApiKey: false,
             cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
@@ -54,14 +56,15 @@ public sealed class ProviderSeeder(ThreatIntelligenceDbContext dbContext)
         int? recentCooldownMinutes,
         int? fullCooldownMinutes,
         int minimumIntervalMinutes,
+        bool requiresApiKey,
         CancellationToken cancellationToken)
     {
         await dbContext.Database.ExecuteSqlAsync($"""
             IF NOT EXISTS (SELECT 1 FROM providers WITH (UPDLOCK, HOLDLOCK) WHERE id = {id})
             BEGIN
                 SET IDENTITY_INSERT providers ON;
-                INSERT INTO providers (id, name, baseUrl, isEnabled, intervalMinutes, lastFetchStatus, lastFetchAt, nextFetchTime, defaultMode, supportedModes, recentCooldownMinutes, fullCooldownMinutes, minimumIntervalMinutes)
-                VALUES ({id}, {name}, {baseUrl}, 1, {intervalMinutes}, NULL, NULL, NULL, {defaultMode}, {supportedModes}, {recentCooldownMinutes}, {fullCooldownMinutes}, {minimumIntervalMinutes});
+                INSERT INTO providers (id, name, baseUrl, isEnabled, intervalMinutes, lastFetchStatus, lastFetchAt, nextFetchTime, defaultMode, supportedModes, recentCooldownMinutes, fullCooldownMinutes, minimumIntervalMinutes, requiresApiKey)
+                VALUES ({id}, {name}, {baseUrl}, 1, {intervalMinutes}, NULL, NULL, NULL, {defaultMode}, {supportedModes}, {recentCooldownMinutes}, {fullCooldownMinutes}, {minimumIntervalMinutes}, {requiresApiKey});
                 SET IDENTITY_INSERT providers OFF;
             END
             """, cancellationToken);

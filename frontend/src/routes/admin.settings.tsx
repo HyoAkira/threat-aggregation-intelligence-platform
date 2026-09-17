@@ -9,8 +9,15 @@ import type {
   SupportedLogLevel,
 } from '../lib/adminSchemas'
 import { supportedLogLevels } from '../lib/adminSchemas'
-import { ApiError, getAdminSettings, putAdminSettings } from '../lib/apiClient'
-import { adminProviderListKey, adminSettingsKey } from '../lib/queryKeys'
+import {
+  ApiError,
+  clearAdminCredential,
+  getAdminCredential,
+  getAdminSettings,
+  putAdminCredential,
+  putAdminSettings,
+} from '../lib/apiClient'
+import { adminCredentialKey, adminProviderListKey, adminSettingsKey } from '../lib/queryKeys'
 
 export const Route = createFileRoute('/admin/settings')({
   component: AdminSettingsPage,
@@ -26,11 +33,22 @@ type ProviderDraft = {
   isEnabled: boolean
   intervalMinutes: number
   minimumIntervalMinutes: number
+  requiresApiKey: boolean
 }
 
 type Draft = {
   logLevel: SupportedLogLevel
   providers: ProviderDraft[]
+}
+
+const credentialIdentities = [
+  ['ThreatFox', 'ThreatFox.ApiKey'],
+  ['PhishTank', 'PhishTank.AppKey'],
+] as const
+
+type CredentialFeedback = {
+  kind: 'success' | 'error'
+  message: string
 }
 
 function baselineToDraft(baseline: SettingsResponse): Draft {
@@ -42,6 +60,7 @@ function baselineToDraft(baseline: SettingsResponse): Draft {
       isEnabled: p.isEnabled,
       intervalMinutes: p.intervalMinutes,
       minimumIntervalMinutes: p.minimumIntervalMinutes,
+      requiresApiKey: p.requiresApiKey,
     })),
   }
 }
@@ -56,6 +75,7 @@ function draftToRequest(draft: Draft): {
       id: p.id,
       isEnabled: p.isEnabled,
       intervalMinutes: p.intervalMinutes,
+      requiresApiKey: p.requiresApiKey,
     })),
   }
 }
@@ -69,7 +89,8 @@ function isDirty(baseline: Draft, draft: Draft): boolean {
     if (
       b.id !== d.id ||
       b.isEnabled !== d.isEnabled ||
-      b.intervalMinutes !== d.intervalMinutes
+      b.intervalMinutes !== d.intervalMinutes ||
+      b.requiresApiKey !== d.requiresApiKey
     ) {
       return true
     }
@@ -131,6 +152,10 @@ function AdminSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [credentialDrafts, setCredentialDrafts] = useState<Record<string, string>>({})
+  const [credentialBusy, setCredentialBusy] = useState<string | null>(null)
+  const [credentialFeedback, setCredentialFeedback] =
+    useState<CredentialFeedback | null>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const {
@@ -141,6 +166,15 @@ function AdminSettingsPage() {
   } = useQuery({
     queryKey: adminSettingsKey(),
     queryFn: ({ signal }) => getAdminSettings(signal),
+  })
+
+  const threatFoxCredential = useQuery({
+    queryKey: adminCredentialKey('ThreatFox.ApiKey'),
+    queryFn: ({ signal }) => getAdminCredential('ThreatFox.ApiKey', signal),
+  })
+  const phishTankCredential = useQuery({
+    queryKey: adminCredentialKey('PhishTank.AppKey'),
+    queryFn: ({ signal }) => getAdminCredential('PhishTank.AppKey', signal),
   })
 
   // Initialize draft from fetched settings
@@ -259,6 +293,78 @@ function AdminSettingsPage() {
       ),
     })
     setSaveSuccess(false)
+  }
+
+  const updateProviderRequiresApiKey = (id: number, value: boolean) => {
+    if (!draft) return
+    setDraft({
+      ...draft,
+      providers: draft.providers.map((p) =>
+        p.id === id ? { ...p, requiresApiKey: value } : p,
+      ),
+    })
+    setSaveSuccess(false)
+  }
+
+  const saveCredential = async (identity: string) => {
+    const value = credentialDrafts[identity] ?? ''
+    if (!value.trim()) {
+      setCredentialFeedback({
+        kind: 'error',
+        message: 'Enter a credential before saving.',
+      })
+      return
+    }
+    setCredentialBusy(identity)
+    setSaveError(null)
+    setCredentialFeedback(null)
+    try {
+      await putAdminCredential(identity, value)
+      setCredentialDrafts((current) => ({ ...current, [identity]: '' }))
+      void queryClient.invalidateQueries({ queryKey: adminCredentialKey(identity) })
+      void queryClient.invalidateQueries({ queryKey: adminProviderListKey() })
+      setCredentialFeedback({
+        kind: 'success',
+        message: `${identity.split('.')[0]} credential saved successfully.`,
+      })
+    } catch (err) {
+      setCredentialFeedback({
+        kind: 'error',
+        message: err instanceof ApiError ? err.message : 'Credential update failed.',
+      })
+    } finally {
+      setCredentialBusy(null)
+    }
+  }
+
+  const clearCredential = async (identity: string) => {
+    const providerLabel =
+      credentialIdentities.find(([, key]) => key === identity)?.[0] ?? 'provider'
+    const confirmed = window.confirm(
+      `Clear the ${providerLabel} credential? This action cannot be undone.`,
+    )
+    if (!confirmed) return
+
+    setCredentialBusy(identity)
+    setSaveError(null)
+    setCredentialFeedback(null)
+    try {
+      await clearAdminCredential(identity)
+      setCredentialDrafts((current) => ({ ...current, [identity]: '' }))
+      void queryClient.invalidateQueries({ queryKey: adminCredentialKey(identity) })
+      void queryClient.invalidateQueries({ queryKey: adminProviderListKey() })
+      setCredentialFeedback({
+        kind: 'success',
+        message: `${identity.split('.')[0]} credential cleared successfully.`,
+      })
+    } catch (err) {
+      setCredentialFeedback({
+        kind: 'error',
+        message: err instanceof ApiError ? err.message : 'Credential clear failed.',
+      })
+    } finally {
+      setCredentialBusy(null)
+    }
   }
 
   if (isLoading) return <LoadingState label="Loading settings…" />
@@ -427,6 +533,17 @@ function AdminSettingsPage() {
                   </button>
                 </div>
 
+                <label className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                  <input
+                    type="checkbox"
+                    checked={provider.requiresApiKey}
+                    onChange={(e) =>
+                      updateProviderRequiresApiKey(provider.id, e.target.checked)
+                    }
+                  />
+                  Requires API key
+                </label>
+
                 {/* Interval */}
                 <div className="flex flex-col gap-1">
                   <label
@@ -457,6 +574,73 @@ function AdminSettingsPage() {
                 <span className="font-mono text-[10px] text-on-surface-variant">
                   min: {provider.minimumIntervalMinutes}m
                 </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="mt-4 rounded border border-outline-variant bg-surface-container-lowest p-4">
+        <h3 className="font-semibold text-on-surface">Provider Credentials</h3>
+        <p className="mt-1 text-sm text-on-surface-variant">
+          Credentials are write-only. They are encrypted before storage and are never shown here.
+        </p>
+        {credentialFeedback && (
+          <div
+            role={credentialFeedback.kind === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+            className={`mt-3 rounded border px-3 py-2 text-sm ${
+              credentialFeedback.kind === 'error'
+                ? 'border-error/40 bg-error-container text-on-error-container'
+                : 'border-tertiary/40 bg-tertiary/10 text-tertiary'
+            }`}
+          >
+            <span className="font-semibold">
+              {credentialFeedback.kind === 'error' ? 'Credential update failed.' : 'Credential updated.'}
+            </span>{' '}
+            {credentialFeedback.message}
+          </div>
+        )}
+        <div className="mt-4 space-y-4">
+          {credentialIdentities.map(([label, identity]) => {
+            const provider = draft.providers.find((item) => item.name === label)
+            if (!provider?.requiresApiKey) return null
+
+            const status = identity === 'ThreatFox.ApiKey'
+              ? threatFoxCredential.data
+              : phishTankCredential.data
+            const busy = credentialBusy === identity
+            return (
+              <div key={identity} className="flex flex-wrap items-end gap-3 border-t border-outline-variant pt-3">
+                <div className="min-w-[150px] flex-1">
+                  <div className="font-semibold text-on-surface">{label}</div>
+                  <div className="font-mono text-[10px] text-on-surface-variant">
+                    {status?.configured ? 'Configured' : 'Not configured'}
+                  </div>
+                </div>
+                <input
+                  aria-label={`${label} credential`}
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  value={credentialDrafts[identity] ?? ''}
+                  onChange={(e) =>
+                    setCredentialDrafts((current) => ({
+                      ...current,
+                      [identity]: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter new credential"
+                  className="credential-input min-w-[220px] flex-1 rounded border border-outline-variant bg-surface-container-low px-3 py-1.5 font-mono text-[13px] text-on-surface"
+                />
+                <button type="button" disabled={busy} onClick={() => void saveCredential(identity)} className={`rounded bg-primary px-3 py-1.5 font-mono text-[11px] font-semibold text-on-primary disabled:opacity-50 ${focusRingClass}`}>
+                  {busy ? 'Saving…' : 'Set / replace'}
+                </button>
+                <button type="button" disabled={busy || !status?.configured} onClick={() => void clearCredential(identity)} className={`rounded border border-outline-variant px-3 py-1.5 font-mono text-[11px] font-semibold text-on-surface disabled:opacity-50 ${focusRingClass}`}>
+                  Clear
+                </button>
               </div>
             )
           })}

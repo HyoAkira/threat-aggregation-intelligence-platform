@@ -16,7 +16,11 @@ public sealed record AdminProviderDashboardItem(
     string DefaultMode,
     int? RecentCooldownMinutes,
     int? FullCooldownMinutes,
-    int MinimumIntervalMinutes);
+    int MinimumIntervalMinutes,
+    bool RequiresApiKey = false,
+    bool CredentialConfigured = false,
+    int? CredentialKeyVersion = null,
+    DateTime? CredentialUpdatedAt = null);
 
 /// <summary>One logical fetch-history row. <see cref="ErrorDetail"/> is the safe terminal error only.</summary>
 public sealed record AdminFetchHistoryItem(
@@ -51,7 +55,8 @@ public sealed record ProviderWriteRequest(
     IReadOnlyList<string> SupportedModes,
     int? RecentCooldownMinutes,
     int? FullCooldownMinutes,
-    int MinimumIntervalMinutes);
+    int MinimumIntervalMinutes,
+    bool RequiresApiKey = false);
 
 public enum ProviderWriteStatus
 {

@@ -68,6 +68,11 @@
 /* Google Material Symbols icon font (loaded globally via the root route head).
  * Layered below utilities so size/color utilities can override it. */
 @layer components {
+  /* API keys are not passwords; keep password managers from offering to save them. */
+  .credential-input {
+    -webkit-text-security: disc;
+  }
+
   .material-symbols-outlined {
     font-family: 'Material Symbols Outlined';
     font-weight: normal;
