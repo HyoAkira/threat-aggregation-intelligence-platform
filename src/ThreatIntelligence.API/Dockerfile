@@ -8,7 +8,14 @@ RUN dotnet restore src/ThreatIntelligence.API/ThreatIntelligence.API.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        pandoc \
+        texlive-xetex \
+        texlive-latex-extra \
+        texlive-fonts-recommended \
+        texlive-lang-european \
+        fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
 EXPOSE 8080

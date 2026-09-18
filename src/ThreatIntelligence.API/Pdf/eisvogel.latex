@@ -1,0 +1,76 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{lmodern}
+\else
+  \usepackage{fontspec}
+  \IfFontExistsTF{DejaVu Sans}
+    {\setmainfont{DejaVu Sans}\setsansfont{DejaVu Sans}}
+    {\setmainfont{Latin Modern Roman}\setsansfont{Latin Modern Roman}}
+  \IfFontExistsTF{DejaVu Sans Mono}
+    {\setmonofont{DejaVu Sans Mono}}
+    {\setmonofont{Latin Modern Mono}}
+\fi
+
+\usepackage{longtable,array}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{hyperref}
+
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+\definecolor{coverbg}{rgb}{0.06,0.09,0.16}
+\definecolor{coveraccent}{rgb}{0.18,0.83,0.75}
+\definecolor{covertext}{rgb}{0.97,0.98,0.99}
+\definecolor{bodytext}{rgb}{0.12,0.18,0.26}
+\definecolor{heading}{rgb}{0.00,0.46,0.44}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=heading,
+  urlcolor=heading,
+  citecolor=heading,
+  pdfcreator={Threat Intelligence Platform}
+}
+\setlength{\parindent}{0pt}
+\newenvironment{Highlighting}{\verbatim}{\endverbatim}
+\newenvironment{Shaded}{\begin{quote}\color{bodytext}}{\end{quote}}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\providecommand{\passthrough}[1]{#1}
+
+\begin{document}
+
+\begin{titlepage}
+  \pagecolor{coverbg}
+  \color{covertext}
+  \sffamily
+  \vspace*{18mm}
+  {\color{coveraccent}\rule{\textwidth}{2pt}\par}
+  \vspace{18mm}
+  {\small\bfseries THREAT INTELLIGENCE PLATFORM\par}
+  \vspace{12mm}
+  {\resizebox{\textwidth}{!}{\Huge\bfseries $if(title)$$title$$else$IOC Threat Intelligence Report$endif$}\par}
+  \vspace{7mm}
+  {\Large\color{coveraccent}$if(subtitle)$$subtitle$$endif$\par}
+  \vspace*{\fill}
+  {\small Generated $if(date)$$date$$else$on demand$endif$\par}
+  \vspace{10mm}
+  {\color{coveraccent}\rule{\textwidth}{2pt}\par}
+\end{titlepage}
+
+\nopagecolor
+\color{bodytext}
+\normalfont
+\setcounter{page}{1}
+
+$body$
+
+\end{document}

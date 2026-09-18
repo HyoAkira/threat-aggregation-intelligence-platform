@@ -6,6 +6,8 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
 import viteReact from '@vitejs/plugin-react'
 
+const apiTarget = process.env.VITE_API_TARGET ?? 'http://localhost:5092'
+
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   server: {
@@ -13,7 +15,7 @@ const config = defineConfig({
     // and Vite forwards the requests to the local backend.
     proxy: {
       '/api': {
-        target: 'http://localhost:5092',
+        target: apiTarget,
         changeOrigin: true,
       },
     },

@@ -1,7 +1,13 @@
 /**
  * @jest-environment jsdom
  */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { IocAiReport } from './IocAiReport'
 import { renderSafeMarkdown } from './safeMarkdown'
@@ -89,6 +95,9 @@ describe('IocAiReport', () => {
       expect.anything(),
     )
     expect(screen.getByLabelText('Close AI report')).toBeTruthy()
+    expect(
+      screen.queryByRole('button', { name: 'Cancel report generation' }),
+    ).toBeNull()
   })
 
   it('streams provisional plain text, then renders the validated report with metadata and download', async () => {
@@ -120,7 +129,8 @@ describe('IocAiReport', () => {
     expect(screen.getByText(/Instruction version: 3/)).toBeTruthy()
     expect(screen.queryByText('Model: test-model')).toBeNull()
     expect(screen.getByText('doğrulanmış')).toBeTruthy()
-    expect(screen.getByText('Download report')).toBeTruthy()
+    expect(screen.getByText('Download Markdown')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Generate report' })).toBeNull()
   })
 
   it('shows an accessible failure state and a retry button after a failed stream', async () => {
@@ -144,8 +154,9 @@ describe('IocAiReport', () => {
     expect(screen.getByText('Retry report')).toBeTruthy()
   })
 
-  it('keeps partial output out of the UI while streaming and supports cancel', async () => {
+  it('keeps partial output out of the UI while streaming and closes to cancel', async () => {
     useAuthStore.setState({ session: makeSession() })
+    const onClose = jest.fn()
     streamMock.mockImplementation(async (_iocId, handlers, signal) => {
       handlers.onMeta?.({
         type: 'meta',
@@ -173,7 +184,11 @@ describe('IocAiReport', () => {
       })
     })
 
-    renderReport()
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <IocAiReport iocId={7} onClose={onClose} />
+      </QueryClientProvider>,
+    )
     fireEvent.click(screen.getByText('Generate report'))
 
     await screen.findByRole('status')
@@ -181,8 +196,9 @@ describe('IocAiReport', () => {
     // No streamed content is mounted, so no script element can exist in the document.
     expect(document.querySelector('script')).toBeNull()
 
-    fireEvent.click(screen.getByLabelText('Cancel report generation'))
-    // After abort the stream promise rejects with AbortError and the panel returns to idle.
+    fireEvent.click(screen.getByLabelText('Close AI report'))
+    expect(onClose).toHaveBeenCalled()
+    // Closing aborts the stream; the component returns to idle if the parent keeps it mounted.
     await screen.findByText(/No report has been generated/i)
   })
 
@@ -217,10 +233,8 @@ describe('IocAiReport', () => {
     const revokeObjectURL = jest.fn()
     const originalCreateObjectURL = URL.createObjectURL
     const originalRevokeObjectURL = URL.revokeObjectURL
-    URL.createObjectURL =
-      createObjectURL as unknown as typeof URL.createObjectURL
-    URL.revokeObjectURL =
-      revokeObjectURL as unknown as typeof URL.revokeObjectURL
+    URL.createObjectURL = createObjectURL
+    URL.revokeObjectURL = revokeObjectURL
     const clickedAnchors: { download: string | null }[] = []
     const originalClick = HTMLAnchorElement.prototype.click
     HTMLAnchorElement.prototype.click = function click() {
@@ -230,11 +244,67 @@ describe('IocAiReport', () => {
     try {
       renderReport()
       fireEvent.click(screen.getByText('Generate report'))
-      fireEvent.click(await screen.findByText('Download report'))
+      fireEvent.click(await screen.findByText('Download Markdown'))
 
       expect(createObjectURL).toHaveBeenCalled()
       expect(clickedAnchors[0]?.download).toBe('ioc-report-7.md')
       expect(revokeObjectURL).toHaveBeenCalledWith('blob:download')
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL
+      URL.revokeObjectURL = originalRevokeObjectURL
+      HTMLAnchorElement.prototype.click = originalClick
+    }
+  })
+
+  it('converts the completed report to a local PDF file', async () => {
+    useAuthStore.setState({ session: makeSession() })
+    streamMock.mockImplementation(async (_iocId, handlers) => {
+      handlers.onComplete?.({
+        type: 'complete',
+        report: validReport,
+        modelId: 'test-model',
+        policyVersion: 3,
+        generatedAtUtc: '2026-09-17T10:00:00Z',
+      })
+    })
+
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => new Blob(['%PDF-1.7'], { type: 'application/pdf' }),
+    })
+    globalThis.fetch = fetchMock
+    const createObjectURL = jest.fn(() => 'blob:pdf-download')
+    const revokeObjectURL = jest.fn()
+    const originalCreateObjectURL = URL.createObjectURL
+    const originalRevokeObjectURL = URL.revokeObjectURL
+    URL.createObjectURL = createObjectURL
+    URL.revokeObjectURL = revokeObjectURL
+    const clickedAnchors: { download: string | null }[] = []
+    const originalClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function click() {
+      clickedAnchors.push(this)
+    }
+
+    try {
+      renderReport()
+      fireEvent.click(screen.getByText('Generate report'))
+      fireEvent.click(await screen.findByText('Download PDF'))
+
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/iocs/7/ai/reports/pdf',
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({
+              report: validReport,
+              generatedAtUtc: '2026-09-17T10:00:00Z',
+            }),
+          }),
+        ),
+      )
+      expect(clickedAnchors.at(-1)?.download).toBe('ioc-report-7.pdf')
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:pdf-download')
     } finally {
       URL.createObjectURL = originalCreateObjectURL
       URL.revokeObjectURL = originalRevokeObjectURL

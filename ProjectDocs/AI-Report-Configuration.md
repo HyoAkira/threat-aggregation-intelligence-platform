@@ -15,10 +15,21 @@ text nor evidence snapshots to the database, cache, or logs.
 | `PUT/DELETE /api/admin/credentials/OpenAICompatible.ServerApiKey` | Admin | Write-only API key set/replace/clear |
 | `GET /api/admin/credentials/OpenAICompatible.ServerApiKey` | Admin | Configured status only (never plaintext) |
 | `POST /api/iocs/{id}/ai/reports` | Everyone (anonymous, `User`, or `Admin`) | Streams `meta`/`delta`/`complete`/`error` SSE events; request body is empty |
+| `POST /api/iocs/{id}/ai/reports/pdf` | Everyone (anonymous, `User`, or `Admin`) | Converts the completed Markdown report to a PDF with a cover page; report is not stored |
 
 Existing anonymous IOC browsing is unchanged. The Generate report action and endpoint are
 available to everyone, including anonymous visitors; server-side rate and concurrency limits
 still apply.
+
+The PDF action receives only the completed report currently held by the browser. It writes a
+short-lived Markdown input and PDF output under the operating system temporary directory, then
+deletes both after the response. The Docker API image includes `pandoc`, XeLaTeX, and the local
+Eisvogel-style template at `Pdf/eisvogel.latex`. For local runs, install those dependencies or
+set `Pdf:PandocPath` and `Pdf:TemplatePath` to equivalent tools/files.
+
+The frontend proxy targets the local .NET API at `http://localhost:5092` by default. To use the
+Docker API instead, run Vite with `VITE_API_TARGET=http://localhost:8080 npm run dev`; the Docker
+image includes the PDF dependencies.
 
 ## Configuration
 

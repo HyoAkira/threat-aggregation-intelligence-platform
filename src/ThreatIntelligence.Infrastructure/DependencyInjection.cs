@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ThreatIntelligence.Application.Abstractions.Authentication;
 using ThreatIntelligence.Application.Abstractions.Hashing;
 using ThreatIntelligence.Application.Abstractions.Persistence;
 using ThreatIntelligence.Application.BatchWriter;
+using ThreatIntelligence.Application.AI;
 using ThreatIntelligence.Application.Fetches;
 using ThreatIntelligence.Application.Abstractions.Secrets;
 using ThreatIntelligence.Application.Normalization;
@@ -22,6 +24,7 @@ using ThreatIntelligence.Infrastructure.Persistence.RateLimiting;
 using ThreatIntelligence.Infrastructure.Pipeline;
 using ThreatIntelligence.Infrastructure.PublicSuffix;
 using ThreatIntelligence.Infrastructure.PhishTank;
+using ThreatIntelligence.Infrastructure.Reporting;
 using ThreatIntelligence.Infrastructure.Storage;
 using ThreatIntelligence.Infrastructure.ThreatFox;
 using ThreatIntelligence.Infrastructure.Secrets;
@@ -67,6 +70,17 @@ public static class DependencyInjection
         services.AddScoped<ThreatIntelligence.Infrastructure.AI.AiReportPolicySeeder>();
         services.AddSingleton(AiClientOptions.Default);
         services.AddSingleton<AiReportThrottle>();
+        var pandocPath = configuration["Pdf:PandocPath"] is { Length: > 0 } configuredPandocPath
+            ? configuredPandocPath
+            : "pandoc";
+        var templatePath = configuration["Pdf:TemplatePath"] is { Length: > 0 } configuredTemplatePath
+            ? configuredTemplatePath
+            : Path.Combine(AppContext.BaseDirectory, "Pdf", "eisvogel.latex");
+        services.AddSingleton<IMarkdownPdfRenderer>(serviceProvider =>
+            new MarkdownPdfRenderer(
+                pandocPath,
+                templatePath,
+                serviceProvider.GetRequiredService<ILogger<MarkdownPdfRenderer>>()));
         services.AddScoped<ThreatIntelligence.Application.AI.IAiConfigurationReader, AiConfigurationReader>();
         services.AddScoped<ThreatIntelligence.Application.AI.AiReportGenerator>();
         services.AddHttpClient<ThreatIntelligence.Application.AI.IChatCompletionClient, OpenAiCompatibleChatClient>(
