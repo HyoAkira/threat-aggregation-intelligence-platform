@@ -21,4 +21,10 @@
     <ProjectReference Include="..\ThreatIntelligence.Infrastructure\ThreatIntelligence.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Pdf\eisvogel.latex"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

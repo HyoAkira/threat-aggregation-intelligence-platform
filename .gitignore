@@ -7,3 +7,7 @@ frontend/dist/
 graphify-out
 data/
 secrets/
+.obsdian
+.idea
+.agents
+.opencode

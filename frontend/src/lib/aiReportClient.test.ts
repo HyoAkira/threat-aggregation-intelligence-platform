@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 import {
+  downloadIocAiReportPdf,
   streamIocAiReport,
   parseFrame,
   AiReportProblemError,
@@ -69,7 +70,7 @@ describe('streamIocAiReport', () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValue(sseResponse(metaFrame + deltaFrame + completeFrame))
-    globalThis.fetch = fetchMock as unknown as typeof fetch
+    globalThis.fetch = fetchMock
 
     const events: string[] = []
     await streamIocAiReport(7, {
@@ -192,5 +193,37 @@ describe('streamIocAiReport', () => {
       sourceCount: 2,
       omittedSourceCount: 0,
     })
+  })
+})
+
+describe('downloadIocAiReportPdf', () => {
+  beforeEach(() => {
+    ;(globalThis as { sessionStorage?: Storage }).sessionStorage =
+      createSessionStorageStub() as Storage
+    useAuthStore.setState({ session: null })
+  })
+
+  it('posts the completed report and returns the PDF blob', async () => {
+    const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' })
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => pdf,
+    })
+    globalThis.fetch = fetchMock
+
+    await expect(
+      downloadIocAiReportPdf(7, '## Report', '2026-09-17T10:00:00Z'),
+    ).resolves.toBe(pdf)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/iocs/7/ai/reports/pdf',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          report: '## Report',
+          generatedAtUtc: '2026-09-17T10:00:00Z',
+        }),
+      }),
+    )
   })
 })

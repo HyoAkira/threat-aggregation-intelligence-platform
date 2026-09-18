@@ -34,7 +34,6 @@ public static class AiErrorCodes
     public const string UpstreamFailure = "ai_upstream_failure";
     public const string UpstreamTimeout = "ai_upstream_timeout";
     public const string UnsupportedUpstreamResponse = "ai_unsupported_upstream_response";
-    public const string OutputInvalid = "ai_output_invalid";
     public const string QuotaExceeded = "ai_quota_exceeded";
 }
 
@@ -51,8 +50,3 @@ public sealed class AiUpstreamException(string code, string message, int? upstre
     public int? UpstreamStatus { get; } = upstreamStatus;
 }
 
-public sealed class AiOutputInvalidException(string detail)
-    : Exception(detail)
-{
-    public string Detail { get; } = detail;
-}

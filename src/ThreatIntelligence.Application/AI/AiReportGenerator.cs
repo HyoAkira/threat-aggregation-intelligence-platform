@@ -31,7 +31,6 @@ public sealed record AiReportPlan(
     AiReportPolicySnapshot Policy,
     string BaseUrl,
     string ModelId,
-    IReadOnlyList<string> SourceLabels,
     string? Error,
     string? ErrorMessage)
 {
@@ -40,7 +39,7 @@ public sealed record AiReportPlan(
 
 /// <summary>
 /// Orchestrates one ephemeral report run: fail-closed configuration checks, version-pinned policy,
-/// bounded evidence projection, streaming, and final validation. Nothing is persisted.
+/// bounded evidence projection and streaming. Nothing is persisted.
 /// </summary>
 public sealed class AiReportGenerator(
     IAiConfigurationReader configurationReader,
@@ -92,7 +91,6 @@ public sealed class AiReportGenerator(
             policy,
             connection.BaseUrl!,
             connection.ModelId,
-            IocEvidenceProjector.SourceLabels(evidence),
             null,
             null);
     }
@@ -127,14 +125,6 @@ public sealed class AiReportGenerator(
         {
             while (await enumerator.MoveNextAsync())
             {
-                if (report.Length + enumerator.Current.Text.Length > AiReportOutputValidator.MaxReportChars)
-                {
-                    yield return new AiErrorEvent(
-                        AiErrorCodes.OutputInvalid,
-                        "The report exceeded the output size limit.");
-                    yield break;
-                }
-
                 report.Append(enumerator.Current.Text);
                 yield return new AiDeltaEvent(enumerator.Current.Text);
             }
@@ -144,25 +134,8 @@ public sealed class AiReportGenerator(
             await enumerator.DisposeAsync();
         }
 
-        var completed = report.ToString();
-        string? outputError = null;
-        try
-        {
-            AiReportOutputValidator.Validate(completed, plan.SourceLabels);
-        }
-        catch (AiOutputInvalidException failure)
-        {
-            outputError = failure.Detail;
-        }
-
-        if (outputError is not null)
-        {
-            yield return new AiErrorEvent(AiErrorCodes.OutputInvalid, outputError);
-            yield break;
-        }
-
         yield return new AiCompleteEvent(
-            completed, plan.ModelId, plan.Policy.Version, timeProvider.GetUtcNow().UtcDateTime);
+            report.ToString(), plan.ModelId, plan.Policy.Version, timeProvider.GetUtcNow().UtcDateTime);
     }
 
     private static AiReportPlan Fail(string code, string message) => new(
@@ -170,7 +143,6 @@ public sealed class AiReportGenerator(
         new AiReportPolicySnapshot(0, string.Empty),
         string.Empty,
         string.Empty,
-        [],
         code,
         message);
 }

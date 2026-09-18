@@ -180,10 +180,13 @@ npm run dev
 ```
 
 The frontend remains available at `http://localhost:3000`; its Vite proxy sends
-API requests to the Docker API at `http://localhost:8080` only when configured
-for that target. The default development proxy targets `http://localhost:5092`,
-so update `frontend/vite.config.ts` or use the repository's Docker frontend
-configuration when switching from the local .NET API to Docker.
+API requests to the local .NET API at `http://localhost:5092` by default. To use
+the Docker API (which includes the Pandoc/XeLaTeX PDF dependencies), start the
+frontend with:
+
+```bash
+VITE_API_TARGET=http://localhost:8080 npm run dev
+```
 
 ### Scalar is unavailable in Docker
 

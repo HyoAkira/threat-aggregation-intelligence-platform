@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { AiReportProblemError, streamIocAiReport } from '../lib/aiReportClient'
+import {
+  AiReportProblemError,
+  downloadIocAiReportPdf,
+  streamIocAiReport,
+} from '../lib/aiReportClient'
 import { formatLocalDateTime } from '../lib/format'
 import { renderSafeMarkdown } from './safeMarkdown'
 
@@ -51,6 +55,8 @@ export function IocAiReport({
     null,
   )
   const [errorStatus, setErrorStatus] = useState<number | null>(null)
+  const [pdfErrorMessage, setPdfErrorMessage] = useState<string | null>(null)
+  const [pdfDownloading, setPdfDownloading] = useState(false)
   const [loadingQuote, setLoadingQuote] = useState(randomLoadingQuote)
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -65,6 +71,7 @@ export function IocAiReport({
     setErrorMessage(null)
     setErrorCorrelationId(null)
     setErrorStatus(null)
+    setPdfErrorMessage(null)
 
     const controller = new AbortController()
     abortControllerRef.current = controller
@@ -158,13 +165,43 @@ export function IocAiReport({
     URL.revokeObjectURL(url)
   }
 
+  const downloadPdf = async () => {
+    if (!report || !meta || pdfDownloading) return
+    setPdfDownloading(true)
+    setPdfErrorMessage(null)
+    try {
+      const pdf = await downloadIocAiReportPdf(
+        iocId,
+        report,
+        meta.generatedAtUtc,
+      )
+      const url = URL.createObjectURL(pdf)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `ioc-report-${iocId}.pdf`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setPdfErrorMessage(
+        error instanceof AiReportProblemError
+          ? error.message
+          : 'The report could not be converted to PDF.',
+      )
+    } finally {
+      setPdfDownloading(false)
+    }
+  }
+
   return (
     <section
-      className="rounded border border-outline-variant bg-surface-container-lowest"
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded border border-outline-variant bg-surface-container-lowest"
       aria-labelledby="ai-report-heading"
     >
-      <div className="flex items-start justify-between gap-3 border-b border-outline-variant/60 px-4 py-3">
-        <div>
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-outline-variant/60 bg-surface-container-lowest px-4 py-3">
+        <div className="min-w-max">
           <div className="flex items-center gap-2">
             <span
               aria-hidden="true"
@@ -180,13 +217,14 @@ export function IocAiReport({
             </h2>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5">
           {onClose ? (
             <button
               type="button"
               onClick={close}
               aria-label="Close AI report"
-              className="inline-flex rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
+              title="Close AI report"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <span
                 aria-hidden="true"
@@ -196,37 +234,72 @@ export function IocAiReport({
               </span>
             </button>
           ) : null}
-          {phase === 'streaming' ? (
-            <button
-              type="button"
-              onClick={cancel}
-              aria-label="Cancel report generation"
-              className="rounded border border-outline-variant px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-on-surface"
-            >
-              Cancel
-            </button>
-          ) : (
+          {phase === 'idle' || phase === 'failed' ? (
             <button
               type="button"
               onClick={generate}
-              className="rounded bg-primary px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-on-primary"
+              aria-label={
+                phase === 'failed' ? 'Retry report' : 'Generate report'
+              }
+              title={phase === 'failed' ? 'Retry report' : 'Generate report'}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary text-on-primary transition-colors hover:bg-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
-              {phase === 'failed' ? 'Retry report' : 'Generate report'}
+              <span
+                aria-hidden="true"
+                className="material-symbols-outlined text-[18px]"
+              >
+                {phase === 'failed' ? 'refresh' : 'auto_awesome'}
+              </span>
+              <span className="sr-only">
+                {phase === 'failed' ? 'Retry report' : 'Generate report'}
+              </span>
             </button>
-          )}
+          ) : null}
           {phase === 'complete' && report !== null ? (
-            <button
-              type="button"
-              onClick={download}
-              className="rounded border border-outline-variant px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-on-surface"
-            >
-              Download report
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={download}
+                aria-label="Download Markdown"
+                title="Download Markdown"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-outline-variant text-on-surface transition-colors hover:bg-surface-container hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[18px]"
+                >
+                  description
+                </span>
+                <span className="sr-only">Download Markdown</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void downloadPdf()}
+                disabled={pdfDownloading}
+                aria-label="Download PDF"
+                title="Download PDF"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-primary text-primary transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-wait disabled:opacity-60"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[18px]"
+                >
+                  picture_as_pdf
+                </span>
+                <span className="sr-only">
+                  {pdfDownloading ? 'Preparing PDF…' : 'Download PDF'}
+                </span>
+              </button>
+            </>
           ) : null}
         </div>
       </div>
 
-      <div className="p-4" role="region" aria-label="AI report content">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto p-4"
+        role="region"
+        aria-label="AI report content"
+      >
         {phase === 'streaming' ? (
           <div role="status" aria-live="polite">
             <div className="rounded border border-primary/20 bg-primary/5 px-3 py-3">
@@ -283,6 +356,15 @@ export function IocAiReport({
                 Correlation ID: {errorCorrelationId}
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {pdfErrorMessage ? (
+          <div
+            role="alert"
+            className="mb-3 rounded border border-error/40 bg-error-container px-3 py-2 text-sm text-on-error-container"
+          >
+            PDF export failed. {pdfErrorMessage}
           </div>
         ) : null}
 

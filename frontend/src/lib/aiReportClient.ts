@@ -174,6 +174,71 @@ export async function streamIocAiReport(
   }
 }
 
+/** Converts the completed ephemeral report to a PDF without storing it server-side. */
+export async function downloadIocAiReportPdf(
+  iocId: number,
+  report: string,
+  generatedAtUtc: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const storedSession = useAuthStore.getState().session
+  if (storedSession && isSessionExpired(storedSession)) {
+    clearAllSessionData()
+    throw new AiReportProblemError(
+      401,
+      'session_expired',
+      'Session expired',
+      'Your session has expired. Please sign in again.',
+      'local',
+    )
+  }
+
+  const headers: Record<string, string> = {
+    Accept: 'application/pdf',
+    'Content-Type': 'application/json',
+  }
+  if (storedSession) headers.Authorization = `Bearer ${storedSession.token}`
+
+  let response: Response
+  try {
+    response = await fetch(`/api/iocs/${iocId}/ai/reports/pdf`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ report, generatedAtUtc }),
+      signal,
+    })
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'AbortError')
+      throw cause
+    throw new AiReportProblemError(
+      0,
+      'network_error',
+      'Network error',
+      'The service could not be reached. Please try again.',
+      'local',
+    )
+  }
+
+  if (!response.ok) {
+    let problem: ProblemDetails = {}
+    try {
+      problem = (await response.json()) as ProblemDetails
+    } catch {
+      // Non-JSON failure body; fall back to the status code below.
+    }
+    if (response.status === 401) clearAllSessionData()
+    throw new AiReportProblemError(
+      response.status,
+      problem.code ?? 'request_failed',
+      problem.title ?? 'PDF export failed',
+      problem.detail ?? 'The report could not be converted to PDF.',
+      problem.correlationId ?? 'unknown',
+    )
+  }
+
+  return response.blob()
+}
+
 export function parseFrame(frame: string): AiReportEvent | null {
   let eventName: string | null = null
   const dataLines: string[] = []

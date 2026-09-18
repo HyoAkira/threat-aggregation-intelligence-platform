@@ -363,7 +363,7 @@ function ForensicDetail({
     return (
       <div className="grid min-h-[calc(100vh-10rem)] grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="min-w-0">{detailContent}</div>
-        <aside className="min-w-0 xl:sticky xl:top-6 xl:self-start">
+        <aside className="min-w-0 xl:sticky xl:top-20 xl:h-[calc(100vh-5rem)] xl:self-start">
           <IocAiReport
             iocId={group.id}
             autoGenerate
