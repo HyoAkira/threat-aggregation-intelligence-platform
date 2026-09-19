@@ -23,7 +23,13 @@ public sealed record EncryptionOptions(
         {
             try
             {
-                encoded = File.ReadAllText(file).Trim();
+                var path = Path.IsPathRooted(file)
+                    ? file
+                    : Path.Combine(
+                        Path.GetDirectoryName(EnvironmentConfiguration.FindDotEnvPath() ?? string.Empty) ??
+                            Directory.GetCurrentDirectory(),
+                        file);
+                encoded = File.ReadAllText(path).Trim();
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {

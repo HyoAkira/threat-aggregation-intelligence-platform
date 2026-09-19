@@ -6,6 +6,7 @@ import type { SearchSubmission } from '../lib/apiClient'
 import { iocSearchKey } from '../lib/queryKeys'
 import { focusRingClass } from '../components/AppShell'
 import { IocGroupCard } from '../components/IocGroupCard'
+import { TagAutocompleteInput } from '../components/TagAutocompleteInput'
 import { Pagination } from '../components/Pagination'
 import {
   EmptyState,
@@ -207,16 +208,11 @@ function SearchPage() {
               <label htmlFor="search-tag" className={fieldLabelClass}>
                 Tag filter (optional)
               </label>
-              <input
+              <TagAutocompleteInput
                 id="search-tag"
-                name="tag"
-                type="text"
                 value={values.tag}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    tag: event.target.value,
-                  }))
+                onChange={(tag) =>
+                  setValues((current) => ({ ...current, tag }))
                 }
                 className={inputClass}
               />

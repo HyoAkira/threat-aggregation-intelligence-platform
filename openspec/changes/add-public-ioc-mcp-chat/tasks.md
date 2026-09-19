@@ -9,7 +9,7 @@
 
 - [ ] 2.1 Add chat settings persistence and migration with `enabled=false` by default; verify the migration starts on an existing database and leaves current AI report settings unchanged.
 - [ ] 2.2 Register the separate chat secret identity and Admin-only chat settings API using the existing write-only credential contract; verify role checks, input validation, key-status-only reads, and independence from the report key.
-- [ ] 2.3 Add an OpenAI-compatible chat adapter that sends tool definitions, parses tool calls and final text, uses only the chat secret, and detects unsupported tool behavior; verify mocked upstream cases for valid calls, malformed calls, timeouts, and models without tool support.
+- [x] 2.3 Add an OpenAI-compatible chat adapter that sends tool definitions, parses tool calls and final text, uses only the chat secret, and detects unsupported tool behavior; verify mocked upstream cases for valid calls, malformed calls, timeouts, and models without tool support.
 
 ## 3. Bounded chat orchestration and API
 
@@ -20,9 +20,9 @@
 
 ## 4. Frontend experience
 
-- [ ] 4.1 Add typed chat API handling and an IOC-page conversation state kept only in React memory; verify a refresh starts with no transcript and no browser or server persistence path is used.
-- [ ] 4.2 Add the chat panel to the IOC detail page without triggering the existing AI report action, showing current/other IOC references, labeled assessments, uncertainty, model-data disclosure, and safe error states; verify anonymous compare and disabled/failure UI behavior.
-- [ ] 4.3 Add a separate Admin chat settings section, schemas, query keys, and credential controls; verify independent saves, accessible validation, draft preservation after failure, and clearing of the plaintext key input after success.
+- [x] 4.1 Add typed chat API handling and an IOC-page conversation state kept only in React memory; verify a refresh starts with no transcript and no browser or server persistence path is used.
+- [x] 4.2 Add the chat panel to the IOC detail page without triggering the existing AI report action, showing current/other IOC references, labeled assessments, uncertainty, model-data disclosure, and safe error states; verify anonymous compare and disabled/failure UI behavior.
+- [x] 4.3 Add a separate Admin chat settings section, schemas, query keys, and credential controls; verify independent saves, accessible validation, draft preservation after failure, and clearing of the plaintext key input after success.
 
 ## 5. Integration and release readiness
 

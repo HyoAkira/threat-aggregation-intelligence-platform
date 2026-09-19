@@ -14,6 +14,12 @@ using ThreatIntelligence.API.Serialization;
 using ThreatIntelligence.Infrastructure.Configuration;
 using ThreatIntelligence.Infrastructure;
 using ThreatIntelligence.Infrastructure.Persistence;
+using ThreatIntelligence.API.Mcp;
+using ModelContextProtocol.Server;
+using ModelContextProtocol.AspNetCore;
+using Microsoft.Extensions.Options;
+using ThreatIntelligence.Application.AI;
+using ThreatIntelligence.API.Chat;
 
 EnvironmentConfiguration.LoadDotEnv();
 
@@ -66,7 +72,7 @@ builder.Services.AddOpenApi(options =>
 });
 var jwt = ThreatIntelligenceOptions.BindAndValidate(builder.Configuration).Jwt;
 builder.Services.AddApplicationServices()
-                  .AddInfrastructureServices(builder.Configuration);
+                   .AddInfrastructureServices(builder.Configuration);
 var rabbitMq = ThreatIntelligenceOptions.BindAndValidate(builder.Configuration).RabbitMq;
 builder.Services.AddMassTransit(configurator =>
 {
@@ -131,6 +137,24 @@ builder.Services.AddAuthorization(options =>
         .Build();
     options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
 });
+
+// Register MCP server for public IOC tools
+builder.Services.AddMcpServer()
+    .WithHttpTransport(options => options.Stateless = true)
+    .WithToolsFromAssembly(typeof(PublicIocMcpServer).Assembly);
+builder.Services.AddScoped<PublicIocMcpServer>();
+builder.Services.AddScoped<IInProcessIocMcpClient, InProcessIocMcpClient>();
+builder.Services.AddScoped<ThreatIntelligence.Infrastructure.AI.IocChatService>();
+builder.Services.AddSingleton<ChatRateLimiter>();
+
+// Register MCP configuration and rate limiter
+builder.Services.Configure<McpConfiguration>(builder.Configuration.GetSection("Mcp"));
+builder.Services.AddSingleton<McpRateLimiter>(sp =>
+{
+    var config = sp.GetRequiredService<IOptions<McpConfiguration>>().Value;
+    return new McpRateLimiter(config);
+});
+
 var app = builder.Build();
 
 app.Use(async (httpContext, next) =>
@@ -152,6 +176,7 @@ app.UseSerilogRequestLogging();
 
 app.UseMiddleware<ApiExceptionHandlingMiddleware>();
 app.UseStatusCodePages(ApiProblemStatusCodePages.HandleAsync);
+app.UseMiddleware<McpMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
@@ -166,6 +191,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapMcp("/mcp").AllowAnonymous();
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {

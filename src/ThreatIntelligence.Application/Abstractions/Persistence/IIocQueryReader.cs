@@ -15,6 +15,13 @@ public interface IIocQueryReader
     Task<IReadOnlyList<string>> GetProviderNamesAsync(CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
 
+    /// <summary>Returns a bounded, usage-ordered catalog of normalized IOC tags.</summary>
+    Task<IReadOnlyList<IocTagCatalogItem>> GetTagCatalogAsync(
+        string? query,
+        int limit,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<IocTagCatalogItem>>(Array.Empty<IocTagCatalogItem>());
+
     /// <summary>
     /// Resolves groups for a normalized indicator and narrows their sources by the optional filter.
     /// IP and URL inputs match their exact normalized identity. Domain inputs additionally match

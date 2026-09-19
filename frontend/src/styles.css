@@ -58,6 +58,7 @@
   --color-on-surface-variant: #434656;
   --color-outline: #737688;
   --color-outline-variant: #c3c5d9;
+  --color-scrim: #000000;
   --color-inverse-surface: #213145;
   --color-inverse-on-surface: #eaf1ff;
 
@@ -67,10 +68,32 @@
 
 /* Google Material Symbols icon font (loaded globally via the root route head).
  * Layered below utilities so size/color utilities can override it. */
+@keyframes ioc-chat-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @layer components {
   /* API keys are not passwords; keep password managers from offering to save them. */
   .credential-input {
     -webkit-text-security: disc;
+  }
+
+  /* The investigation chat window lifts in like a support widget. */
+  .ioc-chat-enter {
+    animation: ioc-chat-enter 160ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ioc-chat-enter {
+      animation: none;
+    }
   }
 
   .material-symbols-outlined {

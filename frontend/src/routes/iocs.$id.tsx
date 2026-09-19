@@ -13,6 +13,7 @@ import {
 } from '../lib/iocPresentation'
 import { focusRingClass } from '../components/AppShell'
 import { IocAiReport } from '../components/IocAiReport'
+import { IocChatPanel } from '../components/IocChatPanel'
 import { IocGroupCard } from '../components/IocGroupCard'
 import { IocSourceCard } from '../components/IocSourceCard'
 import { IocFalsePositiveBadge } from '../components/IocFalsePositiveBadge'
@@ -354,6 +355,7 @@ function ForensicDetail({
               decision.
             </p>
           </section>
+          <IocChatPanel iocId={group.id} />
         </aside>
       </div>
     </div>

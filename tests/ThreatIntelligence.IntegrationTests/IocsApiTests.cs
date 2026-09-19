@@ -82,6 +82,49 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Tag_catalog_is_anonymous_bounded_and_usage_ordered()
+    {
+        await using (var context = fixture.CreateContext())
+        {
+            await IocQueryTestData.AddTagAsync(context, _ipv4.Id, " BotNet ");
+            await IocQueryTestData.AddTagAsync(context, _url.Id, "botnet");
+            await IocQueryTestData.AddTagAsync(context, _url.Id, "alpha");
+            await context.SaveChangesAsync();
+        }
+
+        using var response = await _client.GetAsync("/api/iocs/tags?limit=2");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var items = (await response.Content.ReadFromJsonAsync<JsonArray>())!;
+        Assert.Equal(2, items.Count);
+        Assert.Equal("botnet", (string)items[0]!["name"]!);
+        Assert.Equal(2, (int)items[0]!["usageCount"]!);
+        Assert.Equal("alpha", (string)items[1]!["name"]!);
+        Assert.Equal(1, (int)items[1]!["usageCount"]!);
+    }
+
+    [Fact]
+    public async Task Tag_catalog_normalizes_prefix_and_rejects_invalid_limits()
+    {
+        await using (var context = fixture.CreateContext())
+        {
+            await IocQueryTestData.AddTagAsync(context, _ipv4.Id, "Phishing");
+            await context.SaveChangesAsync();
+        }
+
+        using var filtered = await _client.GetAsync("/api/iocs/tags?q=%20PHI%20&limit=10");
+        Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
+        var items = (await filtered.Content.ReadFromJsonAsync<JsonArray>())!;
+        Assert.Single(items);
+        Assert.Equal("phishing", (string)items[0]!["name"]!);
+
+        using var missing = await _client.GetAsync("/api/iocs/tags");
+        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+        using var oversized = await _client.GetAsync("/api/iocs/tags?limit=101");
+        Assert.Equal(HttpStatusCode.BadRequest, oversized.StatusCode);
+    }
+
+    [Fact]
     public async Task Search_groups_sources_across_providers()
     {
         using var response = await GetAuthorized("/api/iocs/search?q=1.2.3.4");

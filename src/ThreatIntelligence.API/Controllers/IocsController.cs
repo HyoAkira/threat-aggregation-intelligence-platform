@@ -1,4 +1,5 @@
 using MediatR;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ThreatIntelligence.Application.Features.Iocs.Queries;
@@ -23,6 +24,13 @@ public sealed class IocsController(ISender sender, IIocQueryReader queryReader) 
     public async Task<ActionResult<IReadOnlyList<string>>> Providers(
         CancellationToken cancellationToken) =>
         Ok(await queryReader.GetProviderNamesAsync(cancellationToken));
+
+    [HttpGet("tags")]
+    public async Task<ActionResult<IReadOnlyList<IocTagCatalogItem>>> Tags(
+        [FromQuery] string? q,
+        [FromQuery, Range(1, 100)] int limit,
+        CancellationToken cancellationToken) =>
+        Ok(await queryReader.GetTagCatalogAsync(q, limit, cancellationToken));
 
     [HttpGet("search")]
     public async Task<ActionResult<PagedResult<IocGroupResult>>> Search(

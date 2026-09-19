@@ -7,6 +7,7 @@ import type { BrowseParams } from './browseParams'
 import {
   iocGroupSchema,
   iocProviderNamesSchema,
+  iocTagCatalogSchema,
   loginResponseSchema,
   pagedIocGroupsSchema,
 } from './schemas'
@@ -23,6 +24,7 @@ import {
   fetchQueuedResponseSchema,
   credentialStatusSchema,
   aiSettingsSchema,
+  iocChatSettingsSchema,
   aiReportPolicySchema,
 } from './adminSchemas'
 import type {
@@ -38,6 +40,8 @@ import type {
   CredentialStatus,
   AiSettings,
   AiSettingsRequest,
+  IocChatSettings,
+  IocChatSettingsRequest,
   AiReportPolicy,
   AiReportPolicyPublishRequest,
 } from './adminSchemas'
@@ -240,6 +244,17 @@ export function browseIocs(
 export function getIocProviderNames(signal?: AbortSignal): Promise<string[]> {
   return apiFetch('/iocs/providers', {
     schema: iocProviderNamesSchema,
+    signal,
+  })
+}
+
+/** `GET /api/iocs/tags` — bounded normalized tag catalog for autocomplete. */
+export function getIocTagCatalog(
+  input: { q?: string; limit: number },
+  signal?: AbortSignal,
+): Promise<import('./schemas').IocTagCatalogItem[]> {
+  return apiFetch(`/iocs/tags${buildQuery(input)}`, {
+    schema: iocTagCatalogSchema,
     signal,
   })
 }
@@ -482,6 +497,27 @@ export function putAiSettings(
 ): Promise<AiSettings> {
   return apiFetch('/admin/ai/settings', {
     schema: aiSettingsSchema,
+    method: 'PUT',
+    body,
+    signal,
+  })
+}
+
+/** `GET /api/admin/ioc-chat/settings` — non-secret IOC chat settings and credential status. */
+export function getIocChatSettings(signal?: AbortSignal): Promise<IocChatSettings> {
+  return apiFetch('/admin/ioc-chat/settings', {
+    schema: iocChatSettingsSchema,
+    signal,
+  })
+}
+
+/** `PUT /api/admin/ioc-chat/settings` — independent IOC chat connection update. */
+export function putIocChatSettings(
+  body: IocChatSettingsRequest,
+  signal?: AbortSignal,
+): Promise<IocChatSettings> {
+  return apiFetch('/admin/ioc-chat/settings', {
+    schema: iocChatSettingsSchema,
     method: 'PUT',
     body,
     signal,

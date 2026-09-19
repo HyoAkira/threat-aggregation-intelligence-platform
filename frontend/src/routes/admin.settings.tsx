@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { z } from 'zod'
 import { focusRingClass } from '../components/AppShell'
 import { AdminAiSettings } from '../components/AdminAiSettings'
+import { AdminIocChatSettings } from '../components/AdminIocChatSettings'
 import { ErrorState, LoadingState } from '../components/uiStates'
 import type {
   ProviderSettingRequest,
@@ -28,7 +29,7 @@ import {
 
 export const Route = createFileRoute('/admin/settings')({
   validateSearch: z.object({
-    section: z.enum(['runtime', 'ai']).optional(),
+    section: z.enum(['runtime', 'ai', 'chat']).optional(),
   }),
   component: AdminSettingsPage,
 })
@@ -167,7 +168,7 @@ function AdminSettingsPage() {
       <div>
         <h2 className="text-lg font-semibold text-on-surface">Settings</h2>
         <p className="mt-0.5 text-sm text-on-surface-variant">
-          Manage runtime behavior and AI report generation configuration.
+          Manage runtime behavior, AI analysis, and IOC chat configuration.
         </p>
       </div>
 
@@ -177,9 +178,10 @@ function AdminSettingsPage() {
       >
         <SettingsSectionLink section="runtime">Runtime</SettingsSectionLink>
         <SettingsSectionLink section="ai">AI analysis</SettingsSectionLink>
+        <SettingsSectionLink section="chat">IOC chat</SettingsSectionLink>
       </nav>
 
-      {search.section === 'ai' ? <AdminAiSettings /> : <RuntimeSettingsPanel />}
+      {search.section === 'ai' ? <AdminAiSettings /> : search.section === 'chat' ? <AdminIocChatSettings /> : <RuntimeSettingsPanel />}
     </div>
   )
 }
@@ -188,7 +190,7 @@ function SettingsSectionLink({
   section,
   children,
 }: {
-  section: 'runtime' | 'ai'
+  section: 'runtime' | 'ai' | 'chat'
   children: ReactNode
 }) {
   const currentSection = Route.useSearch().section ?? 'runtime'

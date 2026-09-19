@@ -173,6 +173,42 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                     b.ToTable("encryptedSecrets", (string)null);
                 });
 
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.IocChatConnectionSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
+                        .HasColumnName("baseUrl");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("ModelId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("modelId");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updatedAt");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("iocChatConnectionSettings", (string)null);
+                });
+
             modelBuilder.Entity("ThreatIntelligence.Domain.Entities.FetchHistory", b =>
                 {
                     b.Property<int>("Id")

@@ -33,6 +33,9 @@ export const browseKey = (params: BrowseParams) =>
     params.pageSize,
   ] as const
 
+export const iocTagCatalogKey = (query: string) =>
+  ['ioc-tag-catalog', query] as const
+
 /* -------------------------------------------------------------------------- */
 /*  Admin query keys                                                         */
 /* -------------------------------------------------------------------------- */
@@ -66,6 +69,8 @@ export const adminCredentialKey = (identity: string) =>
   ['admin', 'credential', identity] as const
 
 export const adminAiSettingsKey = () => ['admin', 'ai', 'settings'] as const
+
+export const adminIocChatSettingsKey = () => ['admin', 'ioc-chat', 'settings'] as const
 
 export const adminAiReportPolicyKey = () =>
   ['admin', 'ai', 'report-policy'] as const

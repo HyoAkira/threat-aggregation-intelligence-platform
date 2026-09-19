@@ -91,6 +91,9 @@ public static class DependencyInjection
                 client.Timeout = Timeout.InfiniteTimeSpan;
             })
             .RemoveAllLoggers();
+        services.AddHttpClient<IIocChatCompletionClient, OpenAiCompatibleIocChatClient>(
+            static client => client.Timeout = Timeout.InfiniteTimeSpan)
+            .RemoveAllLoggers();
 
         services.AddScoped<IIocRepository, IocRepository>();
         services.AddScoped<IIocQueryReader, IocQueryReader>();

@@ -21,6 +21,7 @@ import type { BrowseParams } from '../lib/browseParams'
 import { iocTypeTokens } from '../lib/schemas'
 import { iocTypeLabels } from '../lib/iocPresentation'
 import { focusRingClass } from '../components/AppShell'
+import { TagAutocompleteInput } from '../components/TagAutocompleteInput'
 import {
   EmptyState,
   ErrorState,
@@ -274,11 +275,10 @@ function BrowsePage() {
                 <label htmlFor="browse-tag" className={fieldLabelClass}>
                   Tag
                 </label>
-                <input
+                <TagAutocompleteInput
                   id="browse-tag"
-                  type="text"
                   value={tagDraft}
-                  onChange={(event) => setTagDraft(event.target.value)}
+                  onChange={setTagDraft}
                   className={controlClass}
                 />
               </div>
