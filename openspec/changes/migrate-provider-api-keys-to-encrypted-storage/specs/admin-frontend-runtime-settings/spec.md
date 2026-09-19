@@ -13,6 +13,11 @@ Extends `/admin/settings` with a separate write-only provider credential area wh
 - **WHEN** an Admin opens the settings route
 - **THEN** the form contains only non-secret settings and provider key policy/status metadata
 
+#### Scenario: Full provider settings save
+
+- **WHEN** the Admin saves the complete runtime settings snapshot
+- **THEN** the request contains no plaintext provider credential and credential state is unchanged
+
 ## ADDED Requirements
 
 ### Requirement: Separate write-only credential controls
@@ -23,8 +28,3 @@ The settings route SHALL offer a separate credential section per supported provi
 
 - **WHEN** an Admin submits a new provider credential
 - **THEN** the UI shows configured status and update metadata without displaying or retaining the submitted value
-
-#### Scenario: Full settings save
-
-- **WHEN** the Admin saves the complete runtime settings snapshot
-- **THEN** the request contains no plaintext provider credential and credential state is unchanged

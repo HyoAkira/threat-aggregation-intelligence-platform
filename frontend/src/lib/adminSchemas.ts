@@ -210,6 +210,23 @@ export const aiSettingsRequestSchema = z.object({
 
 export type AiSettingsRequest = z.infer<typeof aiSettingsRequestSchema>
 
+export const iocChatSettingsSchema = z.object({
+  baseUrl: omittedNullableStringSchema,
+  modelId: omittedNullableStringSchema,
+  enabled: z.boolean(),
+  apiKeyConfigured: z.boolean(),
+})
+
+export type IocChatSettings = z.infer<typeof iocChatSettingsSchema>
+
+export const iocChatSettingsRequestSchema = z.object({
+  baseUrl: z.string().nullish(),
+  modelId: z.string().nullish(),
+  enabled: z.boolean(),
+})
+
+export type IocChatSettingsRequest = z.infer<typeof iocChatSettingsRequestSchema>
+
 export const aiReportPolicyVersionSchema = z.object({
   version: z.number().int(),
   text: z.string(),

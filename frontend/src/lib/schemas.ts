@@ -75,6 +75,18 @@ export const pagedIocGroupsSchema = z.object({
 /** Public provider catalog used by browse column filters. */
 export const iocProviderNamesSchema = z.array(z.string().min(1))
 
+/** Public tag catalog used by browse and search autocomplete filters. */
+export const iocTagCatalogSchema = z.array(
+  z.object({
+    name: z.string().min(1).max(100),
+    usageCount: z.number().int().nonnegative(),
+  }),
+)
+
+export type IocTagCatalogItem = z.infer<
+  typeof iocTagCatalogSchema
+>[number]
+
 export type PagedIocGroups = z.infer<typeof pagedIocGroupsSchema>
 
 /** `POST /api/auth/login` success response; role is `User` or `Admin`. */

@@ -19,6 +19,7 @@ public class ThreatIntelligenceDbContext(DbContextOptions<ThreatIntelligenceDbCo
     public DbSet<Settings> Settings => Set<Settings>();
     public DbSet<EncryptedSecret> EncryptedSecrets => Set<EncryptedSecret>();
     public DbSet<AiConnectionSettings> AiConnectionSettings => Set<AiConnectionSettings>();
+    public DbSet<IocChatConnectionSettings> IocChatConnectionSettings => Set<IocChatConnectionSettings>();
     public DbSet<AiReportPolicyVersion> AiReportPolicyVersions => Set<AiReportPolicyVersion>();
     public DbSet<AiReportPolicyActive> AiReportPolicyActive => Set<AiReportPolicyActive>();
 

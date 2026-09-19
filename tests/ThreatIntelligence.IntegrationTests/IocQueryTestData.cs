@@ -59,6 +59,28 @@ public static class IocQueryTestData
         return row;
     }
 
+    public static async Task<Tag> AddTagAsync(
+        ThreatIntelligenceDbContext context,
+        int iocId,
+        string name)
+    {
+        var normalized = name.Trim().ToLowerInvariant();
+        var tag = await context.Tags.SingleOrDefaultAsync(item => item.Name == normalized);
+        if (tag is null)
+        {
+            tag = new Tag(name);
+            context.Tags.Add(tag);
+            await context.SaveChangesAsync();
+        }
+
+        if (!await context.IoCTags.AnyAsync(item => item.IocId == iocId && item.TagId == tag.Id))
+        {
+            context.IoCTags.Add(new IoCTag(iocId, tag.Id));
+        }
+
+        return tag;
+    }
+
     public static async Task TagAsync(ThreatIntelligenceDbContext context, IoC row, string tagName)
     {
         var name = tagName.Trim().ToLowerInvariant();

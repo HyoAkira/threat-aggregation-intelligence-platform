@@ -27,6 +27,28 @@ public sealed class IocQueryReader(
             .Select(provider => provider.Name)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<IocTagCatalogItem>> GetTagCatalogAsync(
+        string? query,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var prefix = query?.Trim().ToLowerInvariant();
+        var tags = dbContext.Tags.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrEmpty(prefix))
+        {
+            tags = tags.Where(tag => tag.Name.StartsWith(prefix));
+        }
+
+        return await tags
+            .Select(tag => new IocTagCatalogItem(
+                tag.Name,
+                dbContext.IoCTags.Count(iocTag => iocTag.TagId == tag.Id)))
+            .OrderByDescending(tag => tag.UsageCount)
+            .ThenBy(tag => tag.Name)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<PagedResult<IocGroupResult>> SearchGroupsAsync(
         NormalizationResult identity,
         IocSourceFilter filter,

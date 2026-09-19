@@ -4,6 +4,7 @@ import {
   browseIocs,
   getIocDetail,
   getIocRelations,
+  getIocTagCatalog,
   login,
   searchIocs,
   setUnauthorizedHandler,
@@ -189,6 +190,23 @@ describe('apiFetch transport', () => {
     ).rejects.toMatchObject({
       code: 'network_error',
     })
+  })
+})
+
+describe('IOC tag catalog client', () => {
+  it('requests the bounded normalized tag catalog', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(
+      jsonResponse([{ name: 'phishing', usageCount: 4 }]),
+    )
+    globalThis.fetch = fetchMock
+
+    await expect(
+      getIocTagCatalog({ q: 'phi', limit: 8 }),
+    ).resolves.toEqual([{ name: 'phishing', usageCount: 4 }])
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/iocs/tags?q=phi&limit=8',
+      expect.objectContaining({ method: 'GET' }),
+    )
   })
 })
 

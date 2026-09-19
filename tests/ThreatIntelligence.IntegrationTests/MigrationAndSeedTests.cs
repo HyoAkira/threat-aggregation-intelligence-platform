@@ -25,6 +25,7 @@ public class MigrationAndSeedTests(SqlServerFixture fixture)
         Assert.Contains("tags", tables);
         Assert.Contains("encryptedSecrets", tables);
         Assert.Contains("aiConnectionSettings", tables);
+        Assert.Contains("iocChatConnectionSettings", tables);
         Assert.Contains("aiReportPolicyVersions", tables);
         Assert.Contains("aiReportPolicyActive", tables);
 

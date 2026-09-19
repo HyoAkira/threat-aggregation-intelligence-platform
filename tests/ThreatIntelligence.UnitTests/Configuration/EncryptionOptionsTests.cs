@@ -31,4 +31,41 @@ public sealed class EncryptionOptionsTests
         Assert.True(options.IsAvailable);
         Assert.Equal(3, options.KeyVersion);
     }
+
+    [Fact]
+    public void Relative_root_key_file_is_resolved_from_dotenv_directory()
+    {
+        lock (typeof(EncryptionOptionsTests))
+        {
+            var originalDirectory = Directory.GetCurrentDirectory();
+            var root = Directory.CreateTempSubdirectory("encryption-options-");
+            var workingDirectory = Directory.CreateDirectory(Path.Combine(root.FullName, "service"));
+            var keyDirectory = Directory.CreateDirectory(Path.Combine(root.FullName, "secrets"));
+            var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+            File.WriteAllText(Path.Combine(root.FullName, ".env"), string.Empty);
+            File.WriteAllText(Path.Combine(keyDirectory.FullName, "root-key"), key);
+
+            try
+            {
+                Directory.SetCurrentDirectory(workingDirectory.FullName);
+                var configuration = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Encryption:RootKeyFile"] = "secrets/root-key",
+                        ["Encryption:KeyVersion"] = "4"
+                    })
+                    .Build();
+
+                var options = EncryptionOptions.FromConfiguration(configuration);
+
+                Assert.True(options.IsAvailable);
+                Assert.Equal(4, options.KeyVersion);
+            }
+            finally
+            {
+                Directory.SetCurrentDirectory(originalDirectory);
+                root.Delete(recursive: true);
+            }
+        }
+    }
 }
