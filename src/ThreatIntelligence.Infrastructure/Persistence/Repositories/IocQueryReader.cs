@@ -39,14 +39,24 @@ public sealed class IocQueryReader(
             tags = tags.Where(tag => tag.Name.StartsWith(prefix));
         }
 
-        return await tags
+        var matchingTags = await tags
+            .Select(tag => new { tag.Id, tag.Name })
+            .ToListAsync(cancellationToken);
+
+        var usageByTag = await dbContext.IoCTags.AsNoTracking()
+            .Where(iocTag => matchingTags.Select(tag => tag.Id).Contains(iocTag.TagId))
+            .GroupBy(iocTag => iocTag.TagId)
+            .Select(group => new { TagId = group.Key, UsageCount = group.Count() })
+            .ToDictionaryAsync(item => item.TagId, item => item.UsageCount, cancellationToken);
+
+        return matchingTags
             .Select(tag => new IocTagCatalogItem(
                 tag.Name,
-                dbContext.IoCTags.Count(iocTag => iocTag.TagId == tag.Id)))
+                usageByTag.GetValueOrDefault(tag.Id)))
             .OrderByDescending(tag => tag.UsageCount)
-            .ThenBy(tag => tag.Name)
+            .ThenBy(tag => tag.Name, StringComparer.Ordinal)
             .Take(limit)
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     public async Task<PagedResult<IocGroupResult>> SearchGroupsAsync(
@@ -180,16 +190,23 @@ public sealed class IocQueryReader(
 
         if (!string.IsNullOrWhiteSpace(criteria.Tag))
         {
-            var tagId = await dbContext.Tags.AsNoTracking()
-                .Where(tag => tag.Name == criteria.Tag)
-                .Select(tag => (int?)tag.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (tagId is null)
+            var tagNames = criteria.Tag
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(tag => tag.ToLowerInvariant())
+                .Distinct()
+                .ToArray();
+            var tagIds = await dbContext.Tags.AsNoTracking()
+                .Where(tag => tagNames.Contains(tag.Name))
+                .Select(tag => tag.Id)
+                .ToArrayAsync(cancellationToken);
+            if (tagIds.Length == 0)
             {
                 return PagedResult<IocGroupResult>.Empty(criteria.Page, criteria.PageSize);
             }
 
-            baseQuery = baseQuery.Where(i => dbContext.IoCTags.Any(it => it.IocId == i.Id && it.TagId == tagId));
+            // Multiple tag values are an OR filter: a row matching any selected tag qualifies.
+            baseQuery = baseQuery.Where(i => dbContext.IoCTags.Any(it =>
+                it.IocId == i.Id && tagIds.Contains(it.TagId)));
         }
 
         var grouped = baseQuery.GroupBy(i => new { i.IocType, i.IocValue });

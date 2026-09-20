@@ -156,9 +156,9 @@ function hasErrors(errors: FieldErrors): boolean {
 /* -------------------------------------------------------------------------- */
 
 const settingsTabBaseClass =
-  'px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors rounded'
+  'px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider rounded transition-[background-color,box-shadow,color]'
 const settingsTabActiveClass = `${settingsTabBaseClass} bg-primary text-on-primary`
-const settingsTabInactiveClass = `${settingsTabBaseClass} text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface`
+const settingsTabInactiveClass = `${settingsTabBaseClass} text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface hover:shadow-sm`
 
 function AdminSettingsPage() {
   const search = Route.useSearch()
@@ -181,7 +181,13 @@ function AdminSettingsPage() {
         <SettingsSectionLink section="chat">IOC chat</SettingsSectionLink>
       </nav>
 
-      {search.section === 'ai' ? <AdminAiSettings /> : search.section === 'chat' ? <AdminIocChatSettings /> : <RuntimeSettingsPanel />}
+      {search.section === 'ai' ? (
+        <AdminAiSettings />
+      ) : search.section === 'chat' ? (
+        <AdminIocChatSettings />
+      ) : (
+        <RuntimeSettingsPanel />
+      )}
     </div>
   )
 }

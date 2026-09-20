@@ -16,6 +16,19 @@ export const browsePageSizeOptions = [10, 20, 50, 100] as const
 
 export const BROWSE_PAGE_SIZE_MIN = 1
 export const BROWSE_PAGE_SIZE_MAX = 100
+export const BROWSE_TAG_MAX_LENGTH = 100
+
+/** Normalize the comma-separated tag filter used by the browse endpoint. */
+export function normalizeBrowseTags(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  )
+}
 
 /** Preset "observed period" windows offered by the explorer filter rail. */
 export const observedPeriodPresets = [
@@ -126,7 +139,17 @@ export function parseBrowseParams(raw: RawBrowseSearch): ParsedBrowseParams {
   }
 
   const tag = raw.tag?.trim()
-  if (tag) params.tag = tag
+  if (tag) {
+    const tags = normalizeBrowseTags(tag)
+    const oversized = tags.find((item) => item.length > BROWSE_TAG_MAX_LENGTH)
+    if (oversized) {
+      issues.push(
+        `Each tag filter must be at most ${BROWSE_TAG_MAX_LENGTH} characters.`,
+      )
+    } else if (tags.length > 0) {
+      params.tag = tags.join(',')
+    }
+  }
 
   const lastSeenFrom = raw.lastSeenFrom?.trim()
   if (lastSeenFrom) {

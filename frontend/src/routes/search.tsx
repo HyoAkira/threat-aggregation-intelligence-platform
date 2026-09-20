@@ -7,6 +7,7 @@ import { iocSearchKey } from '../lib/queryKeys'
 import { focusRingClass } from '../components/AppShell'
 import { IocGroupCard } from '../components/IocGroupCard'
 import { TagAutocompleteInput } from '../components/TagAutocompleteInput'
+import { ProviderAutocompleteInput } from '../components/ProviderAutocompleteInput'
 import { Pagination } from '../components/Pagination'
 import {
   EmptyState,
@@ -43,9 +44,17 @@ export function validateSearchSubmission(
   if (q.length > 2048)
     return { submission: null, error: 'The indicator is too long.' }
 
-  const tag = values.tag.trim()
-  if (tag.length > 100)
+  const tags = Array.from(
+    new Set(
+      values.tag
+        .split(',')
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  )
+  if (tags.some((tag) => tag.length > 100))
     return { submission: null, error: 'The tag filter is too long.' }
+  const tag = tags.join(',')
 
   const providerRaw = values.provider.trim()
   if (providerRaw.length > 255)
@@ -215,22 +224,19 @@ function SearchPage() {
                   setValues((current) => ({ ...current, tag }))
                 }
                 className={inputClass}
+                multiple
               />
             </div>
             <div>
               <label htmlFor="search-provider" className={fieldLabelClass}>
                 Provider filter (optional)
               </label>
-              <input
+              <ProviderAutocompleteInput
                 id="search-provider"
                 name="provider"
-                type="text"
                 value={values.provider}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    provider: event.target.value,
-                  }))
+                onChange={(provider) =>
+                  setValues((current) => ({ ...current, provider }))
                 }
                 className={inputClass}
               />

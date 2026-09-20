@@ -36,6 +36,8 @@ export const browseKey = (params: BrowseParams) =>
 export const iocTagCatalogKey = (query: string) =>
   ['ioc-tag-catalog', query] as const
 
+export const iocProviderNamesKey = () => ['ioc-provider-names'] as const
+
 /* -------------------------------------------------------------------------- */
 /*  Admin query keys                                                         */
 /* -------------------------------------------------------------------------- */

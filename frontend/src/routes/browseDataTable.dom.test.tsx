@@ -137,7 +137,8 @@ describe('DataTables browse requests', () => {
 
     const indicator = await screen.findByText(urlGroup.iocValue)
     expect(indicator.getAttribute('href')).toBe(`/iocs/${urlGroup.id}`)
-    expect(indicator.classList.contains('line-clamp-2')).toBe(true)
+    expect(indicator.classList.contains('line-clamp-3')).toBe(true)
+    expect(indicator.classList.contains('sm:line-clamp-2')).toBe(true)
     expect(indicator.classList.contains('overflow-hidden')).toBe(true)
     expect(
       screen.getByRole('button', { name: `Copy ${urlGroup.iocValue}` }),
