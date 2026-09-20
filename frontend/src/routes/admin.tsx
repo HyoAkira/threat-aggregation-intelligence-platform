@@ -19,9 +19,9 @@ export const Route = createFileRoute('/admin')({
 })
 
 const tabBaseClass =
-  'px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors rounded'
+  'px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider rounded transition-[background-color,box-shadow,color]'
 const tabActiveClass = `${tabBaseClass} bg-primary text-on-primary`
-const tabInactiveClass = `${tabBaseClass} text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface`
+const tabInactiveClass = `${tabBaseClass} text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface hover:shadow-sm`
 
 const tabs = [
   { to: '/admin/providers' as const, label: 'Providers' },

@@ -342,6 +342,37 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
     }
 
     [Fact]
+    public async Task Browse_multiple_tags_match_when_any_selected_tag_is_present()
+    {
+        await using var context = fixture.CreateContext();
+        var phishing = await IocQueryTestData.InsertIocAsync(
+            context, 1, "b-or-1", "https://phish-only.example/a", IocType.Url,
+            urlHost: "phish-only.example", parentDomain: "phish-only.example");
+        await IocQueryTestData.TagAsync(context, phishing, "phishing");
+
+        var botnet = await IocQueryTestData.InsertIocAsync(
+            context, 1, "b-or-2", "botnet-only.example", IocType.Domain,
+            parentDomain: "botnet-only.example");
+        await IocQueryTestData.TagAsync(context, botnet, "botnet");
+
+        var unrelated = await IocQueryTestData.InsertIocAsync(
+            context, 1, "b-or-3", "clean.example", IocType.Domain,
+            parentDomain: "clean.example");
+        await IocQueryTestData.TagAsync(context, unrelated, "malware");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var page = await reader.BrowseAsync(
+            new IocBrowseCriteria(null, "1", "phishing,botnet", null, null, null, null,
+                IocBrowseOrderBy.IocValue, false, 1, 20),
+            CancellationToken.None);
+
+        Assert.Equal(2, page.TotalCount);
+        Assert.Equal(
+            ["botnet-only.example", "https://phish-only.example/a"],
+            page.Items.Select(item => item.IocValue).ToArray());
+    }
+
+    [Fact]
     public async Task Browse_default_order_is_last_seen_desc_with_nulls_last()
     {
         await using var context = fixture.CreateContext();

@@ -143,6 +143,14 @@
     padding-inline-start: 0.75rem;
   }
 
+  /* Keep the indicator readable on narrow screens. The table already scrolls
+   * horizontally, so give its primary value enough room to use three lines. */
+  @media (max-width: 639px) {
+    table.dataTable tbody td:first-child {
+      min-width: 16rem;
+    }
+  }
+
   table.dataTable tbody td:last-child {
     padding-inline-end: 0.75rem;
   }

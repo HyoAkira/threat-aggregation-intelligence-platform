@@ -42,7 +42,7 @@ describe('browse page server render', () => {
     expect(markup).toContain('<option value="asc" selected="">')
     expect(markup).toContain('<option value="10" selected="">')
     expect(markup).toContain('value="phishing"')
-    expect(markup).toContain('value="1"')
+    expect(markup).toContain('id="browse-provider" multiple=""')
   })
 
   it('shows an invalid-filters state with a reset affordance for unsupported URL values', async () => {

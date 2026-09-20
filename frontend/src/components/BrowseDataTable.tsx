@@ -108,7 +108,7 @@ function IndicatorCell({
           event.preventDefault()
           onOpenDetail(group.id)
         }}
-        className={`line-clamp-2 min-w-0 max-w-[13rem] break-all overflow-hidden font-mono text-[11px] font-semibold leading-snug text-on-surface underline-offset-2 hover:text-primary hover:underline ${focusRingClass}`}
+        className={`line-clamp-3 min-w-0 max-w-[18rem] break-all overflow-hidden font-mono text-[11px] font-semibold leading-snug text-on-surface underline-offset-2 hover:text-primary hover:underline sm:line-clamp-2 sm:max-w-[13rem] ${focusRingClass}`}
       >
         {group.iocValue}
       </a>

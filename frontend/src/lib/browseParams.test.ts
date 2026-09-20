@@ -3,10 +3,22 @@ import {
   browseParamsToSearch,
   defaultBrowseParams,
   hasActiveBrowseFilters,
+  normalizeBrowseTags,
   parseBrowseParams,
 } from './browseParams'
 
 describe('parseBrowseParams', () => {
+  it('normalizes, deduplicates, and preserves multiple tag filters', () => {
+    expect(normalizeBrowseTags(' BotNet, phishing, botnet ')).toEqual([
+      'botnet',
+      'phishing',
+    ])
+    expect(parseBrowseParams({ tag: ' BotNet, phishing, botnet ' })).toEqual({
+      params: { ...defaultBrowseParams, tag: 'botnet,phishing' },
+      issues: [],
+    })
+  })
+
   it('yields the default view for absent or empty values', () => {
     const { params, issues } = parseBrowseParams({
       type: '',

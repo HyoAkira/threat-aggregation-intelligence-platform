@@ -19,6 +19,7 @@
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage{hyperref}
+\usepackage{xurl}
 
 $if(highlighting-macros)$
 $highlighting-macros$
@@ -41,8 +42,7 @@ $endfor$
   pdfcreator={Threat Intelligence Platform}
 }
 \setlength{\parindent}{0pt}
-\newenvironment{Highlighting}{\verbatim}{\endverbatim}
-\newenvironment{Shaded}{\begin{quote}\color{bodytext}}{\end{quote}}
+\renewcommand{\texttt}[1]{\begingroup\urlstyle{tt}\url{#1}\endgroup}
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \providecommand{\passthrough}[1]{#1}
 

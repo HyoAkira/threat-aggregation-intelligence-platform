@@ -30,6 +30,17 @@ describe('validateSearchSubmission (local rejection of empty input)', () => {
     })
   })
 
+  it('normalizes multiple tags as an OR filter', () => {
+    const result = validateSearchSubmission({
+      q: ' 1.2.3.4 ',
+      tag: ' BotNet, phishing, botnet, ',
+      provider: '',
+    })
+
+    expect(result.error).toBeNull()
+    expect(result.submission?.tag).toBe('botnet,phishing')
+  })
+
   it('treats blank optional filters as absent', () => {
     const result = validateSearchSubmission({
       q: 'evil.example',

@@ -22,6 +22,7 @@ import { iocTypeTokens } from '../lib/schemas'
 import { iocTypeLabels } from '../lib/iocPresentation'
 import { focusRingClass } from '../components/AppShell'
 import { TagAutocompleteInput } from '../components/TagAutocompleteInput'
+import { ProviderAutocompleteInput } from '../components/ProviderAutocompleteInput'
 import {
   EmptyState,
   ErrorState,
@@ -280,20 +281,28 @@ function BrowsePage() {
                   value={tagDraft}
                   onChange={setTagDraft}
                   className={controlClass}
+                  multiple
                 />
+                <p className="mt-1 text-[10px] text-on-surface-variant">
+                  Add multiple tags separated by commas. Any selected tag can
+                  match.
+                </p>
               </div>
 
               <div>
                 <label htmlFor="browse-provider" className={fieldLabelClass}>
                   Provider
                 </label>
-                <input
+                <ProviderAutocompleteInput
                   id="browse-provider"
-                  type="text"
                   value={providerDraft}
-                  onChange={(event) => setProviderDraft(event.target.value)}
+                  onChange={setProviderDraft}
                   className={controlClass}
                 />
+                <p className="mt-1 text-[10px] text-on-surface-variant">
+                  Add multiple providers separated by commas. Any selected
+                  provider can match.
+                </p>
               </div>
 
               <fieldset>
