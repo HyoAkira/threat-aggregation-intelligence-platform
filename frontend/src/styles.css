@@ -132,6 +132,103 @@
     width: 100%;
   }
 
+  /* The log table has five dense fields. Fixed layout keeps a long message or
+   * exception from deciding the width of every other column. The cell content
+   * is responsible for wrapping inside the proportions declared by the table. */
+  .admin-logs-table {
+    table-layout: fixed;
+    width: calc(100% + 3px) !important;
+  }
+
+  .admin-logs-table th,
+  .admin-logs-table tbody td {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-logs-table tbody td {
+    vertical-align: top;
+  }
+
+  .admin-logs-exception {
+    position: relative;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .admin-logs-exception summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .admin-logs-exception-icon {
+    transition: transform 120ms ease;
+  }
+
+  .admin-logs-exception[open] .admin-logs-exception-icon {
+    transform: rotate(180deg);
+  }
+
+  .admin-logs-exception-popover {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: min(32rem, calc(100vw - 2rem));
+    overflow: hidden;
+    border: 1px solid
+      color-mix(in srgb, var(--color-error) 25%, var(--color-outline-variant));
+    border-radius: 0.25rem;
+    background: var(--color-surface-container-lowest);
+    box-shadow: 0 12px 28px
+      color-mix(in srgb, var(--color-on-surface) 16%, transparent);
+  }
+
+  @media (max-width: 639px) {
+    /* Correlation IDs are useful for investigation but secondary to the log
+     * itself on a phone-sized viewport. Removing that column gives timestamp,
+     * message, level, and the exception action enough room to breathe. */
+    .admin-logs-correlation-column,
+    .admin-logs-table col:nth-child(4),
+    .admin-logs-table tbody td:nth-child(4) {
+      display: none;
+    }
+
+    .admin-logs-table {
+      width: 100% !important;
+    }
+
+    .admin-logs-table col:nth-child(1) {
+      width: 27% !important;
+    }
+
+    .admin-logs-table col:nth-child(2) {
+      width: 18% !important;
+    }
+
+    .admin-logs-table col:nth-child(3) {
+      width: 40% !important;
+    }
+
+    .admin-logs-table col:nth-child(5) {
+      width: 15% !important;
+    }
+
+    .admin-logs-timestamp {
+      display: block;
+      line-height: 1.35;
+    }
+
+    .admin-logs-exception-popover {
+      right: -2.5rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .admin-logs-exception-icon {
+      transition: none;
+    }
+  }
+
   /* DataTables generates the body cells, so their padding lives here rather
    * than in the React slots. Matches the header's px-3/py-2 rhythm with extra
    * vertical room so the first row does not sit against the header. */
@@ -146,7 +243,7 @@
   /* Keep the indicator readable on narrow screens. The table already scrolls
    * horizontally, so give its primary value enough room to use three lines. */
   @media (max-width: 639px) {
-    table.dataTable tbody td:first-child {
+    table.dataTable:not(.admin-logs-table) tbody td:first-child {
       min-width: 16rem;
     }
   }

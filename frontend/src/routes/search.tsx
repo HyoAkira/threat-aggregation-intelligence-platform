@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { ApiError, searchIocs } from '../lib/apiClient'
-import type { SearchSubmission } from '../lib/apiClient'
-import { iocSearchKey } from '../lib/queryKeys'
+import { ApiError, searchIocs, searchIocsBulk } from '../lib/apiClient'
+import type { BulkSearchSubmission, SearchSubmission } from '../lib/apiClient'
+import { iocSearchBulkKey, iocSearchKey } from '../lib/queryKeys'
+import type { BulkSearchItem, BulkSearchResult } from '../lib/schemas'
 import { focusRingClass } from '../components/AppShell'
 import { IocGroupCard } from '../components/IocGroupCard'
+import { IocMultilineSearchInput } from '../components/IocMultilineSearchInput'
 import { TagAutocompleteInput } from '../components/TagAutocompleteInput'
 import { ProviderAutocompleteInput } from '../components/ProviderAutocompleteInput'
 import { Pagination } from '../components/Pagination'
@@ -24,25 +26,57 @@ export type SearchFormValues = {
   q: string
   tag: string
   provider: string
+  malware?: string
+  target?: string
+}
+
+/** Bulk submission before the page assigns shared paging bounds. */
+export type BulkSearchDraft = {
+  queries: string[]
+  tag: string | null
+  provider: string | null
 }
 
 export type SearchValidation =
-  | { submission: SearchSubmission; error: null }
-  | { submission: null; error: string }
+  | { submission: SearchSubmission; bulk: null; error: null }
+  | { submission: null; bulk: BulkSearchDraft; error: null }
+  | { submission: null; bulk: null; error: string }
+
+export const MAX_BULK_QUERIES = 100
+
+/** Splits the editor into trimmed, non-blank values preserving order and duplicates. */
+export function normalizeSearchInputs(q: string): string[] {
+  return q
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+}
 
 /**
- * Local validation only rejects what the page contract requires: an empty
- * indicator. Everything else (syntax, classification, normalization) is decided
- * by the API response, and the user never chooses an IOC type.
+ * Local validation only rejects what the page contract requires: at least one
+ * non-blank indicator, bounded values, and optional filters. Everything else
+ * (syntax, classification, normalization) is decided by the API response, and
+ * the user never chooses an IOC type. One value uses the existing exact search;
+ * two or more use the bulk-search contract.
  */
 export function validateSearchSubmission(
   values: SearchFormValues,
 ): SearchValidation {
-  const q = values.q.trim()
-  if (q === '')
-    return { submission: null, error: 'Enter an indicator to search.' }
-  if (q.length > 2048)
-    return { submission: null, error: 'The indicator is too long.' }
+  const inputs = normalizeSearchInputs(values.q)
+  if (inputs.length === 0)
+    return {
+      submission: null,
+      bulk: null,
+      error: 'Enter an indicator to search.',
+    }
+  if (inputs.some((input) => input.length > 2048))
+    return { submission: null, bulk: null, error: 'The indicator is too long.' }
+  if (inputs.length > MAX_BULK_QUERIES)
+    return {
+      submission: null,
+      bulk: null,
+      error: `Search up to ${MAX_BULK_QUERIES} indicators at a time.`,
+    }
 
   const tags = Array.from(
     new Set(
@@ -53,16 +87,51 @@ export function validateSearchSubmission(
     ),
   )
   if (tags.some((tag) => tag.length > 100))
-    return { submission: null, error: 'The tag filter is too long.' }
-  const tag = tags.join(',')
+    return {
+      submission: null,
+      bulk: null,
+      error: 'The tag filter is too long.',
+    }
+  const tag = tags.join(',') === '' ? null : tags.join(',')
 
   const providerRaw = values.provider.trim()
   if (providerRaw.length > 255)
-    return { submission: null, error: 'The provider filter is too long.' }
+    return {
+      submission: null,
+      bulk: null,
+      error: 'The provider filter is too long.',
+    }
   const provider = providerRaw === '' ? null : providerRaw
 
+  const malwareRaw = (values.malware ?? '').trim()
+  if (malwareRaw.length > 200)
+    return {
+      submission: null,
+      bulk: null,
+      error: 'The malware filter is too long.',
+    }
+  const malware = malwareRaw === '' ? null : malwareRaw
+
+  const targetRaw = (values.target ?? '').trim()
+  if (targetRaw.length > 500)
+    return {
+      submission: null,
+      bulk: null,
+      error: 'The target filter is too long.',
+    }
+  const target = targetRaw === '' ? null : targetRaw
+
+  if (inputs.length === 1) {
+    return {
+      submission: { q: inputs[0], tag, provider, malware, target },
+      bulk: null,
+      error: null,
+    }
+  }
+
   return {
-    submission: { q, tag: tag === '' ? null : tag, provider },
+    submission: null,
+    bulk: { queries: inputs, tag, provider },
     error: null,
   }
 }
@@ -120,31 +189,193 @@ export function SearchErrorState({
   )
 }
 
+/**
+ * Bulk failures are page-level transport or envelope failures only: mixed per-item statuses are
+ * rendered as data, never as an error. Unexpected failures stay retryable and show the
+ * correlation ID when the API supplied one.
+ */
+export function BulkSearchErrorState({
+  error,
+  onRetry,
+}: {
+  error: unknown
+  onRetry: () => void
+}) {
+  if (error instanceof ApiError) {
+    if (error.status === 403) {
+      return (
+        <ForbiddenState message="You do not have permission to search indicators." />
+      )
+    }
+    return (
+      <ErrorState
+        title="Search failed"
+        message={error.problem?.detail ?? error.message}
+        correlationId={error.correlationId}
+        onRetry={onRetry}
+      />
+    )
+  }
+  return (
+    <ErrorState
+      title="Search failed"
+      message="The request could not be completed."
+      onRetry={onRetry}
+    />
+  )
+}
+
+const statusLabel: Record<BulkSearchItem['status'], string> = {
+  matched: 'Matched',
+  not_found: 'Not found',
+  invalid: 'Invalid',
+}
+
+const statusBadgeClass: Record<BulkSearchItem['status'], string> = {
+  matched: 'bg-primary/10 text-primary',
+  not_found: 'bg-surface-container-highest text-on-surface-variant',
+  invalid: 'bg-error-container text-on-error-container',
+}
+
+/** One submitted line's outcome: matched groups, or a status explanation and no result card. */
+export function BulkResultItem({ item }: { item: BulkSearchItem }) {
+  return (
+    <section
+      className="overflow-hidden rounded border border-outline-variant"
+      aria-label={`Bulk result for ${item.input}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/60 bg-surface-container-low/60 px-4 py-2">
+        <h3 className="break-all font-mono text-sm font-semibold text-on-surface">
+          {item.input}
+        </h3>
+        <span
+          className={`rounded px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${statusBadgeClass[item.status]}`}
+        >
+          {statusLabel[item.status]}
+        </span>
+      </div>
+      {item.status === 'matched' ? (
+        <div className="space-y-3 p-4">
+          {item.groups.map((group) => (
+            <IocGroupCard
+              key={`${group.iocType}:${group.iocValue}`}
+              group={group}
+              headingLevel="h3"
+              linkToDetail
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="px-4 py-3 text-sm text-on-surface-variant">
+          {item.status === 'invalid'
+            ? (item.error?.detail ??
+              'This value could not be recognized as a supported IOC.')
+            : (item.error?.detail ?? 'No stored indicator matches this value.')}
+        </p>
+      )}
+    </section>
+  )
+}
+
 const fieldLabelClass =
   'font-mono text-[10px] font-semibold uppercase tracking-wider text-outline'
 const inputClass = `mt-1 w-full rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-sm text-on-surface placeholder:text-outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`
 const SEARCH_PAGE_SIZE = 20
+
+/**
+ * Bulk response presentation: an overall summary, one section per submitted value in server order,
+ * and shared page navigation when any matched value has additional pages. Input order is never
+ * merged or reordered, and invalid/not-found values never render a result card.
+ */
+export function BulkResults({
+  data,
+  page,
+  onPage,
+}: {
+  data: BulkSearchResult
+  page: number
+  onPage: (page: number) => void
+}) {
+  const hasMorePages = data.items.some(
+    (item) => item.totalCount > SEARCH_PAGE_SIZE,
+  )
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-on-surface-variant">
+          Results for {data.totalCount}{' '}
+          {data.totalCount === 1 ? 'indicator' : 'indicators'}
+        </h2>
+        <p
+          aria-live="polite"
+          className="mt-1 font-mono text-xs text-on-surface-variant"
+        >
+          {data.matchedCount} matched · {data.notFoundCount} not found ·{' '}
+          {data.invalidCount} invalid
+        </p>
+      </div>
+      {data.items.map((item, index) => (
+        <BulkResultItem key={`${index}:${item.input}`} item={item} />
+      ))}
+      {hasMorePages ? (
+        <Pagination
+          page={page}
+          pageSize={SEARCH_PAGE_SIZE}
+          totalCount={data.items.reduce(
+            (total, item) => Math.max(total, item.totalCount),
+            0,
+          )}
+          onPage={onPage}
+          pageLabel="Search page"
+        />
+      ) : null}
+    </div>
+  )
+}
 
 function SearchPage() {
   const [values, setValues] = useState<SearchFormValues>({
     q: '',
     tag: '',
     provider: '',
+    malware: '',
+    target: '',
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [submission, setSubmission] = useState<SearchSubmission | null>(null)
+  const [bulkSubmission, setBulkSubmission] = useState<BulkSearchDraft | null>(
+    null,
+  )
   const [page, setPage] = useState(1)
 
   const pagedSubmission = submission
     ? { ...submission, page, pageSize: SEARCH_PAGE_SIZE }
     : null
+  const pagedBulk: BulkSearchSubmission | null = bulkSubmission
+    ? { ...bulkSubmission, page, pageSize: SEARCH_PAGE_SIZE }
+    : null
 
-  const query = useQuery({
+  const singleQuery = useQuery({
     queryKey: iocSearchKey(
       pagedSubmission ?? { q: '', tag: null, provider: null },
     ),
     queryFn: ({ signal }) => searchIocs(pagedSubmission!, signal),
     enabled: submission !== null,
+  })
+
+  const bulkQuery = useQuery({
+    queryKey: iocSearchBulkKey(
+      pagedBulk ?? {
+        queries: [],
+        tag: null,
+        provider: null,
+        page: 1,
+        pageSize: SEARCH_PAGE_SIZE,
+      },
+    ),
+    queryFn: ({ signal }) => searchIocsBulk(pagedBulk!, signal),
+    enabled: bulkSubmission !== null,
   })
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -153,9 +384,12 @@ function SearchPage() {
     setFormError(validation.error)
     setPage(1)
     setSubmission(validation.submission)
+    setBulkSubmission(validation.bulk)
   }
 
-  const busy = submission !== null && query.isPending
+  const busy =
+    (submission !== null && singleQuery.isPending) ||
+    (bulkSubmission !== null && bulkQuery.isPending)
 
   return (
     <section aria-labelledby="search-heading">
@@ -176,7 +410,8 @@ function SearchPage() {
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-on-surface-variant">
             Search for an IPv4 or IPv6 address, a domain, URL host, parent
-            domain, or an HTTP(S) URL. The type is detected automatically.
+            domain, or an HTTP(S) URL. Paste one indicator per line to search
+            several at once; the type is detected automatically.
           </p>
         </div>
 
@@ -185,31 +420,13 @@ function SearchPage() {
             <label htmlFor="search-q" className={fieldLabelClass}>
               Indicator (IPv4, IPv6, domain, or HTTP(S) URL)
             </label>
-            <div className="mt-1 flex items-center gap-2 rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 focus-within:border-primary">
-              <span
-                aria-hidden="true"
-                className="material-symbols-outlined text-[20px] text-primary"
-              >
-                search
-              </span>
-              <input
-                id="search-q"
-                name="q"
-                type="text"
-                required
-                autoComplete="off"
-                spellCheck={false}
-                value={values.q}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    q: event.target.value,
-                  }))
-                }
-                className="w-full bg-transparent font-mono text-sm text-on-surface outline-none placeholder:text-outline"
-                placeholder="194.26.29.112, evil-domain.ru, https://…"
-              />
-            </div>
+            <IocMultilineSearchInput
+              id="search-q"
+              name="q"
+              value={values.q}
+              onChange={(q) => setValues((current) => ({ ...current, q }))}
+              className={`${inputClass} min-h-24`}
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -243,6 +460,47 @@ function SearchPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="search-malware" className={fieldLabelClass}>
+                Malware filter (optional)
+              </label>
+              <input
+                id="search-malware"
+                name="malware"
+                type="text"
+                value={values.malware ?? ''}
+                maxLength={200}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    malware: event.target.value,
+                  }))
+                }
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="search-target" className={fieldLabelClass}>
+                Target filter (optional)
+              </label>
+              <input
+                id="search-target"
+                name="target"
+                type="text"
+                value={values.target ?? ''}
+                maxLength={500}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    target: event.target.value,
+                  }))
+                }
+                className={inputClass}
+              />
+            </div>
+          </div>
+
           {formError ? (
             <ErrorState title="Check your input" message={formError} />
           ) : null}
@@ -260,41 +518,53 @@ function SearchPage() {
 
       <div className="mt-6">
         {busy ? <LoadingState label="Searching…" /> : null}
-        {submission && query.isError ? (
+
+        {submission && singleQuery.isError ? (
           <SearchErrorState
-            error={query.error}
+            error={singleQuery.error}
             q={submission.q}
-            onRetry={() => void query.refetch()}
+            onRetry={() => void singleQuery.refetch()}
           />
         ) : null}
-        {query.data ? (
+        {bulkSubmission && bulkQuery.isError ? (
+          <BulkSearchErrorState
+            error={bulkQuery.error}
+            onRetry={() => void bulkQuery.refetch()}
+          />
+        ) : null}
+
+        {submission && singleQuery.data ? (
           <div className="space-y-3">
             <h2 className="flex flex-wrap items-baseline gap-x-2 text-sm font-semibold uppercase tracking-wider text-on-surface-variant">
-              {query.data.totalCount === 1 ? 'Result' : 'Results'} for
+              {singleQuery.data.totalCount === 1 ? 'Result' : 'Results'} for
               <span className="font-mono normal-case text-on-surface">
-                {submission?.q}
+                {submission.q}
               </span>
               <span className="font-mono text-xs normal-case text-outline">
-                ({query.data.totalCount})
+                ({singleQuery.data.totalCount})
               </span>
             </h2>
-            {query.data.items.map((group) => (
+            {singleQuery.data.items.map((group) => (
               <IocGroupCard
                 key={`${group.iocType}:${group.iocValue}`}
                 group={group}
                 linkToDetail
               />
             ))}
-            {query.data.totalCount > SEARCH_PAGE_SIZE ? (
+            {singleQuery.data.totalCount > SEARCH_PAGE_SIZE ? (
               <Pagination
-                page={query.data.page}
-                pageSize={query.data.pageSize}
-                totalCount={query.data.totalCount}
+                page={singleQuery.data.page}
+                pageSize={singleQuery.data.pageSize}
+                totalCount={singleQuery.data.totalCount}
                 onPage={setPage}
                 pageLabel="Search page"
               />
             ) : null}
           </div>
+        ) : null}
+
+        {bulkSubmission && bulkQuery.data ? (
+          <BulkResults data={bulkQuery.data} page={page} onPage={setPage} />
         ) : null}
       </div>
     </section>

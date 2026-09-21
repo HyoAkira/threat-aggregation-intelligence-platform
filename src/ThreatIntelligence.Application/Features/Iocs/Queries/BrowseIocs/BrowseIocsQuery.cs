@@ -17,4 +17,6 @@ public sealed record BrowseIocsQuery(
     string? OrderBy = null,
     string? Dir = null,
     int? Page = null,
-    int? PageSize = null) : IRequest<PagedResult<IocGroupResult>>;
+    int? PageSize = null,
+    string? Malware = null,
+    string? Target = null) : IRequest<PagedResult<IocGroupResult>>;

@@ -68,6 +68,64 @@ public sealed class SearchIocsHandlerTests
         Assert.Equal(IocErrorCodes.NotFound, exception.Code);
     }
 
+    [Fact]
+    public async Task Handle_PassesMetadataFiltersAndNormalizesBlank()
+    {
+        var reader = new StubReader(new PagedResult<IocGroupResult>([Group], 1, 20, 1));
+        var handler = new SearchIocsHandler(
+            new StubClassifier(NormalizationOutput.Success(
+                new NormalizationResult(IocType.Domain, "example.com", null, null, "example.com"))),
+            reader);
+
+        await handler.Handle(
+            new SearchIocsQuery("example.com", Malware: " Emotet ", Target: "   "),
+            CancellationToken.None);
+
+        Assert.Equal("Emotet", reader.Filter!.Malware);
+        Assert.Null(reader.Filter.Target);
+    }
+
+    [Theory]
+    [InlineData(201, 0)]
+    [InlineData(0, 501)]
+    public async Task Handle_RejectsOverLimitMetadataFilters(int malwareLength, int targetLength)
+    {
+        var handler = new SearchIocsHandler(
+            new StubClassifier(NormalizationOutput.Success(
+                new NormalizationResult(IocType.Domain, "example.com", null, null, "example.com"))),
+            new StubReader(new PagedResult<IocGroupResult>([Group], 1, 20, 1)));
+
+        var exception = await Assert.ThrowsAsync<IocQueryValidationException>(() =>
+            handler.Handle(
+                new SearchIocsQuery(
+                    "example.com",
+                    Malware: malwareLength > 0 ? new string('a', malwareLength) : null,
+                    Target: targetLength > 0 ? new string('a', targetLength) : null),
+                CancellationToken.None));
+
+        Assert.Equal(IocErrorCodes.InvalidInput, exception.Code);
+    }
+
+    [Fact]
+    public async Task Handle_AcceptsBoundaryMetadataFilters()
+    {
+        var reader = new StubReader(new PagedResult<IocGroupResult>([Group], 1, 20, 1));
+        var handler = new SearchIocsHandler(
+            new StubClassifier(NormalizationOutput.Success(
+                new NormalizationResult(IocType.Domain, "example.com", null, null, "example.com"))),
+            reader);
+
+        await handler.Handle(
+            new SearchIocsQuery(
+                "example.com",
+                Malware: new string('a', 200),
+                Target: new string('b', 500)),
+            CancellationToken.None);
+
+        Assert.Equal(200, reader.Filter!.Malware!.Length);
+        Assert.Equal(500, reader.Filter.Target!.Length);
+    }
+
     private sealed class StubClassifier(NormalizationOutput output) : IIocClassifier
     {
         public NormalizationOutput Classify(string query) => output;
@@ -89,6 +147,18 @@ public sealed class SearchIocsHandlerTests
             Filter = filter;
             return Task.FromResult(result);
         }
+
+        public Task<IReadOnlyDictionary<NormalizationResult, PagedResult<IocGroupResult>>> SearchBatchAsync(
+            IReadOnlyList<NormalizationResult> identities,
+            IocSourceFilter filter,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<IocSuggestionItem>> GetIocSuggestionsAsync(
+            string prefix,
+            int limit,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<IocGroupResult?> GetDetailGroupAsync(int id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();

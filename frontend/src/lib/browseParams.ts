@@ -17,6 +17,8 @@ export const browsePageSizeOptions = [10, 20, 50, 100] as const
 export const BROWSE_PAGE_SIZE_MIN = 1
 export const BROWSE_PAGE_SIZE_MAX = 100
 export const BROWSE_TAG_MAX_LENGTH = 100
+export const BROWSE_MALWARE_MAX_LENGTH = 200
+export const BROWSE_TARGET_MAX_LENGTH = 500
 
 /** Normalize the comma-separated tag filter used by the browse endpoint. */
 export function normalizeBrowseTags(value: string): string[] {
@@ -59,6 +61,8 @@ export type BrowseParams = {
   type: string | null
   provider: string | null
   tag: string | null
+  malware: string | null
+  target: string | null
   lastSeenFrom: string | null
   lastSeenTo: string | null
   orderBy: BrowseOrderBy
@@ -71,6 +75,8 @@ export const defaultBrowseParams: BrowseParams = {
   type: null,
   provider: null,
   tag: null,
+  malware: null,
+  target: null,
   lastSeenFrom: null,
   lastSeenTo: null,
   orderBy: 'lastSeenUtc',
@@ -88,6 +94,8 @@ export const rawBrowseSearchSchema = z.object({
   type: z.coerce.string().optional(),
   provider: z.coerce.string().optional(),
   tag: z.coerce.string().optional(),
+  malware: z.coerce.string().optional(),
+  target: z.coerce.string().optional(),
   lastSeenFrom: z.coerce.string().optional(),
   lastSeenTo: z.coerce.string().optional(),
   orderBy: z.coerce.string().optional(),
@@ -148,6 +156,28 @@ export function parseBrowseParams(raw: RawBrowseSearch): ParsedBrowseParams {
       )
     } else if (tags.length > 0) {
       params.tag = tags.join(',')
+    }
+  }
+
+  const malware = raw.malware?.trim()
+  if (malware) {
+    if (malware.length > BROWSE_MALWARE_MAX_LENGTH) {
+      issues.push(
+        `The malware filter must be at most ${BROWSE_MALWARE_MAX_LENGTH} characters.`,
+      )
+    } else {
+      params.malware = malware
+    }
+  }
+
+  const target = raw.target?.trim()
+  if (target) {
+    if (target.length > BROWSE_TARGET_MAX_LENGTH) {
+      issues.push(
+        `The target filter must be at most ${BROWSE_TARGET_MAX_LENGTH} characters.`,
+      )
+    } else {
+      params.target = target
     }
   }
 
@@ -227,6 +257,8 @@ export function browseParamsToSearch(
   if (params.type) search.type = params.type
   if (params.provider !== null) search.provider = params.provider
   if (params.tag) search.tag = params.tag
+  if (params.malware) search.malware = params.malware
+  if (params.target) search.target = params.target
   if (params.lastSeenFrom) search.lastSeenFrom = params.lastSeenFrom
   if (params.lastSeenTo) search.lastSeenTo = params.lastSeenTo
   if (params.orderBy !== defaultBrowseParams.orderBy)
@@ -245,6 +277,8 @@ export function hasActiveBrowseFilters(params: BrowseParams): boolean {
     params.type !== null ||
     params.provider !== null ||
     params.tag !== null ||
+    params.malware !== null ||
+    params.target !== null ||
     params.lastSeenFrom !== null ||
     params.lastSeenTo !== null ||
     params.orderBy !== defaultBrowseParams.orderBy ||

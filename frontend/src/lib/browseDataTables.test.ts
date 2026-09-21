@@ -16,6 +16,8 @@ const active: BrowseParams = {
   type: 'url',
   provider: '3',
   tag: 'phishing',
+  malware: 'Emotet',
+  target: 'Amazon',
   lastSeenFrom: '2026-01-01T00:00:00.000Z',
   lastSeenTo: '2026-01-31T23:59:59.000Z',
   orderBy: 'lastSeenUtc',

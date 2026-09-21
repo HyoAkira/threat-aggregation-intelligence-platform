@@ -45,6 +45,10 @@ public sealed class FetchHistoryConfiguration : IEntityTypeConfiguration<FetchHi
         builder.HasIndex(f => new { f.ProviderId, f.StartedAt })
             .HasDatabaseName("IX_fetchHistory_ProviderId_StartedAt");
 
+        builder.HasIndex(f => new { f.Status, f.FinishedAt })
+            .HasDatabaseName("IX_fetchHistory_Status_FinishedAt")
+            .IncludeProperties(f => new { f.RecordsAdded, f.RecordsUpdated });
+
         builder.HasOne<Provider>()
             .WithMany()
             .HasForeignKey(f => f.ProviderId);

@@ -42,6 +42,12 @@ describe('fingerprints', () => {
     expect(browseParamsFingerprint(base)).not.toBe(
       browseParamsFingerprint(view({ tag: 'botnet' })),
     )
+    expect(browseParamsFingerprint(base)).not.toBe(
+      browseParamsFingerprint(view({ malware: 'Emotet' })),
+    )
+    expect(browseParamsFingerprint(base)).not.toBe(
+      browseParamsFingerprint(view({ target: 'Amazon' })),
+    )
   })
 })
 

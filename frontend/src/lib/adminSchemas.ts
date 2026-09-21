@@ -114,6 +114,33 @@ export const adminSummarySchema = z.object({
 export type AdminSummary = z.infer<typeof adminSummarySchema>
 
 /* -------------------------------------------------------------------------- */
+/*  IOC Activity Timeline                                                    */
+/* -------------------------------------------------------------------------- */
+
+const localDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a local calendar date (YYYY-MM-DD).')
+
+export const adminTimelinePointSchema = z.object({
+  localDate: localDateSchema,
+  bucketStartUtc: z.string(),
+  recordsAdded: z.number().int().nonnegative(),
+  recordsUpdated: z.number().int().nonnegative(),
+})
+
+export type AdminTimelinePoint = z.infer<typeof adminTimelinePointSchema>
+
+export const adminTimelineSchema = z.object({
+  from: z.string(),
+  to: z.string(),
+  timeZone: z.string().min(1),
+  hasSuccessfulFetches: z.boolean(),
+  points: z.array(adminTimelinePointSchema),
+})
+
+export type AdminTimeline = z.infer<typeof adminTimelineSchema>
+
+/* -------------------------------------------------------------------------- */
 /*  Structured Logs                                                          */
 /* -------------------------------------------------------------------------- */
 

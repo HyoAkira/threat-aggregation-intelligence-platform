@@ -12,7 +12,7 @@ function seedDetail(group: typeof urlGroup) {
 
 function seedRelations(
   id: number,
-  relation: 'urlHost' | 'parentDomain',
+  relation: 'urlHost' | 'parentDomain' | 'malware' | 'target',
   page: number,
   data: ReturnType<typeof makePaged>,
 ) {
@@ -175,5 +175,57 @@ describe('on-demand relations', () => {
     const markup = await renderAppRoute('/iocs/7?relation=urlHost')
 
     expect(markup).toContain('Loading related indicators')
+  })
+
+  it('offers a malware relation when a source carries a malware value', async () => {
+    seedDetail(urlGroup)
+
+    const markup = await renderAppRoute('/iocs/7')
+
+    expect(markup).toContain('Indicators sharing this malware')
+    // The URL group's sources carry no target, so its control is hidden.
+    expect(markup).not.toContain('Indicators sharing this target')
+  })
+
+  it('a later source enables a metadata relation', async () => {
+    const group = {
+      ...urlGroup,
+      id: 21,
+      sources: [
+        { ...urlGroup.sources[0], malware: null },
+        { ...urlGroup.sources[1], malware: null, target: 'Amazon' },
+      ],
+    }
+    seedDetail(group)
+
+    const markup = await renderAppRoute('/iocs/21')
+
+    expect(markup).toContain('Indicators sharing this target')
+    expect(markup).not.toContain('Indicators sharing this malware')
+  })
+
+  it('hides metadata relation controls when no source carries a value', async () => {
+    seedDetail(ipv4Group)
+
+    const markup = await renderAppRoute('/iocs/8')
+
+    expect(markup).not.toContain('Indicators sharing this malware')
+    expect(markup).not.toContain('Indicators sharing this target')
+  })
+
+  it('offers a target relation for an IP detail and loads its page', async () => {
+    const group = {
+      ...ipv4Group,
+      id: 22,
+      sources: [{ ...ipv4Group.sources[0], target: 'Amazon' }],
+    }
+    seedDetail(group)
+    seedRelations(22, 'target', 1, makePaged([urlGroup], 1, 20, 1))
+
+    const markup = await renderAppRoute('/iocs/22?relation=target')
+
+    expect(markup).toContain('Indicators sharing this target')
+    expect(markup).toMatch(/Relations page<!-- --> <!-- -->1<!-- --> of <!-- -->1/)
+    expect(markup).toContain('IOC group https://evil.example/x')
   })
 })

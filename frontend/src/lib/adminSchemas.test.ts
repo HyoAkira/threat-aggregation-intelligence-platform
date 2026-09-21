@@ -2,6 +2,7 @@ import {
   adminFetchHistoryItemSchema,
   adminLogEntrySchema,
   adminProviderDashboardItemSchema,
+  adminTimelineSchema,
   settingsResponseSchema,
 } from './adminSchemas'
 
@@ -67,5 +68,49 @@ describe('admin response schemas', () => {
 
     expect(item.finishedAt).toBeNull()
     expect(item.errorDetail).toBeNull()
+  })
+
+  it('accepts a valid timeline response with zero-filled points', () => {
+    const timeline = adminTimelineSchema.parse({
+      from: '2026-09-14T00:00:00Z',
+      to: '2026-09-16T00:00:00Z',
+      timeZone: 'Europe/Istanbul',
+      hasSuccessfulFetches: true,
+      points: [
+        {
+          localDate: '2026-09-14',
+          bucketStartUtc: '2026-09-13T21:00:00Z',
+          recordsAdded: 5,
+          recordsUpdated: 2,
+        },
+        {
+          localDate: '2026-09-15',
+          bucketStartUtc: '2026-09-14T21:00:00Z',
+          recordsAdded: 0,
+          recordsUpdated: 0,
+        },
+      ],
+    })
+
+    expect(timeline.points).toHaveLength(2)
+    expect(timeline.points[1].recordsAdded).toBe(0)
+  })
+
+  it('rejects a malformed timeline point', () => {
+    const result = adminTimelineSchema.safeParse({
+      from: '2026-09-14T00:00:00Z',
+      to: '2026-09-16T00:00:00Z',
+      timeZone: 'UTC',
+      hasSuccessfulFetches: true,
+      points: [
+        {
+          localDate: '2026/09/14',
+          bucketStartUtc: '2026-09-13T21:00:00Z',
+          recordsAdded: -1,
+        },
+      ],
+    })
+
+    expect(result.success).toBe(false)
   })
 })

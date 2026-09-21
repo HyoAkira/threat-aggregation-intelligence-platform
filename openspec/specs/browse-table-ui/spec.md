@@ -24,7 +24,7 @@ The browse table SHALL request and render only the active page of grouped IOC re
 
 ### Requirement: Backend-authoritative ordering and filtering
 
-The browse table SHALL delegate filtering and ordering to the browse endpoint. It SHALL offer ordering only for the backend-supported fields `lastSeenUtc`, `firstSeenUtc`, `iocType`, and `iocValue`, with direction `asc` or `desc`; other columns SHALL NOT be orderable. The table SHALL NOT expose a separate global-search or multi-column-ordering contract.
+The browse table SHALL delegate filtering and ordering to the browse endpoint. It SHALL offer ordering only for the backend-supported fields `lastSeenUtc`, `firstSeenUtc`, `iocType`, and `iocValue`, with direction `asc` or `desc`; other columns SHALL NOT be orderable. The filter surface SHALL offer only the backend-supported filters `type`, `provider`, `tag`, `malware`, and `target`. Malware input SHALL be limited to 200 characters and target input to 500 characters after trimming; oversized URL state SHALL be shown as invalid rather than sent to the endpoint. The table SHALL NOT expose a separate global-search or multi-column-ordering contract.
 
 #### Scenario: Supported column ordering uses the browse contract
 - **WHEN** the user orders a supported column
@@ -35,8 +35,16 @@ The browse table SHALL delegate filtering and ordering to the browse endpoint. I
 - **THEN** those column headers do not offer ordering and no unsupported ordering value is sent to the endpoint
 
 #### Scenario: Existing filters remain authoritative
-- **WHEN** the user applies a type, provider, tag, or observed-period filter
+- **WHEN** the user applies a type, provider, tag, malware, target, or observed-period filter
 - **THEN** the URL and table reset to page one and the next browse request retains every active filter
+
+#### Scenario: Malware and target filters use the browse contract
+- **WHEN** the user applies a malware or target filter
+- **THEN** exactly one request is issued with the matching `malware` or `target` parameter, and reloading the URL restores the same filter
+
+#### Scenario: Oversized metadata filter is not requested
+- **WHEN** the user enters a malware value over 200 characters or a target value over 500 characters, or opens a URL containing one
+- **THEN** the table presents invalid-filter feedback and does not issue a browse request with that value
 
 ### Requirement: Durable single-source navigation state
 

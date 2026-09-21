@@ -4,6 +4,7 @@ import {
   adminSummaryKey,
   adminSettingsKey,
   adminFetchJobKey,
+  adminTimelineKeyPrefix,
 } from './queryKeys'
 
 /**
@@ -29,6 +30,13 @@ export function useAdminInvalidation() {
     invalidateSummary: () =>
       queryClient.invalidateQueries({ queryKey: adminSummaryKey() }),
 
+    /**
+     * After a fetch that affects IOC counts. The narrow timeline prefix refreshes every open
+     * range without changing the selected local range or timezone disclosure.
+     */
+    invalidateTimeline: () =>
+      queryClient.invalidateQueries({ queryKey: adminTimelineKeyPrefix() }),
+
     /** After settings save. */
     invalidateSettings: () =>
       queryClient.invalidateQueries({ queryKey: adminSettingsKey() }),
@@ -47,6 +55,7 @@ export function useAdminInvalidation() {
         queryKey: ['admin', 'providers', providerId, 'history'],
       })
       queryClient.invalidateQueries({ queryKey: adminSummaryKey() })
+      queryClient.invalidateQueries({ queryKey: adminTimelineKeyPrefix() })
     },
   }
 }

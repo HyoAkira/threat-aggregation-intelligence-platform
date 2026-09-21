@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ThreatIntelligence.Application.Features.Iocs.Queries;
 using ThreatIntelligence.Application.Features.Iocs.Queries.BrowseIocs;
+using ThreatIntelligence.Application.Features.Iocs.Queries.BulkSearchIocs;
 using ThreatIntelligence.Application.Features.Iocs.Queries.GetIocDetail;
 using ThreatIntelligence.Application.Features.Iocs.Queries.GetIocRelations;
 using ThreatIntelligence.Application.Features.Iocs.Queries.SearchIocs;
@@ -37,14 +38,50 @@ public sealed class IocsController(ISender sender, IIocQueryReader queryReader) 
         [FromQuery] string? q,
         [FromQuery] string? tag,
         [FromQuery] string? provider,
+        [FromQuery] string? malware,
+        [FromQuery] string? target,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new SearchIocsQuery(q ?? string.Empty, tag, provider, page, pageSize),
+            new SearchIocsQuery(q ?? string.Empty, tag, provider, page, pageSize, malware, target),
             cancellationToken);
         return Ok(result);
+    }
+
+    [HttpPost("search/bulk")]
+    public async Task<ActionResult<BulkSearchIocsResult>> BulkSearch(
+        [FromBody] BulkSearchIocsQuery request,
+        CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(request, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("suggestions")]
+    public async Task<ActionResult<IReadOnlyList<IocSuggestionItem>>> Suggestions(
+        [FromQuery] string? q,
+        [FromQuery, Range(IocSuggestionLimits.MinLimit, IocSuggestionLimits.MaxLimit)] int? limit,
+        CancellationToken cancellationToken)
+    {
+        var prefix = q?.Trim() ?? string.Empty;
+        if (prefix.Length == 0)
+        {
+            throw new IocQueryValidationException(
+                IocErrorCodes.InvalidInput,
+                "The q parameter must be a non-empty prefix.");
+        }
+
+        if (prefix.Length > IocSuggestionLimits.MaxPrefixLength)
+        {
+            throw new IocQueryValidationException(
+                IocErrorCodes.InvalidInput,
+                $"The q parameter must be no longer than {IocSuggestionLimits.MaxPrefixLength} characters.");
+        }
+
+        var resolvedLimit = limit ?? IocSuggestionLimits.DefaultLimit;
+        return Ok(await queryReader.GetIocSuggestionsAsync(prefix, resolvedLimit, cancellationToken));
     }
 
     [HttpGet("{id}")]
@@ -73,6 +110,8 @@ public sealed class IocsController(ISender sender, IIocQueryReader queryReader) 
         [FromQuery] string? type,
         [FromQuery] string? provider,
         [FromQuery] string? tag,
+        [FromQuery] string? malware,
+        [FromQuery] string? target,
         [FromQuery] DateTime? firstSeenFrom,
         [FromQuery] DateTime? firstSeenTo,
         [FromQuery] DateTime? lastSeenFrom,
@@ -95,7 +134,9 @@ public sealed class IocsController(ISender sender, IIocQueryReader queryReader) 
                 orderBy,
                 dir,
                 page,
-                pageSize),
+                pageSize,
+                malware,
+                target),
             cancellationToken);
         return Ok(result);
     }

@@ -83,17 +83,47 @@ public sealed class IocQueryHandlerTests
                 CancellationToken.None));
     }
 
+    [Fact]
+    public async Task Browse_normalizes_metadata_filters_and_treats_blank_as_absent()
+    {
+        var reader = new StubReader();
+        await new BrowseIocsHandler(reader).Handle(
+            new BrowseIocsQuery(Malware: " Emotet ", Target: "   "),
+            CancellationToken.None);
+
+        Assert.Equal("Emotet", reader.BrowseCriteria!.Malware);
+        Assert.Null(reader.BrowseCriteria.Target);
+    }
+
+    [Fact]
+    public async Task Browse_rejects_over_limit_metadata_filters()
+    {
+        var handler = new BrowseIocsHandler(new StubReader());
+
+        var malware = await Assert.ThrowsAsync<IocQueryValidationException>(() =>
+            handler.Handle(new BrowseIocsQuery(Malware: new string('a', 201)), CancellationToken.None));
+        Assert.Equal(IocErrorCodes.InvalidInput, malware.Code);
+
+        var target = await Assert.ThrowsAsync<IocQueryValidationException>(() =>
+            handler.Handle(new BrowseIocsQuery(Target: new string('a', 501)), CancellationToken.None));
+        Assert.Equal(IocErrorCodes.InvalidInput, target.Code);
+    }
+
     [Theory]
-    [InlineData("parentDomain")]
-    [InlineData("PARENTDOMAIN")]
-    public async Task Relations_accepts_the_documented_relation_values(string relation)
+    [InlineData("urlHost", IocRelationKind.UrlHost)]
+    [InlineData("PARENTDOMAIN", IocRelationKind.ParentDomain)]
+    [InlineData("malware", IocRelationKind.Malware)]
+    [InlineData("TARGET", IocRelationKind.Target)]
+    public async Task Relations_accepts_the_documented_relation_values(
+        string relation,
+        IocRelationKind expected)
     {
         var reader = new StubReader();
         await new GetIocRelationsHandler(reader).Handle(
             new GetIocRelationsQuery(7, relation, 1, 20),
             CancellationToken.None);
 
-        Assert.Equal(IocRelationKind.ParentDomain, reader.Relation);
+        Assert.Equal(expected, reader.Relation);
         Assert.Equal(7, reader.RelationId);
     }
 
@@ -134,6 +164,18 @@ public sealed class IocQueryHandlerTests
             IocSourceFilter filter,
             int page,
             int pageSize,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyDictionary<NormalizationResult, PagedResult<IocGroupResult>>> SearchBatchAsync(
+            IReadOnlyList<NormalizationResult> identities,
+            IocSourceFilter filter,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<IocSuggestionItem>> GetIocSuggestionsAsync(
+            string prefix,
+            int limit,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<IocGroupResult?> GetDetailGroupAsync(int id, CancellationToken cancellationToken)

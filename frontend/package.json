@@ -27,6 +27,7 @@
     "datatables.net-react": "1.0.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "recharts": "^3.10.1",
     "tailwindcss": "^4.1.18",
     "zod": "^4.5.4",
     "zustand": "^5.0.15"

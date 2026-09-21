@@ -15,7 +15,7 @@ import {
   ApiError,
 } from '../lib/apiClient'
 import type { AdminProviderDashboardItem } from '../lib/adminSchemas'
-import { adminProviderListKey, adminSummaryKey } from '../lib/queryKeys'
+import { adminProviderListKey, adminSummaryKey, adminTimelineKeyPrefix } from '../lib/queryKeys'
 import { LoadingState, EmptyState, ErrorState } from '../components/uiStates'
 import { focusRingClass } from '../components/AppShell'
 import { parseUtcDateTime, formatLocalMonthDayTime } from '../lib/format'
@@ -114,6 +114,7 @@ function useFetchMutation(providerId: number) {
         queryKey: ['admin', 'providers', pId, 'history'],
       })
       queryClient.invalidateQueries({ queryKey: adminSummaryKey() })
+      queryClient.invalidateQueries({ queryKey: adminTimelineKeyPrefix() })
     },
     [queryClient],
   )

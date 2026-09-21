@@ -56,11 +56,15 @@ The provider-scoped endpoint identity SHALL treat NULL port as a single bucket: 
 - **THEN** both inserts succeed as separate source entries
 
 ### Requirement: Search, relation, and history indexes
-The schema SHALL create the documented supporting indexes: `(iocType, iocValueHash)` for grouping, `(iocType, urlHost)` and `(iocType, parentDomain)` for relations, `(lastSeenUtc)` for list ordering, `(providerId, startedAt)` on `fetchHistory`, and unique indexes on `fetchHistory.jobId`, `users.username`, `settings.key`, and `tags.name`.
+The schema SHALL create the documented supporting indexes: `(iocType, iocValueHash)` for grouping, `(iocType, urlHost)` and `(iocType, parentDomain)` for host relations, case-insensitive `malware` and `target` lookup indexes for malware/target filters and relations, `(lastSeenUtc)` for list ordering, `(providerId, startedAt)` on `fetchHistory`, and unique indexes on `fetchHistory.jobId`, `users.username`, `settings.key`, and `tags.name`.
 
 #### Scenario: Indexes exist in the generated schema
 - **WHEN** the generated schema is inspected
 - **THEN** every documented index is present
+
+#### Scenario: Malware and target indexes exist
+- **WHEN** the generated schema is inspected
+- **THEN** indexes that make case-insensitive `iocs.malware` and `iocs.target` lookups index-backed are present
 
 #### Scenario: Duplicate logical job ID is rejected
 - **WHEN** two fetch-history rows are inserted with the same `jobId`

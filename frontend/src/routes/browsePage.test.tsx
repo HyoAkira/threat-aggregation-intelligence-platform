@@ -33,7 +33,7 @@ describe('browse page server render', () => {
 
   it('restores active controls from the URL (reload, Back, Forward, shared links)', async () => {
     const url =
-      '/browse?type=url&provider=1&tag=phishing&orderBy=iocValue&dir=asc&page=2&pageSize=10'
+      '/browse?type=url&provider=1&tag=phishing&malware=Emotet&target=Amazon&orderBy=iocValue&dir=asc&page=2&pageSize=10'
     const markup = await renderAppRoute(url)
 
     // Every control reflects the URL state.
@@ -42,7 +42,20 @@ describe('browse page server render', () => {
     expect(markup).toContain('<option value="asc" selected="">')
     expect(markup).toContain('<option value="10" selected="">')
     expect(markup).toContain('value="phishing"')
+    expect(markup).toContain('value="Emotet"')
+    expect(markup).toContain('value="Amazon"')
     expect(markup).toContain('id="browse-provider" multiple=""')
+  })
+
+  it('shows an invalid-filters state for an oversized malware or target URL value', async () => {
+    const markup = await renderAppRoute(
+      `/browse?malware=${'a'.repeat(201)}`,
+    )
+
+    expect(markup).toContain('Unsupported filters')
+    expect(markup).toContain('malware')
+    expect(markup).not.toContain('Loading indicators')
+    expect(markup).not.toContain('Preparing the indicator table')
   })
 
   it('shows an invalid-filters state with a reset affordance for unsupported URL values', async () => {
@@ -62,6 +75,8 @@ describe('browse page server render', () => {
     expect(markup).toContain('Indicator type')
     expect(markup).toContain('Tag')
     expect(markup).toContain('Provider')
+    expect(markup).toContain('Malware')
+    expect(markup).toContain('Target')
     expect(markup).toContain('Order by')
     expect(markup).toContain('Direction')
     expect(markup).toContain('Page size')
@@ -103,6 +118,8 @@ describe('URL round-trip guarantees Back/Forward and reload semantics', () => {
       type: 'domain',
       provider: '3',
       tag: 'botnet',
+      malware: 'Emotet',
+      target: 'Amazon',
       lastSeenFrom: '2026-01-01T00:00:00.000Z',
       lastSeenTo: '2026-01-31T23:59:59.000Z',
       orderBy: 'firstSeenUtc',
