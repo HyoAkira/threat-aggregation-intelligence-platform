@@ -194,7 +194,7 @@ function HomePage() {
           </h1>
           <p className="mt-3 max-w-2xl text-base text-on-surface-variant md:text-lg">
             Instant type auto-detection for IPv4, IPv6, domains, and HTTP(S)
-            URLs, aggregated from every configured provider feed.
+            URLs
           </p>
 
           <form

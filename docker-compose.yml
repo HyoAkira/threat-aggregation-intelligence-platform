@@ -41,6 +41,7 @@ services:
       RABBITMQ__HOST: rabbitmq
       ENCRYPTION__KEYVERSION: ${ENCRYPTION__KEYVERSION:-1}
       ENCRYPTION__ROOTKEYFILE: /run/secrets/threatintel-encryption-root-key
+      JWT__PRIVATEKEYFILE: /run/secrets/threatintel-jwt-private-key
     depends_on:
       mssql:
         condition: service_healthy
@@ -51,6 +52,7 @@ services:
     volumes: [shared_logs:/app/logs]
     secrets:
       - threatintel-encryption-root-key
+      - threatintel-jwt-private-key
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health || exit 1"]
@@ -70,7 +72,10 @@ services:
       RABBITMQ__HOST: rabbitmq
       ENCRYPTION__KEYVERSION: ${ENCRYPTION__KEYVERSION:-1}
       ENCRYPTION__ROOTKEYFILE: /run/secrets/threatintel-encryption-root-key
+      JWT__PRIVATEKEYFILE: /run/secrets/threatintel-jwt-private-key
     depends_on:
+      api:
+        condition: service_healthy
       mssql:
         condition: service_healthy
       rabbitmq:
@@ -82,6 +87,7 @@ services:
       - worker_data:/app/data
     secrets:
       - threatintel-encryption-root-key
+      - threatintel-jwt-private-key
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health || exit 1"]
@@ -89,6 +95,23 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [devNetwork]
+    ports: ["${FRONTEND_PORT:-3000}:80"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   testsqlserver:
     image: mcr.microsoft.com/mssql/server:2025-latest
@@ -121,3 +144,5 @@ volumes:
 secrets:
   threatintel-encryption-root-key:
     file: ./secrets/encryption-root-key
+  threatintel-jwt-private-key:
+    file: ./secrets/jwt-private-key.pem

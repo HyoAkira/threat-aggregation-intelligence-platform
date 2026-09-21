@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { getIocTagCatalog } from '../lib/apiClient'
+import { getIocTagCatalog, getIocMetadataCatalog } from '../lib/apiClient'
 import { iocTagCatalogKey } from '../lib/queryKeys'
 
-type TagAutocompleteInputProps = {
+type CatalogAutocompleteInputProps = {
+  kind?: 'tag' | 'malware' | 'target'
+  maxLength?: number
+  name?: string
   id: string
   value: string
   onChange: (value: string) => void
@@ -11,16 +14,19 @@ type TagAutocompleteInputProps = {
 }
 
 /**
- * Native datalist autocomplete keeps tag entry accessible and dependency-free.
+ * Shared native datalist autocomplete preserves keyboard entry for tag, malware and target.
  * A failed catalog request intentionally leaves the ordinary text input usable.
  */
-export function TagAutocompleteInput({
+export function CatalogAutocompleteInput({
+  kind = 'tag',
+  maxLength,
+  name,
   id,
   value,
   onChange,
   className,
   multiple = false,
-}: TagAutocompleteInputProps) {
+}: CatalogAutocompleteInputProps) {
   const rawTokens = value.split(',').map((token) => token.trim())
   const hasTrailingSeparator = value.trimEnd().endsWith(',')
   const committedTags = rawTokens
@@ -29,8 +35,14 @@ export function TagAutocompleteInput({
   const draft = hasTrailingSeparator ? '' : (rawTokens.at(-1) ?? '')
   const query = multiple ? draft : value.trim()
   const suggestions = useQuery({
-    queryKey: iocTagCatalogKey(query),
-    queryFn: ({ signal }) => getIocTagCatalog({ q: query, limit: 8 }, signal),
+    queryKey:
+      kind === 'tag'
+        ? iocTagCatalogKey(query)
+        : ['ioc-metadata-catalog', kind, query],
+    queryFn: ({ signal }) =>
+      kind === 'tag'
+        ? getIocTagCatalog({ q: query, limit: 8 }, signal)
+        : getIocMetadataCatalog(kind, { q: query, limit: 8 }, signal),
     enabled: query.length > 0,
     staleTime: 30_000,
   })
@@ -65,6 +77,8 @@ export function TagAutocompleteInput({
       ) : null}
       <input
         id={id}
+        name={name}
+        maxLength={maxLength}
         type="text"
         value={multiple ? draft : value}
         list={`${id}-options`}
@@ -75,9 +89,13 @@ export function TagAutocompleteInput({
           }
           const next = event.target.value
           const nextTokens = next.split(',').map((token) => token.trim())
-          const nextValue = [...committedTags, ...nextTokens]
-            .filter(Boolean)
-            .join(', ')
+          const nextValue = [
+            ...new Map(
+              [...committedTags, ...nextTokens]
+                .filter(Boolean)
+                .map((token) => [token.toLowerCase(), token]),
+            ).values(),
+          ].join(', ')
           const selectedSuggestion = suggestions.data?.some(
             (tag) => tag.name.toLowerCase() === next.trim().toLowerCase(),
           )
@@ -101,3 +119,5 @@ export function TagAutocompleteInput({
     </div>
   )
 }
+
+export const TagAutocompleteInput = CatalogAutocompleteInput

@@ -8,7 +8,10 @@ import type { BulkSearchItem, BulkSearchResult } from '../lib/schemas'
 import { focusRingClass } from '../components/AppShell'
 import { IocGroupCard } from '../components/IocGroupCard'
 import { IocMultilineSearchInput } from '../components/IocMultilineSearchInput'
-import { TagAutocompleteInput } from '../components/TagAutocompleteInput'
+import {
+  TagAutocompleteInput,
+  CatalogAutocompleteInput,
+} from '../components/TagAutocompleteInput'
 import { ProviderAutocompleteInput } from '../components/ProviderAutocompleteInput'
 import { Pagination } from '../components/Pagination'
 import {
@@ -32,6 +35,8 @@ export type SearchFormValues = {
 
 /** Bulk submission before the page assigns shared paging bounds. */
 export type BulkSearchDraft = {
+  malware?: string | null
+  target?: string | null
   queries: string[]
   tag: string | null
   provider: string | null
@@ -131,7 +136,7 @@ export function validateSearchSubmission(
 
   return {
     submission: null,
-    bulk: { queries: inputs, tag, provider },
+    bulk: { queries: inputs, tag, provider, malware, target },
     error: null,
   }
 }
@@ -465,16 +470,16 @@ function SearchPage() {
               <label htmlFor="search-malware" className={fieldLabelClass}>
                 Malware filter (optional)
               </label>
-              <input
+              <CatalogAutocompleteInput
+                kind="malware"
                 id="search-malware"
                 name="malware"
-                type="text"
                 value={values.malware ?? ''}
                 maxLength={200}
-                onChange={(event) =>
+                onChange={(value) =>
                   setValues((current) => ({
                     ...current,
-                    malware: event.target.value,
+                    malware: value,
                   }))
                 }
                 className={inputClass}
@@ -484,16 +489,16 @@ function SearchPage() {
               <label htmlFor="search-target" className={fieldLabelClass}>
                 Target filter (optional)
               </label>
-              <input
+              <CatalogAutocompleteInput
+                kind="target"
                 id="search-target"
                 name="target"
-                type="text"
                 value={values.target ?? ''}
                 maxLength={500}
-                onChange={(event) =>
+                onChange={(value) =>
                   setValues((current) => ({
                     ...current,
-                    target: event.target.value,
+                    target: value,
                   }))
                 }
                 className={inputClass}

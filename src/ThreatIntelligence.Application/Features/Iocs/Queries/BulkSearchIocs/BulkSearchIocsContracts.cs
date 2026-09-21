@@ -11,7 +11,9 @@ public sealed record BulkSearchIocsQuery(
     string? Tag = null,
     string? Provider = null,
     int? Page = null,
-    int? PageSize = null) : IRequest<BulkSearchIocsResult>;
+    int? PageSize = null,
+    string? Malware = null,
+    string? Target = null) : IRequest<BulkSearchIocsResult>;
 
 /// <summary>Stable per-item status tokens for the bulk response.</summary>
 public static class BulkSearchStatus

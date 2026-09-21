@@ -25,6 +25,36 @@ type Props = {
   onClose?: () => void
 }
 
+function JobIdCell({ jobId }: { jobId: string }) {
+  const [message, setMessage] = useState('')
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(jobId)
+      setMessage('Copied')
+    } catch {
+      setMessage('Copy failed. Please copy the ID manually.')
+    }
+  }
+
+  return (
+    <span className="font-mono text-[11px] text-on-surface-variant">
+      <button
+        type="button"
+        className={`cursor-pointer rounded hover:text-primary ${focusRingClass}`}
+        title={jobId}
+        aria-label={`Copy job ID ${jobId}`}
+        onClick={() => void copy()}
+      >
+        {jobId.slice(0, 8)}…
+      </button>
+      <span role="status" className="ml-2">
+        {message}
+      </span>
+    </span>
+  )
+}
+
 function StatusBadge({ status }: { status: string }) {
   const failed = status === 'failed'
   return (
@@ -264,12 +294,7 @@ export default function AdminProviderHistoryDataTable({
   const slots = useMemo(
     () => ({
       0: (_value: unknown, row: AdminFetchHistoryItem) => (
-        <span
-          className="font-mono text-[11px] text-on-surface-variant"
-          title={row.jobId}
-        >
-          {row.jobId.slice(0, 8)}…
-        </span>
+        <JobIdCell jobId={row.jobId} />
       ),
       1: (_value: unknown, row: AdminFetchHistoryItem) => (
         <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-on-surface-variant">

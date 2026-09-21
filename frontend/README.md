@@ -8,7 +8,7 @@ and assets.
 ## Getting started
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -51,8 +51,11 @@ the browser never sees a cross-origin API base. A static host must:
   `/admin/providers`) return `index.html`; and
 - return 404 (not `index.html`) for missing file-like asset requests.
 
-The concrete nginx proxy, cache, and security-header configuration for
-production is owned by the E14 frontend container change.
+The production configuration is in `nginx.conf`, packaged by the multi-stage
+`Dockerfile`. From the repository root, `docker compose up -d --build --wait`
+serves it at http://localhost:3000. Complete environment and secret preparation
+in [the root README](../README.md) first. Stop the Compose frontend before
+running Vite on the same port.
 
 ## Styling
 

@@ -59,6 +59,29 @@ public sealed class IocQueryReader(
             .ToList();
     }
 
+    public async Task<IReadOnlyList<IocTagCatalogItem>> GetMetadataCatalogAsync(
+        IocRelationKind kind, string? query, int limit, CancellationToken cancellationToken)
+    {
+        var key = kind switch
+        {
+            IocRelationKind.Malware => "MalwareKey",
+            IocRelationKind.Target => "TargetKey",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+        var prefix = query?.Trim().ToLowerInvariant() ?? string.Empty;
+        // Reuse the persisted normalized keys used by filtering and relations. Group and bound in SQL.
+        return await dbContext.Iocs.AsNoTracking()
+            .Select(ioc => EF.Property<string>(ioc, key))
+            .Where(value => value != null && value != "" && value.StartsWith(prefix))
+            .GroupBy(value => value)
+            .Select(group => new { Name = group.Key, UsageCount = group.Count() })
+            .OrderByDescending(item => item.UsageCount)
+            .ThenBy(item => item.Name)
+            .Take(limit)
+            .Select(item => new IocTagCatalogItem(item.Name, item.UsageCount))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<PagedResult<IocGroupResult>> SearchGroupsAsync(
         NormalizationResult identity,
         IocSourceFilter filter,

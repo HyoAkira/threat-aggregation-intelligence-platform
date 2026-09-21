@@ -293,6 +293,8 @@ describe('multiline submission normalization', () => {
       q: '1.2.3.4\n\n evil.example \n1.2.3.4',
       tag: ' BotNet ',
       provider: ' 1 ',
+      malware: ' Emotet ',
+      target: ' Amazon ',
     })
 
     expect(result.error).toBeNull()
@@ -301,6 +303,8 @@ describe('multiline submission normalization', () => {
       queries: ['1.2.3.4', 'evil.example', '1.2.3.4'],
       tag: 'botnet',
       provider: '1',
+      malware: 'Emotet',
+      target: 'Amazon',
     })
   })
 
