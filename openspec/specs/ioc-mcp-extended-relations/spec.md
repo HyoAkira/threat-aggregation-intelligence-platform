@@ -1,0 +1,45 @@
+# ioc-mcp-extended-relations Specification
+
+## Purpose
+
+Extends the public read-only IOC MCP tools so conversational clients can filter IOCs by malware and target values and page through malware/target relations, mirroring the public search, browse, and relations query contracts.
+
+## Requirements
+
+### Requirement: MCP search and browse accept malware and target filters
+The MCP tools `ioc_search_exact` and `ioc_browse` SHALL accept optional `malware` and `target` string inputs in addition to their existing filters. When supplied, a value SHALL be passed through to the corresponding public search or browse contract with identical trimming, case-insensitive matching, source attribution, grouping, pagination bounds, validation, and not-found/empty behavior. A blank or whitespace-only input SHALL behave as if it were omitted. After trimming, malware input SHALL contain no more than 200 characters and target input no more than 500 characters; an over-limit value SHALL return the public contract's safe invalid-input result. The tools SHALL NOT add fuzzy matching, ranking, or a natural-language search index.
+
+#### Scenario: Conversational target filter resolves to a target query
+- **WHEN** a client calls a search or browse tool with `target=Amazon`
+- **THEN** the tool returns the same groups the public endpoint returns for that target filter, with source attribution
+
+#### Scenario: Malware filter narrows the result
+- **WHEN** a client calls a search or browse tool with `malware=Emotet`
+- **THEN** only groups with a source whose stored malware matches are returned
+
+#### Scenario: Blank filter is treated as omitted
+- **WHEN** a client supplies `malware=` or `target=   `
+- **THEN** the tool behaves as though the input were absent
+
+#### Scenario: Unsupported input is rejected safely
+- **WHEN** a client supplies a malware value over 200 characters, a target value over 500 characters, or another unsupported filter value
+- **THEN** the tool returns a safe validation result without revealing internal data
+
+### Requirement: MCP relations accept malware and target kinds
+The MCP tool `ioc_get_relations` SHALL accept `malware` and `target` as relation kinds in addition to `urlHost` and `parentDomain`. Each kind SHALL delegate to the public relations contract so the returned relation family, complete resolved-group source-value set, resolved-group exclusion, ordering, and page bounds match the endpoint. Malware and target relations SHALL be available for every IOC type, including IP groups, while host relations SHALL remain unavailable for IP groups. An unsupported relation value SHALL return a safe validation result, and an unknown IOC id SHALL return a not-found result.
+
+#### Scenario: Malware relation page is returned
+- **WHEN** a client requests `relation=malware` for a group with a non-empty malware value
+- **THEN** the tool returns the same bounded relation page as the public relations endpoint
+
+#### Scenario: IP group target relation is allowed
+- **WHEN** a client requests `relation=target` for an IP group with a non-empty target
+- **THEN** the tool returns the related groups instead of rejecting the request
+
+#### Scenario: Unsupported relation is rejected
+- **WHEN** a client supplies a relation value other than `urlHost`, `parentDomain`, `malware`, or `target`
+- **THEN** the tool returns a safe validation result
+
+#### Scenario: Unknown id returns not found
+- **WHEN** a client requests relations for an id that does not exist
+- **THEN** the tool returns a not-found result

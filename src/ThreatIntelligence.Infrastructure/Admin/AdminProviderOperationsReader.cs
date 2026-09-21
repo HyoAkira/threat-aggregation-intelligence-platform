@@ -1,0 +1,113 @@
+using Microsoft.EntityFrameworkCore;
+using ThreatIntelligence.Application.Abstractions.Persistence;
+using ThreatIntelligence.Application.Abstractions.Secrets;
+using ThreatIntelligence.Application.Admin;
+using ThreatIntelligence.Application.Fetches;
+using ThreatIntelligence.Domain.Entities;
+using ThreatIntelligence.Infrastructure.Persistence;
+
+namespace ThreatIntelligence.Infrastructure.Admin;
+
+/// <summary>
+/// EF Core read model for Admin provider operations. All reads are no-tracking and never create or
+/// mutate history rows; secrets (API keys, connection strings) are never projected.
+/// </summary>
+public sealed class AdminProviderOperationsReader(
+    IDbContextFactory<ThreatIntelligenceDbContext> contextFactory,
+    ISecretStore? secretStore = null)
+    : IAdminProviderOperationsReader
+{
+    public async Task<IReadOnlyList<AdminProviderDashboardItem>> GetProvidersAsync(CancellationToken cancellationToken)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var providers = await context.Providers.AsNoTracking()
+            .OrderBy(provider => provider.Id)
+            .ToListAsync(cancellationToken);
+
+        var result = new List<AdminProviderDashboardItem>(providers.Count);
+        foreach (var provider in providers)
+        {
+            var projected = AdminProviderProjection.Project(provider);
+            var identity = provider.Name switch
+            {
+                "ThreatFox" => ManagedSecretNames.ThreatFoxApiKey,
+                "PhishTank" => ManagedSecretNames.PhishTankAppKey,
+                _ => null
+            };
+            var status = identity is null || secretStore is null
+                ? null
+                : await secretStore.GetStatusAsync(identity, cancellationToken);
+            result.Add(projected with
+            {
+                CredentialConfigured = status is not null,
+                CredentialKeyVersion = status?.KeyVersion,
+                CredentialUpdatedAt = status?.UpdatedAt
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<AdminProviderHistoryPage?> GetProviderHistoryAsync(
+        int providerId,
+        int page,
+        int pageSize,
+        DateTime? dateFrom,
+        DateTime? dateTo,
+        string orderBy,
+        string orderDir,
+        CancellationToken cancellationToken)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        if (!await context.Providers.AsNoTracking().AnyAsync(provider => provider.Id == providerId, cancellationToken))
+        {
+            return null;
+        }
+
+        var query = context.FetchHistory.AsNoTracking().Where(history => history.ProviderId == providerId);
+        if (dateFrom.HasValue)
+        {
+            query = query.Where(history => history.StartedAt >= dateFrom.Value);
+        }
+
+        if (dateTo.HasValue)
+        {
+            query = query.Where(history => history.StartedAt < dateTo.Value);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var ordered = orderBy == "finishedAt"
+            ? string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase)
+                ? query.OrderBy(history => history.FinishedAt).ThenBy(history => history.Id)
+                : query.OrderByDescending(history => history.FinishedAt).ThenByDescending(history => history.Id)
+            : string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase)
+                ? query.OrderBy(history => history.StartedAt).ThenBy(history => history.Id)
+                : query.OrderByDescending(history => history.StartedAt).ThenByDescending(history => history.Id);
+        var items = await ordered
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new AdminProviderHistoryPage(items.Select(Map).ToList(), page, pageSize, totalCount);
+    }
+
+    public async Task<AdminFetchHistoryItem?> GetFetchHistoryAsync(Guid jobId, CancellationToken cancellationToken)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var history = await context.FetchHistory.AsNoTracking()
+            .SingleOrDefaultAsync(record => record.JobId == jobId, cancellationToken);
+        return history is null ? null : Map(history);
+    }
+
+    private static AdminFetchHistoryItem Map(FetchHistory history) => new(
+        history.JobId,
+        history.ProviderId,
+        FetchTokens.Status(history.Status),
+        FetchTokens.Trigger(history.Trigger),
+        FetchTokens.Mode(history.Mode),
+        history.StartedAt,
+        history.FinishedAt,
+        history.RecordsAdded,
+        history.RecordsUpdated,
+        history.ErrorDetail);
+}

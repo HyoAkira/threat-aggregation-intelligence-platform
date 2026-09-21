@@ -1,0 +1,13 @@
+.env
+.git
+.obsidian
+**/bin
+**/obj
+frontend/node_modules
+frontend/dist
+logs
+
+**/.env*
+**/secrets
+data
+graphify-out

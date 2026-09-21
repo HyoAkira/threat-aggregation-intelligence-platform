@@ -1,0 +1,164 @@
+import { z } from 'zod'
+import { apiProblemSchema } from './apiErrors'
+
+export { apiProblemSchema }
+
+export const iocTypeTokens = ['ipv4', 'ipv6', 'domain', 'url'] as const
+export type IocTypeToken = (typeof iocTypeTokens)[number]
+
+export const iocSearchParamsSchema = z.object({
+  q: z.string().trim().min(1).max(2048),
+  tag: z.string().trim().min(1).max(100).optional(),
+  malware: z.string().trim().min(1).max(200).optional(),
+  target: z.string().trim().min(1).max(500).optional(),
+})
+
+export type IocSearchParams = z.infer<typeof iocSearchParamsSchema>
+
+/**
+ * UTC instant as serialized by the API. `DateTime` values may omit the offset
+ * suffix, so consumers must parse them with `parseUtcDateTime` to treat them
+ * as UTC deterministically across server and client.
+ */
+export const utcInstantSchema = z.string().min(1)
+
+/**
+ * One provider row's evidence inside an IOC group. Provider-inapplicable fields
+ * are omitted by the API's null-ignoring serializer, so every typed field is
+ * optional; stored false/0/empty values remain present and must be kept.
+ */
+export const iocSourceSchema = z.object({
+  provider: z.string(),
+  providerRecordId: z.string(),
+  providerDetailsLink: z.string().nullable().optional(),
+  port: z.number().int().nullable().optional(),
+  firstSeenUtc: utcInstantSchema,
+  lastSeenUtc: utcInstantSchema.nullable().optional(),
+  threatType: z.string().nullable().optional(),
+  malware: z.string().nullable().optional(),
+  malwareAlias: z.string().nullable().optional(),
+  malwarePrintable: z.string().nullable().optional(),
+  isCompromised: z.boolean().nullable().optional(),
+  reporter: z.string().nullable().optional(),
+  anonymous: z.boolean().nullable().optional(),
+  isVerified: z.boolean().nullable().optional(),
+  target: z.string().nullable().optional(),
+  phishTankDetails: z.unknown().optional(),
+  phishTankOnline: z.boolean().nullable().optional(),
+  threatFoxConfidenceLevel: z.number().int().nullable().optional(),
+  tags: z.array(z.string()),
+  isFalsePositive: z.boolean(),
+})
+
+export type IocSource = z.infer<typeof iocSourceSchema>
+
+/** One normalized IOC group as returned by every query endpoint. */
+export const iocGroupSchema = z.object({
+  id: z.number().int(),
+  iocValue: z.string(),
+  iocType: z.enum(iocTypeTokens),
+  urlHost: z.string().nullable().optional(),
+  parentDomain: z.string().nullable().optional(),
+  firstSeenUtc: utcInstantSchema,
+  lastSeenUtc: utcInstantSchema.nullable().optional(),
+  sources: z.array(iocSourceSchema),
+})
+
+export type IocGroup = z.infer<typeof iocGroupSchema>
+
+/** Shared envelope for the multi-item search, browse, and relations endpoints. */
+export const pagedIocGroupsSchema = z.object({
+  items: z.array(iocGroupSchema),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  totalCount: z.number().int(),
+})
+
+/** Public provider catalog used by browse column filters. */
+export const iocProviderNamesSchema = z.array(z.string().min(1))
+
+/** Public tag catalog used by browse and search autocomplete filters. */
+export const iocTagCatalogSchema = z.array(
+  z.object({
+    name: z.string().min(1).max(100),
+    usageCount: z.number().int().nonnegative(),
+  }),
+)
+
+export type IocTagCatalogItem = z.infer<typeof iocTagCatalogSchema>[number]
+
+export type PagedIocGroups = z.infer<typeof pagedIocGroupsSchema>
+
+/** Per-item outcome tokens for the bulk-search contract. */
+export const bulkSearchStatusTokens = [
+  'matched',
+  'not_found',
+  'invalid',
+] as const
+export type BulkSearchStatus = (typeof bulkSearchStatusTokens)[number]
+
+/** Safe per-item failure explanation carried on not-found and invalid bulk items. */
+export const bulkSearchProblemSchema = z.object({
+  code: z.string().min(1),
+  detail: z.string(),
+})
+
+export type BulkSearchProblem = z.infer<typeof bulkSearchProblemSchema>
+
+/**
+ * One ordered outcome for a submitted non-empty line. Matched items carry a page of groups;
+ * not-found and invalid items carry empty groups and an explanatory problem.
+ */
+export const bulkSearchItemSchema = z.object({
+  input: z.string(),
+  status: z.enum(bulkSearchStatusTokens),
+  groups: z.array(iocGroupSchema),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  totalCount: z.number().int(),
+  error: bulkSearchProblemSchema.optional(),
+})
+
+export type BulkSearchItem = z.infer<typeof bulkSearchItemSchema>
+
+/** Bulk envelope: ordered items plus summary counts that sum to `totalCount`. */
+export const bulkSearchResultSchema = z.object({
+  items: z.array(bulkSearchItemSchema),
+  totalCount: z.number().int(),
+  matchedCount: z.number().int(),
+  notFoundCount: z.number().int(),
+  invalidCount: z.number().int(),
+})
+
+export type BulkSearchResult = z.infer<typeof bulkSearchResultSchema>
+
+/** One normalized IOC value/type pair returned by the prefix suggestion catalog. */
+export const iocSuggestionSchema = z.object({
+  value: z.string().min(1),
+  iocType: z.enum(iocTypeTokens),
+})
+
+export type IocSuggestion = z.infer<typeof iocSuggestionSchema>
+
+export const iocSuggestionsSchema = z.array(iocSuggestionSchema)
+
+/** `POST /api/iocs/search/bulk` request body. */
+export const bulkSearchRequestSchema = z.object({
+  queries: z.array(z.string()).min(1).max(100),
+  tag: z.string().nullable().optional(),
+  provider: z.string().nullable().optional(),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1).max(100),
+})
+
+export type BulkSearchRequest = z.infer<typeof bulkSearchRequestSchema>
+
+/** `POST /api/auth/login` success response; role is `User` or `Admin`. */
+export const loginResponseSchema = z.object({
+  token: z.string().min(1),
+  username: z.string().min(1),
+  role: z.enum(['User', 'Admin']),
+  expiresAt: z.string().min(1),
+})
+
+export type LoginResponse = z.infer<typeof loginResponseSchema>
