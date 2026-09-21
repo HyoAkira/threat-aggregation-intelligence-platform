@@ -1,0 +1,32 @@
+{
+  "httpEnabled": true,
+  "httpPort": 3001,
+  "httpsEnabled": false,
+  "httpsPort": 3443,
+  "certificateConfig": {
+    "enabled": false,
+    "selfSigned": true,
+    "autoGenerate": true,
+    "minTLSVersion": "TLSv1.2"
+  },
+  "bindMode": "loopback",
+  "customBindHost": "",
+  "hasShownBindMigrationNotice": true,
+  "debugLogging": false,
+  "showConnectionStatus": true,
+  "autoDetectPortConflicts": true,
+  "apiKey": "Snp2ROdAoJE3MzHsmQECcJuvmwMEE_O-6kN6WrH8etY",
+  "dangerouslyDisableAuth": false,
+  "readOnlyMode": false,
+  "enableWebFetch": false,
+  "pathExclusionsEnabled": false,
+  "enableIgnoreContextMenu": false,
+  "validation": {
+    "maxFileSize": 10485760,
+    "maxBatchSize": 100,
+    "maxPathLength": 255,
+    "maxRegexComplexity": 100,
+    "strictMode": false
+  },
+  "toolVisibility": {}
+}
