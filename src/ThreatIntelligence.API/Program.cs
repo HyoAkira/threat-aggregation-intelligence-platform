@@ -1,4 +1,4 @@
-using System.Text;
+using System.Security.Cryptography;
 using MassTransit;
 using Serilog.Core;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -87,7 +87,9 @@ builder.Services.AddMassTransit(configurator =>
         });
     });
 });
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret));
+var rsa = RSA.Create();
+rsa.ImportFromPem(jwt.PrivateKey.Replace("\\n", "\n"));
+var signingKey = new RsaSecurityKey(rsa);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -101,7 +103,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwt.Audience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2),
-            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
             NameClaimType = System.Security.Claims.ClaimTypes.Name,
             RoleClaimType = System.Security.Claims.ClaimTypes.Role
         };

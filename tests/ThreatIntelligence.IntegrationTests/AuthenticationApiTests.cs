@@ -32,7 +32,7 @@ public sealed class AuthenticationApiTests(SqlServerFixture fixture) : IAsyncLif
     private const string UserPassword = "User-test-password!";
     private const string Issuer = "threat-intelligence-tests";
     private const string Audience = "threat-intelligence-api-tests";
-    private const string Secret = "integration-test-jwt-secret-that-is-at-least-sixty-four-bytes-long!!";
+    private static readonly string PrivateKey = TestJwtCredentials.PrivateKey;
 
     private AuthenticationApiFactory _factory = null!;
     private HttpClient _client = null!;
@@ -116,7 +116,7 @@ public sealed class AuthenticationApiTests(SqlServerFixture fixture) : IAsyncLif
         Assert.Equal(HttpStatusCode.OK, adminResponse.StatusCode);
 
         var jwt = new JsonWebTokenHandler().ReadJsonWebToken(adminLogin.Token);
-        Assert.Equal(SecurityAlgorithms.HmacSha256, jwt.Alg);
+        Assert.Equal(SecurityAlgorithms.RsaSha256, jwt.Alg);
         Assert.Equal(Issuer, jwt.Issuer);
         Assert.Contains(Audience, jwt.Audiences);
         Assert.Contains(jwt.Claims, claim => claim.Type == ClaimTypes.Name && claim.Value == AdminUsername);
@@ -199,9 +199,7 @@ public sealed class AuthenticationApiTests(SqlServerFixture fixture) : IAsyncLif
                 new Claim(ClaimTypes.Name, AdminUsername),
                 new Claim(ClaimTypes.Role, nameof(UserRole.Admin))
             ]),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret)),
-                algorithm)
+            SigningCredentials = TestJwtCredentials.Create(algorithm)
         };
 
         return new JsonWebTokenHandler().CreateToken(descriptor);
@@ -232,7 +230,7 @@ public sealed class AuthenticationApiTests(SqlServerFixture fixture) : IAsyncLif
                 ["RABBITMQ__USER"] = "guest",
                 ["RABBITMQ__PASSWORD"] = "guest",
                 ["RABBITMQ__EXCHANGE"] = "test-exchange",
-                ["JWT__SECRET"] = Secret,
+                ["JWT__PRIVATEKEYFILE"] = TestJwtCredentials.PrivateKeyFile,
                 ["JWT__ISSUER"] = Issuer,
                 ["JWT__AUDIENCE"] = Audience,
                 ["JWT__EXPIRYMINUTES"] = "480",

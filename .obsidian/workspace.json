@@ -20,6 +20,16 @@
               "icon": "lucide-file",
               "title": "Technical-Presentation-TR"
             }
+          },
+          {
+            "id": "3ce5a67f15f2a1ca",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
           }
         ]
       }
@@ -99,11 +109,11 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "openspec/changes/e02-domain-model-persistence/tasks.md",
-                "collapseAll": false,
-                "extraContext": false,
+                "file": "ProjectDocs/Technical-Presentation-TR.md",
+                "collapseAll": true,
+                "extraContext": true,
                 "sortOrder": "alphabetical",
-                "showSearch": false,
+                "showSearch": true,
                 "searchQuery": "",
                 "backlinkCollapsed": false,
                 "unlinkedCollapsed": true
@@ -161,7 +171,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "openspec/changes/e02-domain-model-persistence/tasks.md",
+                "file": "ProjectDocs/Technical-Presentation-TR.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -170,12 +180,12 @@
               "title": "Outline"
             }
           }
-        ]
+        ],
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -190,8 +200,38 @@
   },
   "active": "f9ad527a4e4e69a0",
   "lastOpenFiles": [
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260920T225308Z.json",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260920T225308Z.json.tmp",
+    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/logs/worker-20260922.json",
+    "src/ThreatIntelligence.Worker/logs/worker-20260922.json",
+    "graphify-out/cache/stat-index.pl2nfrrn.tmp",
+    "graphify-out/cache/ast/v0.9.55-s2/665a43f3a9325b93f76f6ed33f509e1d0200a24d33e1bab88e05271c632f08d9.json",
+    "graphify-out/cache/ast/v0.9.55-s2/86dbb175c52ccef4846d1ab5112e12ab2a0d6a203931b0525b42227d9c68b522.json",
+    "graphify-out/cache/ast/v0.9.55-s2/85aa1260975b2907667cc5b65c6995d997651bf30bce094b51fca5bd01dad492.json",
+    "graphify-out/cache/ast/v0.9.55-s2/1133220cf2d5af1b73f393daab3ba63f1f76873dd6b2ac53a55e2ac5d35735a7.json",
+    "graphify-out/cache/ast/v0.9.55-s2/a06227dc30770e96a4e207539c594f684ce508214c8d0cd7210683a00c6996b0.json",
+    "graphify-out/cache/ast/v0.9.55-s2/92f4eb9d2f4ebb7034876bc0e4f9d6b983d25877a0d5b3fdecf025cfa02576e2.json",
+    "graphify-out/cache/ast/v0.9.55-s2/5a9568281b837c1b8a263bee4513c147860a715362a290be68e129c8778d45a7.json",
+    "graphify-out/cache/ast/v0.9.55-s2/2cc0e0573a109750b3347f2878b2eb66b33e714695ca718d47465f68f9e0a69f.json",
+    "graphify-out/2026-09-22/GRAPH_REPORT.md",
+    "2026-09-22.md",
+    "ProjectDocs/Technical-Presentation-TR.md",
+    "openspec/specs/admin-frontend-provider-operations/spec.md",
+    "ProjectDocs/PRD.md",
+    "ProjectDocs/Provider-Credential-Migration-Runbook.md",
+    "ProjectDocs/Technical-Specification.md",
+    "ProjectDocs/Public-IOC-MCP-and-Chat.md",
+    "ProjectDocs/Backlog.md",
+    "ProjectDocs/AI-Report-Configuration.md",
+    "ProjectDocs/research/add-datatables-browse-fact-check.md",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-20.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-19.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-18.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-17.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-16.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-15.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-14.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-13.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-12.jpg",
+    "ProjectDocs/Technical-Presentation-TR-assets/slide-11.jpg",
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/user-frontend-search/spec.md",
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/user-frontend-exploration/spec.md",
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/persistence/spec.md",
@@ -200,36 +240,11 @@
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-mcp-extended-relations/spec.md",
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-browse/spec.md",
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/browse-table-ui/spec.md",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/user-frontend-search",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/user-frontend-exploration",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/persistence",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-search",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-relations",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-mcp-extended-relations",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-browse",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/browse-table-ui",
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/tasks.md",
-    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs",
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/proposal.md",
     "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/design.md",
     "openspec/specs/ioc-mcp-extended-relations/spec.md",
     "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/specs/admin-observability/spec.md",
-    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/specs/admin-ioc-summary-timeline/spec.md",
-    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/specs/admin-frontend-observability/spec.md",
-    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/tasks.md",
-    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/proposal.md",
-    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/design.md",
-    "openspec/changes/bulk-ioc-search/design.md",
-    "openspec/changes/archive/2026-09-21-bulk-ioc-search/specs/user-frontend-search/spec.md",
-    "openspec/changes/archive/2026-09-21-bulk-ioc-search/specs/ioc-search-suggestions/spec.md",
-    "openspec/changes/archive/2026-09-21-bulk-ioc-search/specs/ioc-search/spec.md",
-    "openspec/changes/archive/2026-09-21-bulk-ioc-search/specs/ioc-bulk-search/spec.md",
-    "openspec/changes/archive/2026-09-21-bulk-ioc-search/tasks.md",
-    "openspec/changes/archive/2026-09-21-bulk-ioc-search/proposal.md",
-    "frontend/node_modules/@tanstack/devtools/src/components/tanstack-logo.png",
-    "frontend/node_modules/@jest/reporters/assets/jest_logo.png",
-    "frontend/node_modules/istanbul-reports/lib/html/assets/sort-arrow-sprite.png",
-    "frontend/node_modules/istanbul-reports/lib/html/assets/favicon.png",
-    "frontend/node_modules/istanbul-reports/lib/html-spa/assets/sort-arrow-sprite.png"
+    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/specs/admin-ioc-summary-timeline/spec.md"
   ]
 }

@@ -343,6 +343,10 @@ MediatR özellikle IOC query use-case’lerinde controller ile uygulama davranı
 
 ## Fetch – Ingestion Akışı
 
+Manuel ve zamanlanmış fetch farklı tetikleyicilerden başlasa da aynı `FetchJobConsumer`, provider executor, ham feed, normalizasyon ve atomik yazım hattını kullanır. Manuel akışta işi Admin API başlatır; zamanlanmış akışta işi Worker içindeki scheduler başlatır.
+
+### Manuel fetch akışı
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -403,6 +407,63 @@ sequenceDiagram
 | Rate limit / sağlayıcıya özel terminal cevap | Güvenli terminal failure |
 | RabbitMQ publish hatası | History `Failed`, API `503` |
 | Guard reddi | İş yayınlanmaz; API `409` veya ilgili `400/404` |
+
+### Zamanlanmış fetch akışı
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Scheduler as Worker Scheduler
+    participant DB as SQL Server
+    participant Guard as Fetch Guard
+    participant MQ as RabbitMQ
+    participant Worker as FetchJobConsumer
+    participant Provider as ThreatFox / PhishTank
+    participant Raw as Raw Feed Store
+    participant Pipeline as Validate + Normalize + Upsert
+
+    loop Yaklaşık her 15 saniyede bir
+        Scheduler->>DB: enabled ve nextFetchTime <= now provider'ları sorgula
+        DB-->>Scheduler: zamanı gelen provider + defaultMode
+
+        loop Her zamanı gelen provider için
+            Scheduler->>Guard: ReserveAsync(providerId, Scheduled, defaultMode)
+            Guard->>DB: Serializable reservation ve cooldown kontrolü
+            alt İzin verildi
+                DB-->>Guard: FetchHistory = Queued + jobId
+                Guard-->>Scheduler: reservation
+                Scheduler->>MQ: FetchJob(jobId, providerId, Scheduled, mode)
+                Scheduler->>DB: nextFetchTime = now + interval
+            else Guard reddi
+                Guard-->>Scheduler: rejection
+                Scheduler-->>Scheduler: Bu provider sonraki tick'e bırakılır
+            end
+        end
+    end
+
+    MQ->>Worker: consume Scheduled FetchJob
+    Worker->>DB: reservation ve guard koşullarını yeniden doğrula
+    Worker->>DB: status = Running
+    Worker->>Provider: defaultMode ile feed isteği
+    Provider-->>Worker: JSON / CSV / ZIP stream
+    Worker->>Raw: atomik ham feed kaydı
+    Worker->>Pipeline: parse → validate → classify → normalize
+    Pipeline->>DB: tek transaction, 2000'lik chunk, upsert + tags
+
+    alt Başarılı
+        Worker->>DB: Success + added/updated + lastFetchAt
+    else Terminal veri hatası
+        Pipeline-->>DB: rollback IOC/tag değişiklikleri
+        Worker->>DB: Failed + 0/0 + safe error detail
+    else Geçici hata
+        Worker-->>MQ: exception
+        MQ-->>Worker: 10 sn / 30 sn / 1 dk retry
+    end
+```
+
+Zamanlanmış akışta `FetchSchedulerService`, yalnızca etkin ve `nextFetchTime` değeri gelmiş provider’ları seçer. Her provider için varsayılan fetch modu kullanılır; manuel akıştaki gibi aynı guard rezervasyonu ve `FetchHistory = Queued` kaydı oluşturulur. Publish denemesi başarılı veya başarısız olduktan sonra `nextFetchTime` bir sonraki interval’e ilerletilir. Böylece broker veya provider hatası scheduler’ın aynı provider için her tick’te yeni iş üretmesine yol açmaz; hata ilgili job history’sinde `Failed` olarak izlenir ve sonraki planlı interval beklenir.
+
+Yeni seed edilmiş provider’ın `nextFetchTime` değeri ilk başarılı manuel fetch tamamlanana kadar boş bırakılır. Bu nedenle scheduler provider’ı otomatik olarak başlatmaz; ilk manuel senkronizasyon sonrasında provider’ın interval ayarıyla bir sonraki zaman hesaplanır. Scheduled job Worker’a ulaştığında manual job ile aynı ikinci guard, retry, provider routing, raw feed, normalization ve atomic persistence adımlarından geçer.
 
 ---
 
@@ -682,6 +743,42 @@ Bu bölüm çekirdek sekiz gereksinimin üzerine eklenen ileri yetenekleri kapsa
 - Admin prompt policy’si immutable version olarak yayınlanır; optimistic concurrency ile korunur.
 - Tamamlanan Markdown rapor browser’dan gönderilerek geçici dosyalar üzerinden PDF’e çevrilebilir.
 
+#### AI raporu sequence diagramı
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Kullanıcı
+    participant UI as React ekranı
+    participant API as AI Report API
+    participant Evidence as IOC evidence + policy
+    participant Model as AI model
+
+    User->>UI: AI raporu üret
+    UI->>API: POST /ai/reports
+    API->>API: Kota, IOC ve yapılandırma kontrolü
+    alt Reddedildi
+        API-->>UI: 4xx/429 Problem Details
+    else Geçerli istek
+        API->>Evidence: IOC, policy ve bounded snapshot al
+        Evidence-->>API: En çok 24 kaynak / 32 KB, S1..Sn
+        API-->>UI: SSE meta
+        API->>Model: Policy + güvenlik talimatı + evidence
+        loop Her model parçasında
+            Model-->>API: Delta
+            API-->>UI: SSE delta
+        end
+        alt Başarılı
+            Model-->>API: [DONE]
+            API-->>UI: SSE complete
+        else Stream hatası
+            API-->>UI: SSE error
+        end
+    end
+```
+
+Bu akışın kritik noktası, tarayıcının IOC kanıtını göndermemesidir: yalnız IOC kimliği URL’de bulunur; kanıt ve sürümü sabitlenmiş rapor politikası API tarafından seçilir. Başarısız yapılandırma ve IOC yokluğu SSE başlamadan normal HTTP hatasıdır. Streaming başladıktan sonra HTTP durum kodu değiştirilemeyeceği için hata güvenli bir `error` SSE eventi olarak biter. `delta` mesajları ekranda canlı görünür; kalıcı kabul edilen çıktı `complete` eventidir.
+
 ### IOC Chat
 
 - `POST /api/iocs/{id}/chat` üzerinden seçili IOC bağlamında çalışır ve varsayılan olarak kapalıdır.
@@ -689,6 +786,49 @@ Bu bölüm çekirdek sekiz gereksinimin üzerine eklenen ileri yetenekleri kapsa
 - Sohbet geçmişi yalnız React memory’dedir; sayfa yenilenince temizlenir.
 - Assistant yalnız public IOC MCP kanıtını kullanabilir; model tools desteklemiyorsa veya kanıt yoksa fail-closed davranır.
 - Kullanıcı ve provider metni untrusted data kabul edilir; prompt veya disclosure sınırlarını değiştiremez.
+
+#### IOC Chat sequence diagramı
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Kullanıcı
+    participant UI as React ekranı
+    participant Chat as IOC Chat API
+    participant MCP as Public MCP
+    participant DB as IOC veri kümesi
+    participant Model as Tool-call model
+
+    User->>UI: Seçili IOC için soru
+    UI->>Chat: POST /chat + bounded history
+    Chat->>Chat: Limit, ayar, credential ve input kontrolü
+    alt Reddedildi
+        Chat-->>UI: 4xx/429/503 Problem Details
+    else Geçerli istek
+        Chat->>MCP: ioc_get_detail(selectedIoc)
+        MCP->>DB: Read-only IOC sorgusu
+        DB-->>MCP: Kaynak-atıflı evidence
+        MCP-->>Chat: Başlangıç kanıtı
+        loop Tek kullanıcı isteği içinde, en fazla 4 model/tool turu
+            Chat->>Model: Sistem sınırları + evidence + allowlist tools
+            alt Model ek kanıt ister
+                Model-->>Chat: Tool call
+                Chat->>MCP: Geçerli read-only tool çağrısı
+                MCP->>DB: Bounded IOC sorgusu
+                DB-->>MCP: Tool evidence
+                MCP-->>Chat: Kanıt
+            else Model yanıt döndürür
+                Model-->>Chat: Answer
+                Chat->>Chat: Citation ve güvenlik doğrulaması
+                Chat-->>UI: 200 JSON + evidence ids
+            end
+        end
+        Note over Chat,Model: Dördüncü tur tool call ile biter ve final cevap gelmezse
+        Chat-->>UI: 503 ioc_chat_round_limit
+    end
+```
+
+Chat, rapordan farklı olarak streaming yapmaz; tek JSON yanıt döner. Dört tur sınırı kullanıcı mesajı sayısına değil, tek bir kullanıcı isteğine cevap üretilirken model ile MCP arasındaki etkileşime uygulanır. Kullanıcı yeni mesaj gönderdiğinde yeni bir chat isteği başlar; geçmiş React belleğinde tutulur ve sunucu en fazla son 8 mesajı dikkate alır. Model ilk dört tur içinde nihai cevap verirse döngü hemen tamamlanır. Dördüncü turda da yalnızca tool call gelirse servis yeni bir beşinci tur başlatmaz; `ioc_chat_round_limit` hatasıyla 503 döner. En önemli güvenlik halkası, modelin SQL Server’a veya internete doğrudan erişememesidir. Seçili IOC’nin ilk kanıtı ve modelin sonradan isteyebileceği ek kanıtlar aynı salt-okunur MCP araç sözleşmesinden geçer. Modelin istediği araç adı, argüman boyutu, sayfalama, çağrı sayısı, toplam kanıt hacmi ve nihai yanıttaki citation’lar server tarafından denetlenir. Bu nedenle nihai yanıt, modelin genel bilgisinden değil başlangıçta getirilen veya sonradan MCP ile getirilen IOC kanıtından türetilmek zorundadır.
 
 ### Public MCP
 
@@ -698,6 +838,37 @@ Bu bölüm çekirdek sekiz gereksinimin üzerine eklenen ileri yetenekleri kapsa
 - REST API ile aynı sorgu semantiğini ve aynı IOC kaynak modelini kullanır.
 - Kendi client/host request ve concurrency limitlerine sahiptir.
 - Trusted proxy açıkça yapılandırılmadıkça forwarded header’lar client kimliği için kullanılmaz.
+
+#### Public MCP sequence diagramı
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as MCP istemcisi
+    participant Guard as MCP middleware + limit
+    participant MCP as Streamable HTTP MCP
+    participant Tool as IOC tool katmanı
+    participant DB as SQL Server
+
+    Client->>Guard: POST /mcp
+    Guard->>Guard: Host/origin, IP, limit, body ve timeout kontrolü
+    alt Reddedildi
+        Guard-->>Client: 400/403/413/429/504
+    else Geçerli istek
+        Guard->>MCP: Stateless request'i ilet
+        alt tools/list
+            MCP-->>Client: 5 read-only araç
+        else tools/call
+            MCP->>Tool: Araç + bounded argümanlar
+            Tool->>DB: Normalize edilmiş IOC sorgusu
+            DB-->>Tool: IOC group + provider kaynakları
+            Tool-->>MCP: Sayfalı sonuç + truncation bilgisi
+            MCP-->>Client: MCP tool response
+        end
+    end
+```
+
+Bu diyagramdaki “stateless” ifadesi, MCP istemcisinin sunucuda kalıcı bir oturum veya konuşma state’i bırakmadığı anlamına gelir; her istek kendi başına doğrulanır ve sonuçlanır. Dış agent için yol şudur: transport araç çağrısını alır, araç katmanı girdiyi sınırlar, uygulamanın mevcut IOC sorgu semantiğini çalıştırır ve yalnız public, read-only sonucu döner. Aynı araç sözleşmesinin IOC Chat içinde in-process kullanılması, dış MCP istemcisi ve chat için kanıtın aynı kurallardan geçmesini sağlar.
 
 ### Kontrollü AI yaklaşımının gerekçesi
 
