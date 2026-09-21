@@ -29,4 +29,13 @@ public static class EnvironmentConfiguration
 
         Env.Load(options: LoadOptions.NoClobber());
     }
+
+    public static string ResolvePath(string path)
+    {
+        if (Path.IsPathRooted(path)) return path;
+
+        return Path.Combine(
+            Path.GetDirectoryName(FindDotEnvPath() ?? string.Empty) ?? Directory.GetCurrentDirectory(),
+            path);
+    }
 }

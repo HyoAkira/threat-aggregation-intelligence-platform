@@ -21,7 +21,7 @@ public sealed class AdminApiTests(SqlServerFixture fixture) : IAsyncLifetime
 {
     private const string Issuer = "threat-intelligence-tests";
     private const string Audience = "threat-intelligence-api-tests";
-    private const string Secret = "integration-test-jwt-secret-that-is-at-least-sixty-four-bytes-long!!";
+    private static readonly string PrivateKey = TestJwtCredentials.PrivateKey;
 
     private AdminApiFactory _factory = null!;
     private HttpClient _client = null!;
@@ -250,9 +250,7 @@ public sealed class AdminApiTests(SqlServerFixture fixture) : IAsyncLifetime
                 new Claim(ClaimTypes.Name, $"admin-api-{role}"),
                 new Claim(ClaimTypes.Role, role.ToString())
             ]),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret)),
-                SecurityAlgorithms.HmacSha256)
+            SigningCredentials = TestJwtCredentials.Create()
         };
 
         return new JsonWebTokenHandler().CreateToken(descriptor);
@@ -272,7 +270,7 @@ public sealed class AdminApiTests(SqlServerFixture fixture) : IAsyncLifetime
                 ["RABBITMQ__USER"] = "guest",
                 ["RABBITMQ__PASSWORD"] = "guest",
                 ["RABBITMQ__EXCHANGE"] = "test-exchange",
-                ["JWT__SECRET"] = Secret,
+                ["JWT__PRIVATEKEYFILE"] = TestJwtCredentials.PrivateKeyFile,
                 ["JWT__ISSUER"] = Issuer,
                 ["JWT__AUDIENCE"] = Audience,
                 ["JWT__EXPIRYMINUTES"] = "480",

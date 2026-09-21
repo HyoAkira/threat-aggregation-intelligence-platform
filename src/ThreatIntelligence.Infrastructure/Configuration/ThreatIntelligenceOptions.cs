@@ -26,7 +26,7 @@ public sealed record ThreatIntelligenceOptions(
                 Required(configuration, "RabbitMq:Password"),
                 Required(configuration, "RabbitMq:Exchange")),
             new JwtOptions(
-                Required(configuration, "Jwt:Secret"),
+                LoadRequiredFile(configuration, "Jwt:PrivateKeyFile"),
                 Required(configuration, "Jwt:Issuer"),
                 Required(configuration, "Jwt:Audience"),
                 IntegerOrDefault(configuration, "Jwt:ExpiryMinutes", 480)),
@@ -52,6 +52,17 @@ public sealed record ThreatIntelligenceOptions(
     private static string? Optional(IConfiguration configuration, string key) =>
         configuration[key] is { Length: > 0 } value ? value : null;
 
+    private static string LoadRequiredFile(IConfiguration configuration, string key)
+    {
+        var configuredPath = Required(configuration, key);
+        var path = EnvironmentConfiguration.ResolvePath(configuredPath);
+        if (!File.Exists(path))
+        {
+            throw new InvalidOperationException($"Required configuration file '{configuredPath}' for '{key}' was not found.");
+        }
+
+        return File.ReadAllText(path);
+    }
     private static int IntegerOrDefault(IConfiguration configuration, string key, int defaultValue) =>
         configuration[key] is not { Length: > 0 } value
             ? defaultValue
@@ -64,11 +75,6 @@ public sealed record ThreatIntelligenceOptions(
         if (RabbitMq.Port is < 1 or > 65535)
         {
             throw new InvalidOperationException("RabbitMq:Port must be between 1 and 65535.");
-        }
-
-        if (Encoding.UTF8.GetByteCount(Jwt.Secret) < 32)
-        {
-            throw new InvalidOperationException("Jwt:Secret must contain at least 32 UTF-8 bytes.");
         }
 
         if (Jwt.ExpiryMinutes != 480)
@@ -87,7 +93,7 @@ public sealed record DatabaseOptions(string ConnectionString);
 
 public sealed record RabbitMqOptions(string Host, int Port, string User, string Password, string Exchange);
 
-public sealed record JwtOptions(string Secret, string Issuer, string Audience, int ExpiryMinutes);
+public sealed record JwtOptions(string PrivateKey, string Issuer, string Audience, int ExpiryMinutes);
 
 public sealed record PasswordHashOptions(int WorkFactor);
 

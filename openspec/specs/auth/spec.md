@@ -46,7 +46,7 @@ The system SHALL create the first admin user from `.env` (`ADMIN__USERNAME` / `A
 
 ### Requirement: Login
 
-The system SHALL expose `POST /api/auth/login` that accepts `{username, password}` and, on success, returns `{token, username, role, expiresAt}` where the token is an 8-hour HS256 JWT carrying the username, role, issuer, and audience. On invalid credentials the system SHALL return an indistinguishable 401.
+The system SHALL expose `POST /api/auth/login` that accepts `{username, password}` and, on success, returns `{token, username, role, expiresAt}` where the token is an 8-hour RS256 JWT carrying the username, role, issuer, and audience. On invalid credentials the system SHALL return an indistinguishable 401.
 
 #### Scenario: Valid login returns token
 
@@ -108,7 +108,7 @@ The system SHALL reject tokens that are expired, tampered, use an unexpected alg
 
 #### Scenario: Wrong algorithm rejected
 
-- **WHEN** a request presents a token signed with an algorithm other than HS256
+- **WHEN** a request presents a token signed with an algorithm other than RS256
 - **THEN** the request is rejected with 401
 
 #### Scenario: Wrong issuer or audience rejected

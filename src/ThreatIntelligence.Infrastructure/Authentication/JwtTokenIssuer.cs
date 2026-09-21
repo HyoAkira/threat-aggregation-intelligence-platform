@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using System.Text;
+using System.Security.Cryptography;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using ThreatIntelligence.Application.Abstractions.Authentication;
@@ -12,8 +12,15 @@ public sealed class JwtTokenIssuer(JwtOptions options, TimeProvider timeProvider
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromHours(8);
     private readonly SigningCredentials _credentials = new(
-        new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.Secret)),
-        SecurityAlgorithms.HmacSha256);
+        CreateRsaKey(options.PrivateKey),
+        SecurityAlgorithms.RsaSha256);
+
+    private static RsaSecurityKey CreateRsaKey(string privateKey)
+    {
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(privateKey.Replace("\\n", "\n"));
+        return new RsaSecurityKey(rsa);
+    }
 
     public IssuedToken Issue(User user)
     {

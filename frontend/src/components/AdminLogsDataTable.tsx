@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import DataTables from 'datatables.net-react'
-import type { DataTableRef } from 'datatables.net-react'
-import DT from 'datatables.net'
 import type { Config } from 'datatables.net'
-import { ApiError, getAdminLogsTable } from '../lib/apiClient'
-import type { AdminLogEntry } from '../lib/adminSchemas'
+import DT from 'datatables.net'
+import type { DataTableRef } from 'datatables.net-react'
+import DataTables from 'datatables.net-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { AdminDataTablesRequest } from '../lib/adminDataTables'
 import {
   dateRangeQuery,
   emptyAdminDataTablesResponse,
 } from '../lib/adminDataTables'
-import type { AdminDataTablesRequest } from '../lib/adminDataTables'
+import type { AdminLogEntry } from '../lib/adminSchemas'
+import { ApiError, getAdminLogsTable } from '../lib/apiClient'
 import { parseUtcDateTime } from '../lib/format'
 import { focusRingClass } from './AppShell'
 
@@ -165,7 +165,7 @@ export default function AdminLogsDataTable({
         name: 'level',
         orderable: false,
         searchable: false,
-        width: '9%',
+        width: '10%',
       },
       {
         data: 'message',
@@ -201,7 +201,7 @@ export default function AdminLogsDataTable({
       ),
       1: (_value: unknown, row: AdminLogEntry) => (
         <span
-          className={`inline-block rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase ${row.level === 'Error' || row.level === 'Fatal' ? 'bg-error-container text-on-error-container' : row.level === 'Warning' ? 'bg-warning-container text-on-warning-container' : row.level === 'Information' ? 'bg-tertiary/10 text-tertiary' : 'bg-surface-container text-on-surface-variant'}`}
+          className={`inline-flex items-center justify-center whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase ${row.level === 'Error' || row.level === 'Fatal' ? 'bg-error-container text-on-error-container' : row.level === 'Warning' ? 'bg-warning-container text-on-warning-container' : row.level === 'Information' ? 'bg-tertiary/10 text-tertiary' : 'bg-surface-container text-on-surface-variant'}`}
         >
           {row.level}
         </span>
