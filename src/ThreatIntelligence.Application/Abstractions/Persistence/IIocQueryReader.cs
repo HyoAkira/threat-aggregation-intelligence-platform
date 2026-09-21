@@ -35,6 +35,29 @@ public interface IIocQueryReader
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Resolves groups for several normalized indicators in one bounded candidate query, reusing the
+    /// same identity semantics as <see cref="SearchGroupsAsync"/> (exact IP/URL and domain relations,
+    /// explicit-port behavior, provider/tag narrowing, deterministic ordering, and shared paging).
+    /// The result maps every requested identity to its page; a requested identity with no filtered
+    /// groups maps to an empty page and is the caller's not-found signal.
+    /// </summary>
+    Task<IReadOnlyDictionary<NormalizationResult, PagedResult<IocGroupResult>>> SearchBatchAsync(
+        IReadOnlyList<NormalizationResult> identities,
+        IocSourceFilter filter,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns a bounded, deterministically ordered catalog of unique normalized IOC values whose
+    /// value begins with the case-insensitive prefix. Provider-row duplicates collapse to one entry.
+    /// </summary>
+    Task<IReadOnlyList<IocSuggestionItem>> GetIocSuggestionsAsync(
+        string prefix,
+        int limit,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Resolves one row id to its full group across providers and ports. Returns null for an unknown id.
     /// </summary>
     Task<IocGroupResult?> GetDetailGroupAsync(int id, CancellationToken cancellationToken);
@@ -47,9 +70,9 @@ public interface IIocQueryReader
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Returns one deterministic page of groups related by exact <c>urlHost</c> or <c>parentDomain</c>.
-    /// Returns null when the id does not resolve; throws <see cref="IocRelationNotSupportedException"/>
-    /// for IP groups.
+    /// Returns one deterministic page of groups related by the stored host columns or by the
+    /// malware/target metadata. Returns null when the id does not resolve; throws
+    /// <see cref="IocRelationNotSupportedException"/> for host relations on IP groups.
     /// </summary>
     Task<PagedResult<IocGroupResult>?> GetRelatedAsync(
         int id,

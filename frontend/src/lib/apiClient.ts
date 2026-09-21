@@ -5,19 +5,29 @@ import { clearAllSessionData, useAuthStore } from './authStore'
 import { browseParamsToSearch } from './browseParams'
 import type { BrowseParams } from './browseParams'
 import {
+  bulkSearchResultSchema,
   iocGroupSchema,
   iocProviderNamesSchema,
+  iocSuggestionsSchema,
   iocTagCatalogSchema,
   loginResponseSchema,
   pagedIocGroupsSchema,
 } from './schemas'
-import type { IocGroup, LoginResponse, PagedIocGroups } from './schemas'
+import type {
+  BulkSearchResult,
+  IocGroup,
+  IocSuggestion,
+  IocTagCatalogItem,
+  LoginResponse,
+  PagedIocGroups,
+} from './schemas'
 import { isSessionExpired } from './session'
 import {
   adminProviderListSchema,
   adminProviderHistoryPageSchema,
   adminFetchHistoryItemSchema,
   adminSummarySchema,
+  adminTimelineSchema,
   adminLogListSchema,
   adminLogPageSchema,
   settingsResponseSchema,
@@ -32,6 +42,7 @@ import type {
   AdminProviderHistoryPage,
   AdminFetchHistoryItem,
   AdminSummary,
+  AdminTimeline,
   AdminLogEntry,
   AdminLogPage,
   SettingsResponse,
@@ -189,6 +200,8 @@ export type SearchSubmission = {
   q: string
   tag: string | null
   provider: string | null
+  malware?: string | null
+  target?: string | null
   page?: number
   pageSize?: number
 }
@@ -204,6 +217,44 @@ export function searchIocs(
   })
 }
 
+export type BulkSearchSubmission = {
+  queries: string[]
+  tag: string | null
+  provider: string | null
+  page: number
+  pageSize: number
+}
+
+/** `POST /api/iocs/search/bulk` — ordered per-value outcomes for a bounded list. */
+export function searchIocsBulk(
+  submission: BulkSearchSubmission,
+  signal?: AbortSignal,
+): Promise<BulkSearchResult> {
+  return apiFetch('/iocs/search/bulk', {
+    schema: bulkSearchResultSchema,
+    method: 'POST',
+    body: {
+      queries: submission.queries,
+      tag: submission.tag,
+      provider: submission.provider,
+      page: submission.page,
+      pageSize: submission.pageSize,
+    },
+    signal,
+  })
+}
+
+/** `GET /api/iocs/suggestions` — bounded IOC-value prefix suggestions. */
+export function getIocSuggestions(
+  input: { q: string; limit: number },
+  signal?: AbortSignal,
+): Promise<IocSuggestion[]> {
+  return apiFetch(`/iocs/suggestions${buildQuery(input)}`, {
+    schema: iocSuggestionsSchema,
+    signal,
+  })
+}
+
 /** `GET /api/iocs/{id}` — source-attributed detail for one row id. */
 export function getIocDetail(
   id: number,
@@ -212,7 +263,7 @@ export function getIocDetail(
   return apiFetch(`/iocs/${id}`, { schema: iocGroupSchema, signal })
 }
 
-export type IocRelation = 'urlHost' | 'parentDomain'
+export type IocRelation = 'urlHost' | 'parentDomain' | 'malware' | 'target'
 
 /** `GET /api/iocs/{id}/relations` — one bounded page of related groups. */
 export function getIocRelations(
@@ -252,7 +303,7 @@ export function getIocProviderNames(signal?: AbortSignal): Promise<string[]> {
 export function getIocTagCatalog(
   input: { q?: string; limit: number },
   signal?: AbortSignal,
-): Promise<import('./schemas').IocTagCatalogItem[]> {
+): Promise<IocTagCatalogItem[]> {
   return apiFetch(`/iocs/tags${buildQuery(input)}`, {
     schema: iocTagCatalogSchema,
     signal,
@@ -418,6 +469,21 @@ export function getAdminSummary(signal?: AbortSignal): Promise<AdminSummary> {
   return apiFetch('/admin/summary', { schema: adminSummarySchema, signal })
 }
 
+/** `GET /api/admin/summary/timeline` — bounded, timezone-aware IOC activity. */
+export function getAdminTimeline(
+  input: { from: string; to: string; timeZone: string },
+  signal?: AbortSignal,
+): Promise<AdminTimeline> {
+  return apiFetch(
+    `/admin/summary/timeline${buildQuery({
+      from: input.from,
+      to: input.to,
+      timeZone: input.timeZone,
+    })}`,
+    { schema: adminTimelineSchema, signal },
+  )
+}
+
 /** `GET /api/admin/logs` — structured log tail. */
 export function getAdminLogs(
   count: number,
@@ -458,14 +524,21 @@ export function putAdminSettings(
   })
 }
 
-export function getAdminCredential(identity: string, signal?: AbortSignal): Promise<CredentialStatus> {
+export function getAdminCredential(
+  identity: string,
+  signal?: AbortSignal,
+): Promise<CredentialStatus> {
   return apiFetch(`/admin/credentials/${encodeURIComponent(identity)}`, {
     schema: credentialStatusSchema,
     signal,
   })
 }
 
-export function putAdminCredential(identity: string, value: string, signal?: AbortSignal): Promise<CredentialStatus> {
+export function putAdminCredential(
+  identity: string,
+  value: string,
+  signal?: AbortSignal,
+): Promise<CredentialStatus> {
   return apiFetch(`/admin/credentials/${encodeURIComponent(identity)}`, {
     schema: credentialStatusSchema,
     method: 'PUT',
@@ -474,7 +547,10 @@ export function putAdminCredential(identity: string, value: string, signal?: Abo
   })
 }
 
-export function clearAdminCredential(identity: string, signal?: AbortSignal): Promise<void> {
+export function clearAdminCredential(
+  identity: string,
+  signal?: AbortSignal,
+): Promise<void> {
   return apiFetch(`/admin/credentials/${encodeURIComponent(identity)}`, {
     schema: z.undefined(),
     method: 'DELETE',
@@ -504,7 +580,9 @@ export function putAiSettings(
 }
 
 /** `GET /api/admin/ioc-chat/settings` — non-secret IOC chat settings and credential status. */
-export function getIocChatSettings(signal?: AbortSignal): Promise<IocChatSettings> {
+export function getIocChatSettings(
+  signal?: AbortSignal,
+): Promise<IocChatSettings> {
   return apiFetch('/admin/ioc-chat/settings', {
     schema: iocChatSettingsSchema,
     signal,
@@ -525,7 +603,9 @@ export function putIocChatSettings(
 }
 
 /** `GET /api/admin/ai/report-policy` — active report instruction plus version history. */
-export function getAiReportPolicy(signal?: AbortSignal): Promise<AiReportPolicy> {
+export function getAiReportPolicy(
+  signal?: AbortSignal,
+): Promise<AiReportPolicy> {
   return apiFetch('/admin/ai/report-policy', {
     schema: aiReportPolicySchema,
     signal,

@@ -1,5 +1,7 @@
 import {
+  BROWSE_MALWARE_MAX_LENGTH,
   BROWSE_PAGE_SIZE_MAX,
+  BROWSE_TARGET_MAX_LENGTH,
   browseParamsToSearch,
   defaultBrowseParams,
   hasActiveBrowseFilters,
@@ -39,6 +41,8 @@ describe('parseBrowseParams', () => {
       type: 'url',
       provider: '1',
       tag: ' phishing ',
+      malware: ' Emotet ',
+      target: ' Amazon ',
       orderBy: 'iocValue',
       dir: 'asc',
       page: '3',
@@ -50,6 +54,8 @@ describe('parseBrowseParams', () => {
       type: 'url',
       provider: '1',
       tag: 'phishing',
+      malware: 'Emotet',
+      target: 'Amazon',
       lastSeenFrom: null,
       lastSeenTo: null,
       orderBy: 'iocValue',
@@ -57,6 +63,27 @@ describe('parseBrowseParams', () => {
       page: 3,
       pageSize: 50,
     })
+  })
+
+  it('treats blank malware and target filters as absent', () => {
+    const { params, issues } = parseBrowseParams({ malware: '   ', target: '' })
+    expect(issues).toEqual([])
+    expect(params?.malware).toBeNull()
+    expect(params?.target).toBeNull()
+  })
+
+  it('rejects an oversized malware or target filter', () => {
+    const malware = parseBrowseParams({
+      malware: 'a'.repeat(BROWSE_MALWARE_MAX_LENGTH + 1),
+    })
+    expect(malware.params).toBeNull()
+    expect(malware.issues[0]).toContain('malware')
+
+    const target = parseBrowseParams({
+      target: 'a'.repeat(BROWSE_TARGET_MAX_LENGTH + 1),
+    })
+    expect(target.params).toBeNull()
+    expect(target.issues[0]).toContain('target')
   })
 
   it('rejects an unsupported indicator type', () => {
@@ -105,6 +132,8 @@ describe('browseParamsToSearch', () => {
       type: 'domain' as const,
       provider: '2',
       tag: 'botnet',
+      malware: 'Emotet',
+      target: 'Amazon',
       lastSeenFrom: '2026-01-01T00:00:00.000Z',
       lastSeenTo: '2026-01-31T23:59:59.000Z',
       orderBy: 'firstSeenUtc' as const,
@@ -118,6 +147,8 @@ describe('browseParamsToSearch', () => {
       type: 'domain',
       provider: '2',
       tag: 'botnet',
+      malware: 'Emotet',
+      target: 'Amazon',
       lastSeenFrom: '2026-01-01T00:00:00.000Z',
       lastSeenTo: '2026-01-31T23:59:59.000Z',
       orderBy: 'firstSeenUtc',
@@ -158,6 +189,12 @@ describe('hasActiveBrowseFilters', () => {
     )
     expect(
       hasActiveBrowseFilters({ ...defaultBrowseParams, pageSize: 50 }),
+    ).toBe(true)
+    expect(
+      hasActiveBrowseFilters({ ...defaultBrowseParams, malware: 'Emotet' }),
+    ).toBe(true)
+    expect(
+      hasActiveBrowseFilters({ ...defaultBrowseParams, target: 'Amazon' }),
     ).toBe(true)
   })
 })

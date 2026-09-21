@@ -9,6 +9,8 @@ export type IocTypeToken = (typeof iocTypeTokens)[number]
 export const iocSearchParamsSchema = z.object({
   q: z.string().trim().min(1).max(2048),
   tag: z.string().trim().min(1).max(100).optional(),
+  malware: z.string().trim().min(1).max(200).optional(),
+  target: z.string().trim().min(1).max(500).optional(),
 })
 
 export type IocSearchParams = z.infer<typeof iocSearchParamsSchema>
@@ -83,11 +85,73 @@ export const iocTagCatalogSchema = z.array(
   }),
 )
 
-export type IocTagCatalogItem = z.infer<
-  typeof iocTagCatalogSchema
->[number]
+export type IocTagCatalogItem = z.infer<typeof iocTagCatalogSchema>[number]
 
 export type PagedIocGroups = z.infer<typeof pagedIocGroupsSchema>
+
+/** Per-item outcome tokens for the bulk-search contract. */
+export const bulkSearchStatusTokens = [
+  'matched',
+  'not_found',
+  'invalid',
+] as const
+export type BulkSearchStatus = (typeof bulkSearchStatusTokens)[number]
+
+/** Safe per-item failure explanation carried on not-found and invalid bulk items. */
+export const bulkSearchProblemSchema = z.object({
+  code: z.string().min(1),
+  detail: z.string(),
+})
+
+export type BulkSearchProblem = z.infer<typeof bulkSearchProblemSchema>
+
+/**
+ * One ordered outcome for a submitted non-empty line. Matched items carry a page of groups;
+ * not-found and invalid items carry empty groups and an explanatory problem.
+ */
+export const bulkSearchItemSchema = z.object({
+  input: z.string(),
+  status: z.enum(bulkSearchStatusTokens),
+  groups: z.array(iocGroupSchema),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  totalCount: z.number().int(),
+  error: bulkSearchProblemSchema.optional(),
+})
+
+export type BulkSearchItem = z.infer<typeof bulkSearchItemSchema>
+
+/** Bulk envelope: ordered items plus summary counts that sum to `totalCount`. */
+export const bulkSearchResultSchema = z.object({
+  items: z.array(bulkSearchItemSchema),
+  totalCount: z.number().int(),
+  matchedCount: z.number().int(),
+  notFoundCount: z.number().int(),
+  invalidCount: z.number().int(),
+})
+
+export type BulkSearchResult = z.infer<typeof bulkSearchResultSchema>
+
+/** One normalized IOC value/type pair returned by the prefix suggestion catalog. */
+export const iocSuggestionSchema = z.object({
+  value: z.string().min(1),
+  iocType: z.enum(iocTypeTokens),
+})
+
+export type IocSuggestion = z.infer<typeof iocSuggestionSchema>
+
+export const iocSuggestionsSchema = z.array(iocSuggestionSchema)
+
+/** `POST /api/iocs/search/bulk` request body. */
+export const bulkSearchRequestSchema = z.object({
+  queries: z.array(z.string()).min(1).max(100),
+  tag: z.string().nullable().optional(),
+  provider: z.string().nullable().optional(),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1).max(100),
+})
+
+export type BulkSearchRequest = z.infer<typeof bulkSearchRequestSchema>
 
 /** `POST /api/auth/login` success response; role is `User` or `Admin`. */
 export const loginResponseSchema = z.object({

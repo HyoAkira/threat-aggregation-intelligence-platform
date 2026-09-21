@@ -67,6 +67,16 @@ public sealed class IoCConfiguration : IEntityTypeConfiguration<IoC>
             .HasColumnName("portKey")
             .HasComputedColumnSql("COALESCE([Port], 0)", stored: true);
 
+        builder.Property<string>("MalwareKey")
+            .HasColumnName("malwareKey")
+            .HasMaxLength(200)
+            .HasComputedColumnSql("LOWER(LTRIM(RTRIM([Malware])))", stored: true);
+
+        builder.Property<string>("TargetKey")
+            .HasColumnName("targetKey")
+            .HasMaxLength(500)
+            .HasComputedColumnSql("LOWER(LTRIM(RTRIM([Target])))", stored: true);
+
         builder.HasIndex("ProviderId", "IocType", "IocValueHash", "PortKey")
             .IsUnique()
             .HasDatabaseName("IX_iocs_EndpointIdentity");
@@ -86,6 +96,12 @@ public sealed class IoCConfiguration : IEntityTypeConfiguration<IoC>
 
         builder.HasIndex(i => i.LastSeenUtc)
             .HasDatabaseName("IX_iocs_LastSeenUtc");
+
+        builder.HasIndex("MalwareKey")
+            .HasDatabaseName("IX_iocs_MalwareKey");
+
+        builder.HasIndex("TargetKey")
+            .HasDatabaseName("IX_iocs_TargetKey");
 
         builder.HasOne<Provider>()
             .WithMany()

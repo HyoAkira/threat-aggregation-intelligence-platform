@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getAdminSummary, ApiError } from '../lib/apiClient'
-import { adminSummaryKey } from '../lib/queryKeys'
+import { adminSummaryKey, adminTimelineKeyPrefix } from '../lib/queryKeys'
 import { LoadingState, ErrorState } from '../components/uiStates'
 import { focusRingClass } from '../components/AppShell'
+import { AdminSummaryTimeline } from '../components/AdminSummaryTimeline'
 
 export const Route = createFileRoute('/admin/summary')({
   component: AdminSummaryPage,
@@ -86,6 +87,7 @@ function AdminSummaryPage() {
 
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: adminSummaryKey() })
+    void queryClient.invalidateQueries({ queryKey: adminTimelineKeyPrefix() })
   }, [queryClient])
 
   if (isLoading) return <LoadingState label="Loading summary…" />
@@ -199,6 +201,8 @@ function AdminSummaryPage() {
           {isFetching ? ' (refreshing…)' : ''}
         </span>
       </div>
+
+      <AdminSummaryTimeline />
     </div>
   )
 }

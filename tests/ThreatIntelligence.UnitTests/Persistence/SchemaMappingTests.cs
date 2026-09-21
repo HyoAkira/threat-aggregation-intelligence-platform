@@ -170,6 +170,22 @@ public class SchemaMappingTests
         Assert.Equal("portKey", prop.GetColumnName());
     }
 
+    [Theory]
+    [InlineData("MalwareKey", "malwareKey", "LOWER(LTRIM(RTRIM([Malware])))", 200)]
+    [InlineData("TargetKey", "targetKey", "LOWER(LTRIM(RTRIM([Target])))", 500)]
+    public void Metadata_keys_are_normalized_stored_computed_columns(
+        string property,
+        string expectedColumn,
+        string expectedSql,
+        int expectedLength)
+    {
+        var prop = Prop<IoC>(property);
+        Assert.Equal(expectedSql, prop.GetComputedColumnSql());
+        Assert.Equal(true, prop.FindAnnotation(RelationalAnnotationNames.IsStored)?.Value);
+        Assert.Equal(expectedColumn, prop.GetColumnName());
+        Assert.Equal(expectedLength, prop.GetMaxLength());
+    }
+
     [Fact]
     public void Endpoint_identity_unique_index_uses_portKey()
     {
@@ -186,10 +202,21 @@ public class SchemaMappingTests
     [InlineData("IX_iocs_IocType_UrlHost", new[] { "IocType", "UrlHost" })]
     [InlineData("IX_iocs_IocType_ParentDomain", new[] { "IocType", "ParentDomain" })]
     [InlineData("IX_iocs_LastSeenUtc", new[] { "LastSeenUtc" })]
+    [InlineData("IX_iocs_MalwareKey", new[] { "MalwareKey" })]
+    [InlineData("IX_iocs_TargetKey", new[] { "TargetKey" })]
     public void IoC_supporting_indexes_exist(string indexName, string[] columns)
     {
         var index = Entity<IoC>().GetIndexes().Single(i => i.GetDatabaseName() == indexName);
         Assert.Equal(columns, index.Properties.Select(p => p.Name).ToArray());
+    }
+
+    [Theory]
+    [InlineData("IX_iocs_MalwareKey")]
+    [InlineData("IX_iocs_TargetKey")]
+    public void Metadata_key_indexes_are_non_unique(string indexName)
+    {
+        Assert.False(Entity<IoC>().GetIndexes()
+            .Single(i => i.GetDatabaseName() == indexName).IsUnique);
     }
 
     [Fact]

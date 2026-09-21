@@ -248,6 +248,77 @@ describe('DataTables browse requests', () => {
     })
   })
 
+  it('applying a malware filter preserves it and resets to page one', async () => {
+    const calls = useResponder(() => pageOf([urlGroup]))
+
+    await renderBrowse('/browse')
+    await waitFor(() => expect(calls.length).toBe(1))
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Malware'), {
+        target: { value: 'Emotet' },
+      })
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    })
+
+    await waitFor(() => expect(calls.length).toBe(2))
+    expect(calls[1].params).toMatchObject({
+      malware: 'Emotet',
+      page: 1,
+      pageSize: 20,
+    })
+  })
+
+  it('restores malware and target filters from the URL', async () => {
+    const calls = useResponder(() => pageOf([urlGroup]))
+
+    await renderBrowse('/browse?malware=Emotet&target=Amazon')
+
+    await waitFor(() => expect(calls.length).toBe(1))
+    expect(calls[0].params).toMatchObject({
+      malware: 'Emotet',
+      target: 'Amazon',
+      page: 1,
+    })
+    expect(screen.getByLabelText<HTMLInputElement>('Malware').value).toBe(
+      'Emotet',
+    )
+    expect(screen.getByLabelText<HTMLInputElement>('Target').value).toBe(
+      'Amazon',
+    )
+  })
+
+  it('clearing filters drops malware and target from the next request', async () => {
+    const calls = useResponder(() => pageOf([urlGroup]))
+
+    const router = await renderBrowse('/browse?malware=Emotet&target=Amazon')
+    await waitFor(() => expect(calls.length).toBe(1))
+
+    const clear = screen.getByRole('link', { name: 'Clear filters' })
+    expect(clear.getAttribute('href')).toBe('/browse')
+
+    await act(async () => {
+      await router.navigate({ to: '/browse', search: {} })
+    })
+
+    await waitFor(() => expect(calls.length).toBe(2))
+    expect(calls[1].params).toMatchObject({ malware: null, target: null })
+    expect(screen.getByLabelText<HTMLInputElement>('Malware').value).toBe('')
+  })
+
+  it('does not request an oversized malware filter from the URL', async () => {
+    const calls = useResponder(() => pageOf([urlGroup]))
+
+    await renderBrowse(`/browse?malware=${'a'.repeat(201)}`)
+
+    await screen.findByText('Unsupported filters')
+    await flush()
+    expect(calls.length).toBe(0)
+    expect(browseIocsMock).not.toHaveBeenCalled()
+  })
+
   it('Back and Forward restore the prior view with one request each', async () => {
     const calls = useResponder(() => pageOf([urlGroup], 45))
 

@@ -34,23 +34,32 @@ function formatTimestamp(iso: string): string {
 }
 
 function ExceptionCell({ value }: { value: string | null }) {
-  const [expanded, setExpanded] = useState(false)
   if (!value) return <span className="text-on-surface-variant">—</span>
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setExpanded((current) => !current)}
-        className={`rounded bg-error/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-error hover:bg-error/20 ${focusRingClass}`}
+    <details className="admin-logs-exception">
+      <summary
+        className={`inline-flex cursor-pointer list-none items-center gap-1 rounded bg-error/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-error hover:bg-error/20 ${focusRingClass}`}
+        aria-label="View exception details"
       >
-        {expanded ? 'Hide' : 'Show'}
-      </button>
-      {expanded ? (
-        <pre className="mt-2 max-w-96 whitespace-pre-wrap break-words rounded bg-surface-container-low p-2 font-mono text-[10px] leading-relaxed text-on-surface">
+        <span className="material-symbols-outlined admin-logs-exception-icon text-[13px]">
+          expand_more
+        </span>
+        View
+      </summary>
+      <div className="admin-logs-exception-popover">
+        <div className="flex items-center justify-between gap-3 border-b border-error/20 bg-error-container/40 px-3 py-2">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-on-error-container">
+            Exception details
+          </span>
+          <span className="font-mono text-[10px] text-on-surface-variant">
+            Click View to close
+          </span>
+        </div>
+        <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[10px] leading-relaxed text-on-surface">
           {value}
         </pre>
-      ) : null}
-    </div>
+      </div>
+    </details>
   )
 }
 
@@ -149,20 +158,35 @@ export default function AdminLogsDataTable({
         name: 'timestamp',
         orderable: true,
         searchable: false,
+        width: '15%',
       },
-      { data: 'level', name: 'level', orderable: false, searchable: false },
-      { data: 'message', name: 'message', orderable: false, searchable: false },
+      {
+        data: 'level',
+        name: 'level',
+        orderable: false,
+        searchable: false,
+        width: '9%',
+      },
+      {
+        data: 'message',
+        name: 'message',
+        orderable: false,
+        searchable: false,
+        width: '42%',
+      },
       {
         data: 'correlationId',
         name: 'correlationId',
         orderable: false,
         searchable: false,
+        width: '18%',
       },
       {
         data: 'exception',
         name: 'exception',
         orderable: false,
         searchable: false,
+        width: '16%',
       },
     ],
     [],
@@ -171,7 +195,7 @@ export default function AdminLogsDataTable({
   const slots = useMemo(
     () => ({
       0: (_value: unknown, row: AdminLogEntry) => (
-        <span className="whitespace-nowrap font-mono text-[11px] text-on-surface-variant">
+        <span className="admin-logs-timestamp font-mono text-[11px] text-on-surface-variant">
           {formatTimestamp(row.timestamp)}
         </span>
       ),
@@ -183,12 +207,12 @@ export default function AdminLogsDataTable({
         </span>
       ),
       2: (_value: unknown, row: AdminLogEntry) => (
-        <span className="whitespace-pre-wrap break-words font-body text-[12px] text-on-surface">
+        <span className="admin-logs-message block max-w-full whitespace-pre-wrap break-words font-body text-[12px] text-on-surface">
           {row.message}
         </span>
       ),
       3: (_value: unknown, row: AdminLogEntry) => (
-        <span className="font-mono text-[11px] text-on-surface-variant">
+        <span className="admin-logs-correlation block max-w-full break-all font-mono text-[11px] text-on-surface-variant">
           {row.correlationId ?? '—'}
         </span>
       ),
@@ -220,7 +244,7 @@ export default function AdminLogsDataTable({
   )
 
   return (
-    <div className="mt-4 overflow-x-auto rounded border border-outline-variant bg-surface-container-lowest">
+    <div className="admin-logs-panel mt-4 rounded border border-outline-variant bg-surface-container-lowest">
       <div className="flex flex-wrap items-end gap-3 border-b border-outline-variant px-4 py-3">
         <div className="flex flex-col gap-1">
           <label
@@ -272,34 +296,39 @@ export default function AdminLogsDataTable({
           </span>
         ) : null}
       </div>
-      <DataTables
-        ref={tableRef}
-        options={options}
-        ajax={ajax}
-        columns={columns}
-        slots={slots}
-        className="w-full border-collapse text-left"
-      >
-        <thead>
-          <tr className="h-9 select-none border-b border-outline-variant/60 bg-surface-container-low font-mono text-[10px] uppercase tracking-wider text-outline">
-            <th scope="col" className="px-3 py-2 font-semibold">
-              Timestamp
-            </th>
-            <th scope="col" className="px-3 py-2 font-semibold">
-              Level
-            </th>
-            <th scope="col" className="px-3 py-2 font-semibold">
-              Message
-            </th>
-            <th scope="col" className="px-3 py-2 font-semibold">
-              Correlation ID
-            </th>
-            <th scope="col" className="px-3 py-2 font-semibold">
-              Exception
-            </th>
-          </tr>
-        </thead>
-      </DataTables>
+      <div className="admin-logs-table-wrap">
+        <DataTables
+          ref={tableRef}
+          options={options}
+          ajax={ajax}
+          columns={columns}
+          slots={slots}
+          className="admin-logs-table w-full border-collapse text-left"
+        >
+          <thead>
+            <tr className="h-9 select-none border-b border-outline-variant/60 bg-surface-container-low font-mono text-[10px] uppercase tracking-wider text-outline">
+              <th scope="col" className="px-3 py-2 font-semibold">
+                Timestamp
+              </th>
+              <th scope="col" className="px-3 py-2 font-semibold">
+                Level
+              </th>
+              <th scope="col" className="px-3 py-2 font-semibold">
+                Message
+              </th>
+              <th
+                scope="col"
+                className="admin-logs-correlation-column px-3 py-2 font-semibold"
+              >
+                Correlation ID
+              </th>
+              <th scope="col" className="px-3 py-2 font-semibold">
+                Exception
+              </th>
+            </tr>
+          </thead>
+        </DataTables>
+      </div>
     </div>
   )
 }

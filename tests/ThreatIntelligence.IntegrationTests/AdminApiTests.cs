@@ -98,6 +98,49 @@ public sealed class AdminApiTests(SqlServerFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Non_admin_cannot_read_the_timeline()
+    {
+        using var response = await GetAuthorized(
+            "/api/admin/summary/timeline?from=2026-09-14T00:00:00Z&to=2026-09-21T00:00:00Z&timeZone=UTC",
+            UserRole.User);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var problem = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("forbidden", (string)problem["code"]!);
+    }
+
+    [Fact]
+    public async Task Admin_can_read_the_timeline()
+    {
+        using var response = await GetAuthorized(
+            "/api/admin/summary/timeline?from=2026-09-14T00:00:00Z&to=2026-09-21T00:00:00Z&timeZone=Europe/Istanbul",
+            UserRole.Admin);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("Europe/Istanbul", (string)body["timeZone"]!);
+        Assert.Equal(8, body["points"]!.AsArray().Count);
+        Assert.False((bool)body["hasSuccessfulFetches"]!);
+    }
+
+    [Fact]
+    public async Task Invalid_timeline_range_is_a_bad_request_problem()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/admin/summary/timeline?from=2026-09-21T00:00:00Z&to=2026-09-14T00:00:00Z&timeZone=UTC");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(UserRole.Admin));
+        request.Headers.Add("X-Correlation-ID", "timeline-400");
+        using var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var problem = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("invalid_timeline_range", (string)problem["code"]!);
+        Assert.Equal("timeline-400", (string)problem["correlationId"]!);
+    }
+
+    [Fact]
     public async Task Logs_reject_invalid_count_and_level()
     {
         using var oversizedRequest = new HttpRequestMessage(HttpMethod.Get, "/api/admin/logs?count=600");

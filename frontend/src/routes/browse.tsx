@@ -7,6 +7,8 @@ import {
 } from '@tanstack/react-router'
 import { ApiError } from '../lib/apiClient'
 import {
+  BROWSE_MALWARE_MAX_LENGTH,
+  BROWSE_TARGET_MAX_LENGTH,
   browseDirOptions,
   browseOrderByOptions,
   browsePageSizeOptions,
@@ -96,6 +98,8 @@ function BrowsePage() {
   const [providerDraft, setProviderDraft] = useState(() =>
     providerDraftValue(params),
   )
+  const [malwareDraft, setMalwareDraft] = useState(params?.malware ?? '')
+  const [targetDraft, setTargetDraft] = useState(params?.target ?? '')
   const [fromDraft, setFromDraft] = useState(() =>
     toDatetimeLocalValue(params?.lastSeenFrom ?? null),
   )
@@ -106,9 +110,18 @@ function BrowsePage() {
   useEffect(() => {
     setTagDraft(params?.tag ?? '')
     setProviderDraft(providerDraftValue(params))
+    setMalwareDraft(params?.malware ?? '')
+    setTargetDraft(params?.target ?? '')
     setFromDraft(toDatetimeLocalValue(params?.lastSeenFrom ?? null))
     setToDraft(toDatetimeLocalValue(params?.lastSeenTo ?? null))
-  }, [params?.tag, params?.provider, params?.lastSeenFrom, params?.lastSeenTo])
+  }, [
+    params?.tag,
+    params?.provider,
+    params?.malware,
+    params?.target,
+    params?.lastSeenFrom,
+    params?.lastSeenTo,
+  ])
 
   const [tableStatus, setTableStatus] = useState<BrowseTableStatus>({
     kind: 'pending',
@@ -229,6 +242,9 @@ function BrowsePage() {
                   tag: tagDraft.trim() === '' ? null : tagDraft.trim(),
                   provider:
                     providerDraft.trim() === '' ? null : providerDraft.trim(),
+                  malware:
+                    malwareDraft.trim() === '' ? null : malwareDraft.trim(),
+                  target: targetDraft.trim() === '' ? null : targetDraft.trim(),
                   lastSeenFrom: fromDatetimeLocalValue(fromDraft),
                   lastSeenTo: fromDatetimeLocalValue(toDraft),
                   page: 1,
@@ -302,6 +318,42 @@ function BrowsePage() {
                 <p className="mt-1 text-[10px] text-on-surface-variant">
                   Add multiple providers separated by commas. Any selected
                   provider can match.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="browse-malware" className={fieldLabelClass}>
+                  Malware
+                </label>
+                <input
+                  id="browse-malware"
+                  type="text"
+                  value={malwareDraft}
+                  maxLength={BROWSE_MALWARE_MAX_LENGTH}
+                  onChange={(event) => setMalwareDraft(event.target.value)}
+                  className={controlClass}
+                />
+                <p className="mt-1 text-[10px] text-on-surface-variant">
+                  Match a stored malware value (case-insensitive, at most{' '}
+                  {BROWSE_MALWARE_MAX_LENGTH} characters).
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="browse-target" className={fieldLabelClass}>
+                  Target
+                </label>
+                <input
+                  id="browse-target"
+                  type="text"
+                  value={targetDraft}
+                  maxLength={BROWSE_TARGET_MAX_LENGTH}
+                  onChange={(event) => setTargetDraft(event.target.value)}
+                  className={controlClass}
+                />
+                <p className="mt-1 text-[10px] text-on-surface-variant">
+                  Match a stored target value (case-insensitive, at most{' '}
+                  {BROWSE_TARGET_MAX_LENGTH} characters).
                 </p>
               </div>
 

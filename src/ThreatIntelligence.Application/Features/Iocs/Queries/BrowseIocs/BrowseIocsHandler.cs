@@ -22,6 +22,8 @@ public sealed class BrowseIocsHandler(IIocQueryReader reader)
         var types = ParseTypes(request.Type);
         var type = types.Count == 1 ? types[0] : (Domain.Enums.IocType?)null;
         var provider = NormalizeProvider(request.Provider);
+        var malware = IocSearchEvaluator.NormalizeMalware(request.Malware);
+        var target = IocSearchEvaluator.NormalizeTarget(request.Target);
         var orderBy = ParseOrderBy(request.OrderBy);
         var descending = ParseDirection(request.Dir);
         var page = request.Page ?? 1;
@@ -53,7 +55,9 @@ public sealed class BrowseIocsHandler(IIocQueryReader reader)
             descending,
             page,
             pageSize,
-            types.Count > 1 ? types : null);
+            types.Count > 1 ? types : null,
+            malware,
+            target);
     }
 
     private static IReadOnlyList<Domain.Enums.IocType> ParseTypes(string? type)

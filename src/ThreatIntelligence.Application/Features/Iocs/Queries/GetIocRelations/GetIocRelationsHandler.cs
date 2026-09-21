@@ -48,9 +48,11 @@ public sealed class GetIocRelationsHandler(IIocQueryReader reader)
         {
             "urlhost" => IocRelationKind.UrlHost,
             "parentdomain" => IocRelationKind.ParentDomain,
+            "malware" => IocRelationKind.Malware,
+            "target" => IocRelationKind.Target,
             _ => throw new IocQueryValidationException(
                 IocErrorCodes.InvalidInput,
-                "The relation must be 'urlHost' or 'parentDomain'.")
+                "The relation must be 'urlHost', 'parentDomain', 'malware', or 'target'.")
         };
     }
 

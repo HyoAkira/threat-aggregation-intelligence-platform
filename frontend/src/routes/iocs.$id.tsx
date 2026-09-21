@@ -42,7 +42,13 @@ const sectionTitleClass =
   'font-mono text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant'
 
 function parseRelation(raw: string | undefined): IocRelation | null {
-  if (raw === 'urlHost' || raw === 'parentDomain') return raw
+  if (
+    raw === 'urlHost' ||
+    raw === 'parentDomain' ||
+    raw === 'malware' ||
+    raw === 'target'
+  )
+    return raw
   return null
 }
 
@@ -317,6 +323,7 @@ function ForensicDetail({
             id={group.id}
             urlHost={group.urlHost ?? null}
             parentDomain={group.parentDomain ?? null}
+            sources={group.sources}
             relation={relation}
             relPage={relPage}
           />
@@ -431,12 +438,14 @@ function RelationsSection({
   id,
   urlHost,
   parentDomain,
+  sources,
   relation,
   relPage,
 }: {
   id: number
   urlHost: string | null
   parentDomain: string | null
+  sources: Array<{ malware?: string | null; target?: string | null }>
   relation: IocRelation | null
   relPage: number
 }) {
@@ -453,7 +462,28 @@ function RelationsSection({
     })
   }
 
-  // IP indicators store no urlHost or parentDomain, so no relation controls render.
+  // Metadata relations are available whenever any source carries a value; the
+  // endpoint resolves the complete source-value set, so no representative is chosen.
+  const hasMalware = sources.some(
+    (source) => (source.malware ?? '').trim() !== '',
+  )
+  if (hasMalware) {
+    available.push({
+      kind: 'malware',
+      label: 'Indicators sharing this malware',
+    })
+  }
+
+  const hasTarget = sources.some(
+    (source) => (source.target ?? '').trim() !== '',
+  )
+  if (hasTarget) {
+    available.push({
+      kind: 'target',
+      label: 'Indicators sharing this target',
+    })
+  }
+
   if (available.length === 0) return null
 
   function goToRelation(next: IocRelation | null, page = 1) {
@@ -533,7 +563,7 @@ function RelationsSection({
             relations.data.items.length === 0 ? (
               <EmptyState
                 title="No related indicators"
-                message="No other stored indicators share this host or parent domain."
+                message="No other stored indicators share this host, parent domain, malware, or target."
               />
             ) : (
               <>

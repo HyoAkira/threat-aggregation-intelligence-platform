@@ -4,9 +4,14 @@ namespace ThreatIntelligence.Application.Features.Iocs.Queries;
 
 /// <summary>
 /// Optional source-narrowing filters applied after an exact search resolves a group. A non-null
-/// <see cref="Tag"/> is normalized (trimmed and lowercased) before matching.
+/// <see cref="Tag"/> is normalized (trimmed and lowercased) before matching; <see cref="Malware"/>
+/// and <see cref="Target"/> match the stored values trimmed and case-insensitively.
 /// </summary>
-public sealed record IocSourceFilter(string? Tag = null, string? Provider = null);
+public sealed record IocSourceFilter(
+    string? Tag = null,
+    string? Provider = null,
+    string? Malware = null,
+    string? Target = null);
 
 /// <summary>Allowed aggregate sort fields for grouped browse.</summary>
 public enum IocBrowseOrderBy
@@ -17,11 +22,13 @@ public enum IocBrowseOrderBy
     IocValue
 }
 
-/// <summary>Allowed host-column relations.</summary>
+/// <summary>Allowed relation kinds: the stored host columns and the malware/target metadata.</summary>
 public enum IocRelationKind
 {
     UrlHost,
-    ParentDomain
+    ParentDomain,
+    Malware,
+    Target
 }
 
 /// <summary>
@@ -40,4 +47,6 @@ public sealed record IocBrowseCriteria(
     bool Descending,
     int Page,
     int PageSize,
-    IReadOnlyList<IocType>? Types = null);
+    IReadOnlyList<IocType>? Types = null,
+    string? Malware = null,
+    string? Target = null);

@@ -8,43 +8,22 @@ public sealed class SearchIocsHandler(
     IIocClassifier classifier,
     IIocQueryReader reader) : IRequestHandler<SearchIocsQuery, PagedResult<IocGroupResult>>
 {
-    public const int DefaultPageSize = 20;
-    public const int MaxPageSize = 100;
+    public const int DefaultPageSize = IocSearchEvaluator.DefaultPageSize;
+    public const int MaxPageSize = IocSearchEvaluator.MaxPageSize;
 
     public async Task<PagedResult<IocGroupResult>> Handle(
         SearchIocsQuery request,
         CancellationToken cancellationToken)
     {
-        var classification = classifier.Classify(request.Query ?? string.Empty);
-        if (!classification.IsSuccess)
-        {
-            throw new IocQueryValidationException(
-                IocErrorCodes.InvalidInput,
-                classification.Error!.Message);
-        }
+        var identity = IocSearchEvaluator.RequireClassification(classifier, request.Query);
+        var provider = IocSearchEvaluator.NormalizeProvider(request.Provider);
+        var malware = IocSearchEvaluator.NormalizeMalware(request.Malware);
+        var target = IocSearchEvaluator.NormalizeTarget(request.Target);
+        var (page, pageSize) = IocSearchEvaluator.ResolvePageBounds(request.Page, request.PageSize);
 
-        var provider = NormalizeProvider(request.Provider);
-
-        var page = request.Page ?? 1;
-        var pageSize = request.PageSize ?? DefaultPageSize;
-        if (page < 1)
-        {
-            throw new IocQueryValidationException(
-                IocErrorCodes.InvalidInput,
-                "The page must be at least 1.");
-        }
-
-        if (pageSize is < 1 or > MaxPageSize)
-        {
-            throw new IocQueryValidationException(
-                IocErrorCodes.InvalidInput,
-                $"The pageSize must be between 1 and {MaxPageSize}.");
-        }
-
-        var identity = classification.OrThrow();
         var result = await reader.SearchGroupsAsync(
             identity,
-            new IocSourceFilter(request.Tag, provider),
+            new IocSourceFilter(request.Tag, provider, malware, target),
             page,
             pageSize,
             cancellationToken);
@@ -57,23 +36,5 @@ public sealed class SearchIocsHandler(
         }
 
         return result;
-    }
-
-    private static string? NormalizeProvider(string? provider)
-    {
-        if (string.IsNullOrWhiteSpace(provider))
-        {
-            return null;
-        }
-
-        var trimmed = provider.Trim();
-        if (trimmed.Length > 255)
-        {
-            throw new IocQueryValidationException(
-                IocErrorCodes.InvalidInput,
-                "The provider filter is too long.");
-        }
-
-        return trimmed;
     }
 }

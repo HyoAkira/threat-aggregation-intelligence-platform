@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "dd80d595930d5a69",
+        "id": "3d3700edfbf44e78",
         "type": "tabs",
         "children": [
           {
-            "id": "30696cf7ec4b37ac",
+            "id": "f9ad527a4e4e69a0",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "src/ThreatIntelligence.Infrastructure/AI/Prompts/default-report.md",
+                "file": "ProjectDocs/Technical-Presentation-TR.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "default-report"
+              "title": "Technical-Presentation-TR"
             }
           }
         ]
@@ -55,7 +55,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "türkçe",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -79,8 +79,7 @@
               "title": "Bookmarks"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -189,44 +188,44 @@
       "bases:Create new base": false
     }
   },
-  "active": "30696cf7ec4b37ac",
+  "active": "f9ad527a4e4e69a0",
   "lastOpenFiles": [
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T225652Z.json",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T225652Z.json.tmp",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T225051Z.json",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T225051Z.json.tmp",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T224451Z.json",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T224451Z.json.tmp",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T223851Z.json",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T223851Z.json.tmp",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T223251Z.json",
-    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260917T223251Z.json.tmp",
-    "src/ThreatIntelligence.API/logs/api-20260918.json",
-    "openspec/changes/add-ioc-ai-analysis/specs/ioc-ai-reporting/spec.md",
-    "frontend/node_modules/dayjs/README.md",
-    "openspec/changes/add-ioc-ai-analysis/adrs/0007-generation-limits.md",
-    "openspec/changes/add-ioc-ai-analysis/adrs/0006-output-validation.md",
-    "openspec/changes/add-ioc-ai-analysis/adrs/0005-evidence-truncation.md",
-    "openspec/changes/add-ioc-ai-analysis/adrs/0004-report-evidence-scope.md",
-    "openspec/changes/add-ioc-ai-analysis/adrs/0003-report-identity.md",
-    "openspec/changes/add-ioc-ai-analysis/adrs/0002-model-destination.md",
-    "openspec/changes/add-ioc-ai-analysis/adrs/0001-report-role.md",
-    "openspec/changes/add-ioc-ai-analysis/tasks.md",
-    "openspec/changes/add-ioc-ai-analysis/proposal.md",
-    "openspec/changes/add-ioc-ai-analysis/glossary.md",
-    "openspec/changes/add-ioc-ai-analysis/design.md",
-    "openspec/changes/add-ioc-ai-analysis/decision-tree.md",
-    "openspec/changes/add-ioc-ai-analysis/specs/ai-report-policy-management/spec.md",
-    "openspec/changes/add-ioc-ai-analysis/specs/ai-provider-configuration/spec.md",
-    "openspec/changes/add-ioc-ai-analysis/specs/admin-frontend-runtime-settings/spec.md",
-    "openspec/changes/e11-user-frontend/design.md",
-    "openspec/changes/archive/2026-09-14-e11-user-frontend/specs/user-frontend-shell-auth/spec.md",
-    "openspec/changes/archive/2026-09-14-e11-user-frontend/specs/user-frontend-search/spec.md",
-    "openspec/changes/archive/2026-09-14-e11-user-frontend/specs/user-frontend-exploration/spec.md",
-    "openspec/changes/archive/2026-09-14-e11-user-frontend/tasks.md",
-    "openspec/changes/archive/2026-09-14-e11-user-frontend/proposal.md",
-    "openspec/changes/archive/2026-09-14-e11-user-frontend/design.md",
-    "openspec/specs/user-frontend-shell-auth/spec.md",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260920T225308Z.json",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260920T225308Z.json.tmp",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/user-frontend-search/spec.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/user-frontend-exploration/spec.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/persistence/spec.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-search/spec.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-relations/spec.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-mcp-extended-relations/spec.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-browse/spec.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/browse-table-ui/spec.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/user-frontend-search",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/user-frontend-exploration",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/persistence",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-search",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-relations",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-mcp-extended-relations",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/ioc-browse",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs/browse-table-ui",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/tasks.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/specs",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/proposal.md",
+    "openspec/changes/archive/2026-09-21-add-ioc-malware-target-relations/design.md",
+    "openspec/specs/ioc-mcp-extended-relations/spec.md",
+    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/specs/admin-observability/spec.md",
+    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/specs/admin-ioc-summary-timeline/spec.md",
+    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/specs/admin-frontend-observability/spec.md",
+    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/tasks.md",
+    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/proposal.md",
+    "openspec/changes/archive/2026-09-21-admin-ioc-summary-timeline/design.md",
+    "openspec/changes/bulk-ioc-search/design.md",
+    "openspec/changes/archive/2026-09-21-bulk-ioc-search/specs/user-frontend-search/spec.md",
+    "openspec/changes/archive/2026-09-21-bulk-ioc-search/specs/ioc-search-suggestions/spec.md",
+    "openspec/changes/archive/2026-09-21-bulk-ioc-search/specs/ioc-search/spec.md",
+    "openspec/changes/archive/2026-09-21-bulk-ioc-search/specs/ioc-bulk-search/spec.md",
+    "openspec/changes/archive/2026-09-21-bulk-ioc-search/tasks.md",
+    "openspec/changes/archive/2026-09-21-bulk-ioc-search/proposal.md",
     "frontend/node_modules/@tanstack/devtools/src/components/tanstack-logo.png",
     "frontend/node_modules/@jest/reporters/assets/jest_logo.png",
     "frontend/node_modules/istanbul-reports/lib/html/assets/sort-arrow-sprite.png",

@@ -109,6 +109,52 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
     }
 
     [Fact]
+    public async Task Search_malware_filter_is_case_insensitive_and_narrows_sources()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "mw-1", "6.7.8.9", IocType.Ipv4, malware: "Emotet");
+        await IocQueryTestData.InsertIocAsync(
+            context, 2, "mw-2", "6.7.8.9", IocType.Ipv4, malware: "TrickBot");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var result = await reader.SearchGroupsAsync(
+            new NormalizationResult(IocType.Ipv4, "6.7.8.9", null, null, null),
+            new IocSourceFilter(Malware: "  EMOTET "),
+            1,
+            20,
+            CancellationToken.None);
+
+        var group = Assert.Single(result.Items);
+        var source = Assert.Single(group.Sources);
+        Assert.Equal("Emotet", source.Malware);
+    }
+
+    [Fact]
+    public async Task Search_target_filter_composes_with_provider()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "tf-1", "6.7.8.10", IocType.Ipv4, target: "Amazon");
+        await IocQueryTestData.InsertIocAsync(
+            context, 2, "tf-2", "6.7.8.10", IocType.Ipv4, target: "Amazon");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "tf-3", "6.7.8.10", IocType.Ipv4, port: 8443, target: "Contoso");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var result = await reader.SearchGroupsAsync(
+            new NormalizationResult(IocType.Ipv4, "6.7.8.10", null, null, null),
+            new IocSourceFilter(Provider: "1", Target: "amazon"),
+            1,
+            20,
+            CancellationToken.None);
+
+        var group = Assert.Single(result.Items);
+        var source = Assert.Single(group.Sources);
+        Assert.Equal("Amazon", source.Target);
+    }
+
+    [Fact]
     public async Task Search_filter_that_removes_every_source_returns_null()
     {
         await using var context = fixture.CreateContext();
@@ -123,6 +169,25 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
             CancellationToken.None);
 
         Assert.Empty(result.Items);
+    }
+
+    [Fact]
+    public async Task Search_malware_filter_without_a_match_returns_empty()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "mw-none", "8.8.4.4", IocType.Ipv4, malware: "Emotet");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var result = await reader.SearchGroupsAsync(
+            new NormalizationResult(IocType.Ipv4, "8.8.4.4", null, null, null),
+            new IocSourceFilter(Malware: "Qakbot"),
+            1,
+            20,
+            CancellationToken.None);
+
+        Assert.Empty(result.Items);
+        Assert.Equal(0, result.TotalCount);
     }
 
     [Fact]
@@ -310,6 +375,104 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         Assert.Equal(0, page.TotalCount);
     }
 
+    [Fact]
+    public async Task Relations_malware_matches_any_source_value_and_excludes_seed()
+    {
+        await using var context = fixture.CreateContext();
+        var seed = await IocQueryTestData.InsertIocAsync(
+            context, 1, "rmw-1", "https://evil.example/a", IocType.Url,
+            urlHost: "evil.example", parentDomain: "evil.example", malware: "Emotet");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "rmw-2", "https://evil.example/a", IocType.Url, port: 8443,
+            urlHost: "evil.example", parentDomain: "evil.example", malware: "TrickBot");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "rmw-3", "https://trick.example/b", IocType.Url,
+            urlHost: "trick.example", parentDomain: "trick.example", malware: "trickbot");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "rmw-4", "https://emotet.example/c", IocType.Url,
+            urlHost: "emotet.example", parentDomain: "emotet.example", malware: "EMOTET");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "rmw-5", "https://other.example/d", IocType.Url,
+            urlHost: "other.example", parentDomain: "other.example", malware: "Qakbot");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var page = await reader.GetRelatedAsync(
+            seed.Id, IocRelationKind.Malware, 1, 20, CancellationToken.None);
+
+        Assert.NotNull(page);
+        Assert.Equal(2, page!.TotalCount);
+        Assert.Contains(page.Items, item => item.IocValue == "https://trick.example/b");
+        Assert.Contains(page.Items, item => item.IocValue == "https://emotet.example/c");
+        Assert.DoesNotContain(page.Items, item => item.IocValue == "https://evil.example/a");
+        Assert.DoesNotContain(page.Items, item => item.IocValue == "https://other.example/d");
+    }
+
+    [Fact]
+    public async Task Relations_target_matches_across_groups()
+    {
+        await using var context = fixture.CreateContext();
+        var seed = await IocQueryTestData.InsertIocAsync(
+            context, 1, "rtg-1", "https://amazon.example/a", IocType.Url,
+            urlHost: "amazon.example", parentDomain: "amazon.example", target: "Amazon");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "rtg-2", "amazon-other.example", IocType.Domain,
+            parentDomain: "amazon-other.example", target: "AMAZON");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "rtg-3", "contoso.example", IocType.Domain,
+            parentDomain: "contoso.example", target: "Contoso");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var page = await reader.GetRelatedAsync(
+            seed.Id, IocRelationKind.Target, 1, 20, CancellationToken.None);
+
+        Assert.NotNull(page);
+        Assert.Equal(1, page!.TotalCount);
+        Assert.Equal("amazon-other.example", Assert.Single(page.Items).IocValue);
+    }
+
+    [Fact]
+    public async Task Relations_ip_group_target_is_allowed()
+    {
+        await using var context = fixture.CreateContext();
+        var seed = await IocQueryTestData.InsertIocAsync(
+            context, 1, "rip-t-1", "11.22.33.44", IocType.Ipv4, target: "Amazon");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "rip-t-2", "55.66.77.88", IocType.Ipv4, target: "amazon");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "rip-t-3", "99.88.77.66", IocType.Ipv4, target: "Contoso");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var page = await reader.GetRelatedAsync(
+            seed.Id, IocRelationKind.Target, 1, 20, CancellationToken.None);
+
+        Assert.NotNull(page);
+        Assert.Equal("55.66.77.88", Assert.Single(page!.Items).IocValue);
+    }
+
+    [Fact]
+    public async Task Relations_metadata_without_a_value_returns_empty_page()
+    {
+        await using var context = fixture.CreateContext();
+        var seed = await IocQueryTestData.InsertIocAsync(
+            context, 1, "rnm-1", "https://nometa.example/a", IocType.Url,
+            urlHost: "nometa.example", parentDomain: "nometa.example");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var page = await reader.GetRelatedAsync(
+            seed.Id, IocRelationKind.Malware, 1, 20, CancellationToken.None);
+
+        Assert.NotNull(page);
+        Assert.Empty(page!.Items);
+        Assert.Equal(0, page.TotalCount);
+    }
+
+    [Fact]
+    public async Task Relations_metadata_unknown_id_returns_null()
+    {
+        var reader = CreateReader(fixture.CreateContext());
+        Assert.Null(await reader.GetRelatedAsync(987654, IocRelationKind.Malware, 1, 20, CancellationToken.None));
+    }
+
     // --- 1.6 Browse -------------------------------------------------------------
 
     [Fact]
@@ -339,6 +502,79 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
         Assert.Equal(2, group.Sources.Count);
         Assert.Contains(group.Sources, source => source.Tags.Count == 1);
         Assert.Contains(group.Sources, source => source.Tags.Count == 0);
+    }
+
+    [Fact]
+    public async Task Browse_filters_by_malware_and_target()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "bm-1", "malware.example", IocType.Domain,
+            parentDomain: "malware.example", malware: "Emotet");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "bm-2", "target.example", IocType.Domain,
+            parentDomain: "target.example", target: "Amazon");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "bm-3", "clean.example", IocType.Domain,
+            parentDomain: "clean.example");
+
+        var reader = CreateReader(fixture.CreateContext());
+
+        var byMalware = await reader.BrowseAsync(
+            new IocBrowseCriteria(null, null, null, null, null, null, null,
+                IocBrowseOrderBy.IocValue, false, 1, 20, Malware: "emotet"),
+            CancellationToken.None);
+        Assert.Equal("malware.example", Assert.Single(byMalware.Items).IocValue);
+
+        var byTarget = await reader.BrowseAsync(
+            new IocBrowseCriteria(null, null, null, null, null, null, null,
+                IocBrowseOrderBy.IocValue, false, 1, 20, Target: " AMAZON "),
+            CancellationToken.None);
+        Assert.Equal("target.example", Assert.Single(byTarget.Items).IocValue);
+    }
+
+    [Fact]
+    public async Task Browse_metadata_filters_compose_with_type_and_provider()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "bc-1", "https://emotet.example/a", IocType.Url,
+            urlHost: "emotet.example", parentDomain: "emotet.example", malware: "Emotet");
+        await IocQueryTestData.InsertIocAsync(
+            context, 2, "bc-2", "https://emotet.example/b", IocType.Url,
+            urlHost: "emotet.example", parentDomain: "emotet.example", malware: "Emotet");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "bc-3", "emotet.example", IocType.Domain,
+            parentDomain: "emotet.example", malware: "Emotet");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var page = await reader.BrowseAsync(
+            new IocBrowseCriteria(IocType.Url, "1", null, null, null, null, null,
+                IocBrowseOrderBy.IocValue, false, 1, 20, Malware: "emotet"),
+            CancellationToken.None);
+
+        Assert.Equal(1, page.TotalCount);
+        var group = Assert.Single(page.Items);
+        Assert.Equal("https://emotet.example/a", group.IocValue);
+        Assert.Single(group.Sources);
+    }
+
+    [Fact]
+    public async Task Browse_metadata_filter_without_matches_returns_empty_envelope()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "be-1", "be.example", IocType.Domain,
+            parentDomain: "be.example", malware: "Emotet");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var page = await reader.BrowseAsync(
+            new IocBrowseCriteria(null, null, null, null, null, null, null,
+                IocBrowseOrderBy.LastSeenUtc, true, 1, 20, Target: "does-not-exist"),
+            CancellationToken.None);
+
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
     }
 
     [Fact]
@@ -473,6 +709,158 @@ public sealed class IocQueryReaderTests(SqlServerFixture fixture) : IAsyncLifeti
 
         var group = Assert.Single(page.Items);
         Assert.Equal("in.example", group.IocValue);
+    }
+
+    // --- 2.x Batch search -------------------------------------------------------
+
+    [Fact]
+    public async Task Batch_matches_the_single_path_for_the_same_identity()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(context, 1, "bs-1", "1.2.3.4", IocType.Ipv4, lastSeenUtc: Recent);
+        await IocQueryTestData.InsertIocAsync(context, 2, "bs-2", "1.2.3.4", IocType.Ipv4, lastSeenUtc: Recent);
+
+        var identity = new NormalizationResult(IocType.Ipv4, "1.2.3.4", null, null, null);
+        var reader = CreateReader(fixture.CreateContext());
+        var single = await reader.SearchGroupsAsync(identity, new IocSourceFilter(), 1, 20, CancellationToken.None);
+        var batch = await reader.SearchBatchAsync([identity], new IocSourceFilter(), 1, 20, CancellationToken.None);
+
+        var page = batch[identity];
+        Assert.Equal(single.TotalCount, page.TotalCount);
+        var singleGroup = Assert.Single(single.Items);
+        var batchGroup = Assert.Single(page.Items);
+        Assert.Equal(singleGroup.Id, batchGroup.Id);
+        Assert.Equal(
+            singleGroup.Sources.Select(source => (source.Provider, source.ProviderRecordId)),
+            batchGroup.Sources.Select(source => (source.Provider, source.ProviderRecordId)));
+    }
+
+    [Fact]
+    public async Task Batch_domain_returns_exact_url_host_and_parent_domain_groups()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "bd-1", "https://shop.example.co.uk/a", IocType.Url,
+            urlHost: "shop.example.co.uk", parentDomain: "example.co.uk");
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "bd-2", "api.example.co.uk", IocType.Domain,
+            parentDomain: "example.co.uk");
+
+        var identity = new NormalizationResult(IocType.Domain, "example.co.uk", null, null, "example.co.uk");
+        var reader = CreateReader(fixture.CreateContext());
+        var batch = await reader.SearchBatchAsync([identity], new IocSourceFilter(), 1, 20, CancellationToken.None);
+
+        var page = batch[identity];
+        Assert.Equal(2, page.TotalCount);
+        Assert.Contains(page.Items, item => item.IocValue == "api.example.co.uk");
+        Assert.Contains(page.Items, item => item.IocValue == "https://shop.example.co.uk/a");
+    }
+
+    [Fact]
+    public async Task Batch_port_variant_keeps_every_attributed_source_without_row_loss()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(
+            context, 1, "bp-1", "https://evil.example/a", IocType.Url, port: 8443,
+            urlHost: "evil.example", parentDomain: "evil.example");
+        await IocQueryTestData.InsertIocAsync(
+            context, 2, "bp-2", "https://evil.example/a", IocType.Url, port: 8443,
+            urlHost: "evil.example", parentDomain: "evil.example");
+
+        var identity = new NormalizationResult(IocType.Url, "https://evil.example/a", 8443, "evil.example", "evil.example");
+        var reader = CreateReader(fixture.CreateContext());
+        var batch = await reader.SearchBatchAsync([identity], new IocSourceFilter(), 1, 20, CancellationToken.None);
+
+        var group = Assert.Single(batch[identity].Items);
+        Assert.Equal(2, group.Sources.Count);
+        Assert.All(group.Sources, source => Assert.Equal(8443, source.Port));
+        Assert.Contains(group.Sources, source => source.Provider == "ThreatFox");
+        Assert.Contains(group.Sources, source => source.Provider == "PhishTank");
+    }
+
+    [Fact]
+    public async Task Batch_applies_filters_independently_to_every_identity()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(context, 1, "bf-1", "1.1.1.1", IocType.Ipv4);
+        await IocQueryTestData.InsertIocAsync(context, 2, "bf-2", "1.1.1.1", IocType.Ipv4);
+        await IocQueryTestData.InsertIocAsync(context, 1, "bf-3", "2.2.2.2", IocType.Ipv4);
+
+        var first = new NormalizationResult(IocType.Ipv4, "1.1.1.1", null, null, null);
+        var second = new NormalizationResult(IocType.Ipv4, "2.2.2.2", null, null, null);
+        var absent = new NormalizationResult(IocType.Ipv4, "9.9.9.9", null, null, null);
+        var reader = CreateReader(fixture.CreateContext());
+        var batch = await reader.SearchBatchAsync(
+            [first, second, absent],
+            new IocSourceFilter(Provider: "1"),
+            1,
+            20,
+            CancellationToken.None);
+
+        var firstGroup = Assert.Single(batch[first].Items);
+        Assert.Equal("ThreatFox", Assert.Single(firstGroup.Sources).Provider);
+        Assert.Single(batch[second].Items);
+        Assert.Equal(0, batch[absent].TotalCount);
+    }
+
+    [Fact]
+    public async Task Batch_pages_each_identity_independently()
+    {
+        await using var context = fixture.CreateContext();
+        for (var index = 0; index < 3; index++)
+        {
+            await IocQueryTestData.InsertIocAsync(
+                context, 1, $"bpg-{index}", $"https://page{index}.example/a", IocType.Url,
+                urlHost: "page.example", parentDomain: "page.example", lastSeenUtc: Now.AddDays(-index));
+        }
+
+        var identity = new NormalizationResult(IocType.Domain, "page.example", null, null, "page.example");
+        var reader = CreateReader(fixture.CreateContext());
+        var firstPage = await reader.SearchBatchAsync([identity], new IocSourceFilter(), 1, 2, CancellationToken.None);
+        var secondPage = await reader.SearchBatchAsync([identity], new IocSourceFilter(), 2, 2, CancellationToken.None);
+
+        Assert.Equal(3, firstPage[identity].TotalCount);
+        Assert.Equal(2, firstPage[identity].Items.Count);
+        Assert.Single(secondPage[identity].Items);
+    }
+
+    // --- 2.4 Suggestions --------------------------------------------------------
+
+    [Fact]
+    public async Task Suggestions_collapse_provider_duplicates_and_order_by_value()
+    {
+        await using var context = fixture.CreateContext();
+        await IocQueryTestData.InsertIocAsync(context, 1, "sg-1", "evil.example", IocType.Domain, parentDomain: "evil.example");
+        await IocQueryTestData.InsertIocAsync(context, 2, "sg-2", "evil.example", IocType.Domain, parentDomain: "evil.example");
+        await IocQueryTestData.InsertIocAsync(context, 1, "sg-3", "evilother.example", IocType.Domain, parentDomain: "evilother.example");
+
+        var reader = CreateReader(fixture.CreateContext());
+        var suggestions = await reader.GetIocSuggestionsAsync("EVIL", 8, CancellationToken.None);
+
+        Assert.Equal(
+            ["evil.example", "evilother.example"],
+            suggestions.Select(item => item.Value).ToArray());
+        Assert.All(suggestions, item => Assert.Equal("domain", item.IocType));
+    }
+
+    [Fact]
+    public async Task Suggestions_respect_the_limit_and_return_empty_when_nothing_matches()
+    {
+        await using var context = fixture.CreateContext();
+        for (var index = 0; index < 5; index++)
+        {
+            await IocQueryTestData.InsertIocAsync(
+                context, 1, $"sl-{index}", $"alpha{index}.example", IocType.Domain,
+                parentDomain: $"alpha{index}.example");
+        }
+
+        var reader = CreateReader(fixture.CreateContext());
+        var limited = await reader.GetIocSuggestionsAsync("alpha", 3, CancellationToken.None);
+        Assert.Equal(3, limited.Count);
+        Assert.Equal("alpha0.example", limited[0].Value);
+
+        var none = await reader.GetIocSuggestionsAsync("zeta", 8, CancellationToken.None);
+        Assert.Empty(none);
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider

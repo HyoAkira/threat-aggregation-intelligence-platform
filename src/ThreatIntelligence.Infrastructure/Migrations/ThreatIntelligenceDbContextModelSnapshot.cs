@@ -173,42 +173,6 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                     b.ToTable("encryptedSecrets", (string)null);
                 });
 
-            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.IocChatConnectionSettings", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    b.Property<string>("BaseUrl")
-                        .HasMaxLength(2048)
-                        .HasColumnType("nvarchar(2048)")
-                        .HasColumnName("baseUrl");
-
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("bit")
-                        .HasColumnName("enabled");
-
-                    b.Property<string>("ModelId")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
-                        .HasColumnName("modelId");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("updatedAt");
-
-                    b.Property<byte[]>("Version")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("iocChatConnectionSettings", (string)null);
-                });
-
             modelBuilder.Entity("ThreatIntelligence.Domain.Entities.FetchHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -266,6 +230,11 @@ namespace ThreatIntelligence.Infrastructure.Migrations
 
                     b.HasIndex("ProviderId", "StartedAt")
                         .HasDatabaseName("IX_fetchHistory_ProviderId_StartedAt");
+
+                    b.HasIndex("Status", "FinishedAt")
+                        .HasDatabaseName("IX_fetchHistory_Status_FinishedAt");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Status", "FinishedAt"), new[] { "RecordsAdded", "RecordsUpdated" });
 
                     b.ToTable("fetchHistory", (string)null);
                 });
@@ -328,6 +297,13 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("malwareAlias");
 
+                    b.Property<string>("MalwareKey")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("malwareKey")
+                        .HasComputedColumnSql("LOWER(LTRIM(RTRIM([Malware])))", true);
+
                     b.Property<string>("MalwarePrintable")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)")
@@ -381,6 +357,13 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("target");
 
+                    b.Property<string>("TargetKey")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("targetKey")
+                        .HasComputedColumnSql("LOWER(LTRIM(RTRIM([Target])))", true);
+
                     b.Property<byte?>("ThreatFoxConfidenceLevel")
                         .HasColumnType("tinyint")
                         .HasColumnName("threatFoxConfidenceLevel");
@@ -403,6 +386,12 @@ namespace ThreatIntelligence.Infrastructure.Migrations
 
                     b.HasIndex("LastSeenUtc")
                         .HasDatabaseName("IX_iocs_LastSeenUtc");
+
+                    b.HasIndex("MalwareKey")
+                        .HasDatabaseName("IX_iocs_MalwareKey");
+
+                    b.HasIndex("TargetKey")
+                        .HasDatabaseName("IX_iocs_TargetKey");
 
                     b.HasIndex("IocType", "IocValueHash")
                         .HasDatabaseName("IX_iocs_IocType_IocValueHash");
@@ -446,6 +435,42 @@ namespace ThreatIntelligence.Infrastructure.Migrations
                     b.HasIndex("TagId");
 
                     b.ToTable("iocTags", (string)null);
+                });
+
+            modelBuilder.Entity("ThreatIntelligence.Domain.Entities.IocChatConnectionSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
+                        .HasColumnName("baseUrl");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("ModelId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("modelId");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updatedAt");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("iocChatConnectionSettings", (string)null);
                 });
 
             modelBuilder.Entity("ThreatIntelligence.Domain.Entities.Provider", b =>

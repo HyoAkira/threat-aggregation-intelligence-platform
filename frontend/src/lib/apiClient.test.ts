@@ -2,11 +2,14 @@ import {
   ApiError,
   apiFetch,
   browseIocs,
+  getAdminTimeline,
   getIocDetail,
   getIocRelations,
+  getIocSuggestions,
   getIocTagCatalog,
   login,
   searchIocs,
+  searchIocsBulk,
   setUnauthorizedHandler,
 } from './apiClient'
 import { queryClient } from './queryClient'
@@ -195,17 +198,104 @@ describe('apiFetch transport', () => {
 
 describe('IOC tag catalog client', () => {
   it('requests the bounded normalized tag catalog', async () => {
-    const fetchMock = jest.fn().mockResolvedValue(
-      jsonResponse([{ name: 'phishing', usageCount: 4 }]),
-    )
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(jsonResponse([{ name: 'phishing', usageCount: 4 }]))
     globalThis.fetch = fetchMock
 
-    await expect(
-      getIocTagCatalog({ q: 'phi', limit: 8 }),
-    ).resolves.toEqual([{ name: 'phishing', usageCount: 4 }])
+    await expect(getIocTagCatalog({ q: 'phi', limit: 8 })).resolves.toEqual([
+      { name: 'phishing', usageCount: 4 },
+    ])
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/iocs/tags?q=phi&limit=8',
       expect.objectContaining({ method: 'GET' }),
+    )
+  })
+})
+
+const bulkResult = {
+  items: [
+    {
+      input: '1.2.3.4',
+      status: 'matched',
+      groups: [urlGroup],
+      page: 1,
+      pageSize: 20,
+      totalCount: 1,
+    },
+  ],
+  totalCount: 1,
+  matchedCount: 1,
+  notFoundCount: 0,
+  invalidCount: 0,
+}
+
+describe('IOC bulk search and suggestion clients', () => {
+  beforeEach(() => {
+    ;(globalThis as { sessionStorage?: Storage }).sessionStorage =
+      createSessionStorageStub() as Storage
+    useAuthStore.setState({ session: null })
+    queryClient.clear()
+  })
+
+  it('searchIocsBulk posts the ordered queries, filters, and page bounds', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(bulkResult))
+    globalThis.fetch = fetchMock
+
+    const parsed = await searchIocsBulk({
+      queries: ['1.2.3.4', 'evil.example'],
+      tag: 'botnet',
+      provider: '1',
+      page: 2,
+      pageSize: 20,
+    })
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/iocs/search/bulk')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body as string)).toEqual({
+      queries: ['1.2.3.4', 'evil.example'],
+      tag: 'botnet',
+      provider: '1',
+      page: 2,
+      pageSize: 20,
+    })
+    expect((init.headers as Record<string, string>)['Content-Type']).toBe(
+      'application/json',
+    )
+    expect(parsed.items[0].status).toBe('matched')
+  })
+
+  it('searchIocsBulk rejects a response whose shape is invalid', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ items: [{ status: 'matched' }] }))
+    globalThis.fetch = fetchMock
+
+    await expect(
+      searchIocsBulk({
+        queries: ['1.2.3.4'],
+        tag: null,
+        provider: null,
+        page: 1,
+        pageSize: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_response' })
+  })
+
+  it('getIocSuggestions encodes the prefix and limit', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(
+        jsonResponse([{ value: 'evil.example', iocType: 'domain' }]),
+      )
+    globalThis.fetch = fetchMock
+
+    await expect(
+      getIocSuggestions({ q: 'evil.example', limit: 8 }),
+    ).resolves.toEqual([{ value: 'evil.example', iocType: 'domain' }])
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      '/api/iocs/suggestions?q=evil.example&limit=8',
     )
   })
 })
@@ -232,10 +322,32 @@ describe('typed query functions', () => {
     )
   })
 
+  it('searchIocs sends optional malware and target filters', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(makePaged([urlGroup], 1, 20, 1)))
+
+    await searchIocs({
+      q: 'evil.example',
+      tag: null,
+      provider: null,
+      malware: 'Emotet',
+      target: 'Amazon',
+    })
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      '/api/iocs/search?q=evil.example&malware=Emotet&target=Amazon',
+    )
+  })
+
   it('searchIocs omits absent filters', async () => {
     fetchMock.mockResolvedValue(jsonResponse(makePaged([urlGroup], 1, 20, 1)))
 
-    await searchIocs({ q: 'evil.example', tag: null, provider: null })
+    await searchIocs({
+      q: 'evil.example',
+      tag: null,
+      provider: null,
+      malware: null,
+      target: null,
+    })
 
     expect(fetchMock.mock.calls[0][0]).toBe('/api/iocs/search?q=evil.example')
   })
@@ -265,6 +377,18 @@ describe('typed query functions', () => {
     )
   })
 
+  it('getIocRelations accepts the malware and target kinds', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ items: [], page: 1, pageSize: 20, totalCount: 0 }),
+    )
+
+    await getIocRelations({ id: 7, relation: 'malware', page: 1, pageSize: 20 })
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      '/api/iocs/7/relations?relation=malware&page=1&pageSize=20',
+    )
+  })
+
   it('browseIocs serializes only non-default controls', async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({ items: [], page: 1, pageSize: 20, totalCount: 0 }),
@@ -284,6 +408,8 @@ describe('typed query functions', () => {
       type: 'url',
       provider: '1',
       tag: 'phishing',
+      malware: 'Emotet',
+      target: 'Amazon',
       lastSeenFrom: '2026-01-01T00:00:00.000Z',
       lastSeenTo: '2026-01-31T23:59:59.000Z',
       orderBy: 'iocValue',
@@ -293,7 +419,7 @@ describe('typed query functions', () => {
     })
 
     expect(fetchMock.mock.calls[0][0]).toBe(
-      '/api/iocs?type=url&provider=1&tag=phishing&lastSeenFrom=2026-01-01T00%3A00%3A00.000Z&lastSeenTo=2026-01-31T23%3A59%3A59.000Z&orderBy=iocValue&dir=asc&page=3&pageSize=50',
+      '/api/iocs?type=url&provider=1&tag=phishing&malware=Emotet&target=Amazon&lastSeenFrom=2026-01-01T00%3A00%3A00.000Z&lastSeenTo=2026-01-31T23%3A59%3A59.000Z&orderBy=iocValue&dir=asc&page=3&pageSize=50',
     )
   })
 
@@ -319,5 +445,61 @@ describe('typed query functions', () => {
     expect((init.headers as Record<string, string>)['Content-Type']).toBe(
       'application/json',
     )
+  })
+})
+
+describe('admin timeline client', () => {
+  let fetchMock: jest.Mock
+
+  beforeEach(() => {
+    ;(globalThis as { sessionStorage?: Storage }).sessionStorage =
+      createSessionStorageStub() as Storage
+    useAuthStore.setState({ session: null })
+    queryClient.clear()
+    fetchMock = jest.fn()
+    globalThis.fetch = fetchMock
+  })
+
+  it('sends the encoded UTC range and timezone and validates the response', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        from: '2026-09-14T00:00:00.000Z',
+        to: '2026-09-21T00:00:00.000Z',
+        timeZone: 'Europe/Istanbul',
+        hasSuccessfulFetches: false,
+        points: [],
+      }),
+    )
+
+    const timeline = await getAdminTimeline({
+      from: '2026-09-14T00:00:00.000Z',
+      to: '2026-09-21T00:00:00.000Z',
+      timeZone: 'Europe/Istanbul',
+    })
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      '/api/admin/summary/timeline?from=2026-09-14T00%3A00%3A00.000Z&to=2026-09-21T00%3A00%3A00.000Z&timeZone=Europe%2FIstanbul',
+    )
+    expect(timeline.hasSuccessfulFetches).toBe(false)
+  })
+
+  it('rejects a malformed timeline payload', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        from: '2026-09-14T00:00:00.000Z',
+        to: '2026-09-21T00:00:00.000Z',
+        timeZone: 'UTC',
+        hasSuccessfulFetches: true,
+        points: [{ localDate: 'bad-date', recordsAdded: 1 }],
+      }),
+    )
+
+    await expect(
+      getAdminTimeline({
+        from: '2026-09-14T00:00:00.000Z',
+        to: '2026-09-21T00:00:00.000Z',
+        timeZone: 'UTC',
+      }),
+    ).rejects.toBeInstanceOf(ApiError)
   })
 })

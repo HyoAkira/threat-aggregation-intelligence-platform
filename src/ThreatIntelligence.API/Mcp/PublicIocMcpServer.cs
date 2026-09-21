@@ -34,6 +34,8 @@ public sealed partial class PublicIocMcpServer(
         [Description("The IOC value to search for (IP address, domain, or URL)")] string query,
         [Description("Optional tag filter")] string? tag = null,
         [Description("Optional provider name filter")] string? provider = null,
+        [Description("Optional malware filter (at most 200 characters)")] string? malware = null,
+        [Description("Optional target filter (at most 500 characters)")] string? target = null,
         [Description("Page number (1-based)")] int page = 1,
         [Description("Number of items per page (1-100)")] int pageSize = 20,
         CancellationToken cancellationToken = default)
@@ -45,7 +47,12 @@ public sealed partial class PublicIocMcpServer(
         }
         ValidatePage(page, pageSize);
 
-        var result = await mediator.Send(new SearchIocsQuery(query, tag, provider, page, pageSize), cancellationToken);
+        var malwareFilter = NormalizeMetadataFilter(malware, IocSearchEvaluator.MaxMalwareFilterLength, "malware");
+        var targetFilter = NormalizeMetadataFilter(target, IocSearchEvaluator.MaxTargetFilterLength, "target");
+
+        var result = await mediator.Send(
+            new SearchIocsQuery(query, tag, provider, page, pageSize, malwareFilter, targetFilter),
+            cancellationToken);
         logger.LogDebug("MCP tool ioc_search_exact returned {Count} items", result.Items.Count);
         return MapPagedResult(result);
     }
@@ -76,6 +83,8 @@ public sealed partial class PublicIocMcpServer(
         [Description("IOC type filter: ipv4, ipv6, domain, or url")] string? type = null,
         [Description("Provider name filter")] string? provider = null,
         [Description("Tag filter")] string? tag = null,
+        [Description("Optional malware filter (at most 200 characters)")] string? malware = null,
+        [Description("Optional target filter (at most 500 characters)")] string? target = null,
         [Description("Filter first seen from (ISO 8601 UTC)")] string? firstSeenFrom = null,
         [Description("Filter first seen to (ISO 8601 UTC)")] string? firstSeenTo = null,
         [Description("Filter last seen from (ISO 8601 UTC)")] string? lastSeenFrom = null,
@@ -88,20 +97,24 @@ public sealed partial class PublicIocMcpServer(
     {
         logger.LogDebug("MCP tool ioc_browse invoked: page={Page}, pageSize={PageSize}", page, pageSize);
         ValidatePage(page, pageSize);
+
+        var malwareFilter = NormalizeMetadataFilter(malware, IocSearchEvaluator.MaxMalwareFilterLength, "malware");
+        var targetFilter = NormalizeMetadataFilter(target, IocSearchEvaluator.MaxTargetFilterLength, "target");
+
         var result = await mediator.Send(new BrowseIocsQuery(
             type, provider, tag,
             ParseDateTime(firstSeenFrom), ParseDateTime(firstSeenTo),
             ParseDateTime(lastSeenFrom), ParseDateTime(lastSeenTo),
-            orderBy, dir, page, pageSize), cancellationToken);
+            orderBy, dir, page, pageSize, malwareFilter, targetFilter), cancellationToken);
         logger.LogDebug("MCP tool ioc_browse returned {Count} items", result.Items.Count);
         return MapPagedResult(result);
     }
 
     [McpServerTool(Name = "ioc_get_relations", ReadOnly = true)]
-    [Description("Returns related IOC groups for a given IOC by host relationship.")]
+    [Description("Returns related IOC groups for a given IOC by host or metadata relationship.")]
     public async Task<PagedIocGroups> GetRelationsAsync(
         [Description("The database id of the IOC group")] int id,
-        [Description("Relation type: urlHost or parentDomain")] string relation,
+        [Description("Relation type: urlHost, parentDomain, malware, or target")] string relation,
         [Description("Page number (1-based)")] int page = 1,
         [Description("Number of items per page (1-100)")] int pageSize = 20,
         CancellationToken cancellationToken = default)
@@ -127,8 +140,28 @@ public sealed partial class PublicIocMcpServer(
         {
             "urlhost" => IocRelationKind.UrlHost,
             "parentdomain" => IocRelationKind.ParentDomain,
-            _ => throw new McpToolException("invalid_input", "The relation must be urlHost or parentDomain.")
+            "malware" => IocRelationKind.Malware,
+            "target" => IocRelationKind.Target,
+            _ => throw new McpToolException("invalid_input", "The relation must be urlHost, parentDomain, malware, or target.")
         };
+
+    private static string? NormalizeMetadataFilter(string? value, int maxLength, string name)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        if (trimmed.Length > maxLength)
+        {
+            throw new McpToolException(
+                "invalid_input",
+                $"The {name} filter must be no longer than {maxLength} characters.");
+        }
+
+        return trimmed;
+    }
 
     private static DateTime? ParseDateTime(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null :

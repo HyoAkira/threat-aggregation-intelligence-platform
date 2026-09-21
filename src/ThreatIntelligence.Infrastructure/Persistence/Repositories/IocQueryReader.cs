@@ -113,6 +113,18 @@ public sealed class IocQueryReader(
             query = query.Where(i => dbContext.IoCTags.Any(it => it.IocId == i.Id && it.TagId == tagId));
         }
 
+        if (!string.IsNullOrWhiteSpace(filter.Malware))
+        {
+            var malwareKey = filter.Malware.Trim().ToLowerInvariant();
+            query = query.Where(i => EF.Property<string>(i, "MalwareKey") == malwareKey);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Target))
+        {
+            var targetKey = filter.Target.Trim().ToLowerInvariant();
+            query = query.Where(i => EF.Property<string>(i, "TargetKey") == targetKey);
+        }
+
         var grouped = query.GroupBy(i => new { i.IocType, i.IocValue });
         var totalCount = await grouped.CountAsync(cancellationToken);
         if (totalCount == 0)
@@ -142,6 +154,173 @@ public sealed class IocQueryReader(
             .Select(key => groups[(key.IocType, key.IocValue)])
             .ToList();
         return new PagedResult<IocGroupResult>(items, page, pageSize, totalCount);
+    }
+
+    public async Task<IReadOnlyDictionary<NormalizationResult, PagedResult<IocGroupResult>>> SearchBatchAsync(
+        IReadOnlyList<NormalizationResult> identities,
+        IocSourceFilter filter,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        if (identities.Count == 0)
+        {
+            return new Dictionary<NormalizationResult, PagedResult<IocGroupResult>>();
+        }
+
+        var distinct = identities.Distinct().ToList();
+        var values = distinct.Select(identity => identity.IocValue).Distinct().ToList();
+        var domainValues = distinct
+            .Where(identity => identity.Type == IocType.Domain)
+            .Select(identity => identity.IocValue)
+            .Distinct()
+            .ToList();
+
+        // One bounded candidate query covers exact identities and domain relation rows; the precise
+        // per-identity predicate is applied in memory so ports, hashes, and relations stay identical
+        // to the single-search path.
+        var query = dbContext.Iocs.AsNoTracking().Where(i =>
+            values.Contains(i.IocValue)
+            || domainValues.Contains(i.UrlHost!)
+            || domainValues.Contains(i.ParentDomain!));
+
+        if (!string.IsNullOrWhiteSpace(filter.Provider))
+        {
+            var providerIds = await ResolveProviderIdsAsync(filter.Provider, cancellationToken);
+            if (providerIds is null)
+            {
+                return EmptyBatch(distinct, page, pageSize);
+            }
+
+            query = query.Where(i => providerIds.Contains(i.ProviderId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Tag))
+        {
+            var tagName = filter.Tag.Trim().ToLowerInvariant();
+            var tagId = await dbContext.Tags.AsNoTracking()
+                .Where(tag => tag.Name == tagName)
+                .Select(tag => (int?)tag.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (tagId is null)
+            {
+                return EmptyBatch(distinct, page, pageSize);
+            }
+
+            query = query.Where(i => dbContext.IoCTags.Any(it => it.IocId == i.Id && it.TagId == tagId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Malware))
+        {
+            var malwareKey = filter.Malware.Trim().ToLowerInvariant();
+            query = query.Where(i => EF.Property<string>(i, "MalwareKey") == malwareKey);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Target))
+        {
+            var targetKey = filter.Target.Trim().ToLowerInvariant();
+            query = query.Where(i => EF.Property<string>(i, "TargetKey") == targetKey);
+        }
+
+        var rows = await query.ToListAsync(cancellationToken);
+        if (rows.Count == 0)
+        {
+            return EmptyBatch(distinct, page, pageSize);
+        }
+
+        var groups = await BuildGroupsAsync(rows, cancellationToken);
+        var rowsByKey = rows
+            .GroupBy(row => (row.IocType, row.IocValue))
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        var results = new Dictionary<NormalizationResult, PagedResult<IocGroupResult>>();
+        foreach (var identity in distinct)
+        {
+            var hash = hasher.Hash(identity.IocValue);
+            var matchingKeys = rowsByKey
+                .Where(pair => pair.Value.Any(row => MatchesIdentity(identity, hash, row)))
+                .Select(pair => pair.Key)
+                .ToList();
+
+            if (matchingKeys.Count == 0)
+            {
+                results[identity] = PagedResult<IocGroupResult>.Empty(page, pageSize);
+                continue;
+            }
+
+            // Same deterministic ordering as SearchGroupsAsync, expressed over the grouped rows.
+            var ordered = matchingKeys
+                .OrderByDescending(key => key.IocType == identity.Type && key.IocValue == identity.IocValue)
+                .ThenBy(key => groups[key].LastSeenUtc is null ? 1 : 0)
+                .ThenByDescending(key => groups[key].LastSeenUtc)
+                .ThenBy(key => key.IocType)
+                .ThenBy(key => key.IocValue, StringComparer.Ordinal)
+                .Select(key => groups[key])
+                .ToList();
+
+            var pageItems = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+            results[identity] = new PagedResult<IocGroupResult>(pageItems, page, pageSize, ordered.Count);
+        }
+
+        return results;
+    }
+
+    public async Task<IReadOnlyList<IocSuggestionItem>> GetIocSuggestionsAsync(
+        string prefix,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var normalized = prefix.Trim().ToLowerInvariant();
+        var candidates = await dbContext.Iocs.AsNoTracking()
+            .Where(i => i.IocValue.ToLower().StartsWith(normalized))
+            .Select(i => new { i.IocType, i.IocValue })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return candidates
+            .OrderBy(candidate => candidate.IocValue, StringComparer.Ordinal)
+            .ThenBy(candidate => IocTypeToken.ToToken(candidate.IocType), StringComparer.Ordinal)
+            .Take(limit)
+            .Select(candidate => new IocSuggestionItem(
+                candidate.IocValue,
+                IocTypeToken.ToToken(candidate.IocType)))
+            .ToList();
+    }
+
+    private static IReadOnlyDictionary<NormalizationResult, PagedResult<IocGroupResult>> EmptyBatch(
+        IReadOnlyList<NormalizationResult> identities,
+        int page,
+        int pageSize) =>
+        identities.ToDictionary(
+            identity => identity,
+            _ => PagedResult<IocGroupResult>.Empty(page, pageSize));
+
+    private static bool MatchesIdentity(NormalizationResult identity, byte[] hash, IoC row)
+    {
+        if (identity.Type == IocType.Domain)
+        {
+            return (row.IocType == IocType.Domain
+                    && row.IocValue == identity.IocValue
+                    && row.IocValueHash.AsSpan().SequenceEqual(hash))
+                || row.UrlHost == identity.IocValue
+                || row.ParentDomain == identity.IocValue;
+        }
+
+        if (row.IocType != identity.Type
+            || row.IocValue != identity.IocValue
+            || !row.IocValueHash.AsSpan().SequenceEqual(hash))
+        {
+            return false;
+        }
+
+        // A bare IP query groups every explicit port and a URL query keeps its canonical port.
+        // Domain relation searches must not discard matching URLs that use a non-default port.
+        return identity.Type == IocType.Url || (IsIp(identity.Type) && identity.Port is not null)
+            ? row.Port == identity.Port
+            : true;
     }
 
     public async Task<IocGroupResult?> GetDetailGroupAsync(int id, CancellationToken cancellationToken)
@@ -207,6 +386,18 @@ public sealed class IocQueryReader(
             // Multiple tag values are an OR filter: a row matching any selected tag qualifies.
             baseQuery = baseQuery.Where(i => dbContext.IoCTags.Any(it =>
                 it.IocId == i.Id && tagIds.Contains(it.TagId)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(criteria.Malware))
+        {
+            var malwareKey = criteria.Malware.Trim().ToLowerInvariant();
+            baseQuery = baseQuery.Where(i => EF.Property<string>(i, "MalwareKey") == malwareKey);
+        }
+
+        if (!string.IsNullOrWhiteSpace(criteria.Target))
+        {
+            var targetKey = criteria.Target.Trim().ToLowerInvariant();
+            baseQuery = baseQuery.Where(i => EF.Property<string>(i, "TargetKey") == targetKey);
         }
 
         var grouped = baseQuery.GroupBy(i => new { i.IocType, i.IocValue });
@@ -282,6 +473,21 @@ public sealed class IocQueryReader(
             return null;
         }
 
+        if (relation is IocRelationKind.UrlHost or IocRelationKind.ParentDomain)
+        {
+            return await GetHostRelatedAsync(seed, relation, page, pageSize, cancellationToken);
+        }
+
+        return await GetMetadataRelatedAsync(seed, relation, page, pageSize, cancellationToken);
+    }
+
+    private async Task<PagedResult<IocGroupResult>> GetHostRelatedAsync(
+        IoC seed,
+        IocRelationKind relation,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
         if (IsIp(seed.IocType))
         {
             throw new IocRelationNotSupportedException(
@@ -301,7 +507,54 @@ public sealed class IocQueryReader(
 
         // Exclude the resolved group itself; a group is identified by its normalized identity.
         relatedRows = relatedRows.Where(i => !(i.IocType == seed.IocType && i.IocValue == seed.IocValue));
+        return await PageGroupsAsync(relatedRows, page, pageSize, cancellationToken);
+    }
 
+    /// <summary>
+    /// Malware/target relations resolve the complete distinct non-empty normalized value set of the
+    /// seed group's sources and match any group whose sources carry one of those values. Unlike host
+    /// relations this is available to every IOC type, including IP groups.
+    /// </summary>
+    private async Task<PagedResult<IocGroupResult>> GetMetadataRelatedAsync(
+        IoC seed,
+        IocRelationKind relation,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var seedRows = dbContext.Iocs.AsNoTracking()
+            .Where(i => i.IocType == seed.IocType
+                && i.IocValueHash == seed.IocValueHash
+                && i.IocValue == seed.IocValue);
+
+        var keys = relation == IocRelationKind.Malware
+            ? await seedRows.Select(i => EF.Property<string>(i, "MalwareKey")).ToListAsync(cancellationToken)
+            : await seedRows.Select(i => EF.Property<string>(i, "TargetKey")).ToListAsync(cancellationToken);
+        var values = keys
+            .Where(key => !string.IsNullOrEmpty(key))
+            .Distinct()
+            .ToList();
+
+        if (values.Count == 0)
+        {
+            return PagedResult<IocGroupResult>.Empty(page, pageSize);
+        }
+
+        var relatedRows = relation == IocRelationKind.Malware
+            ? dbContext.Iocs.AsNoTracking().Where(i => values.Contains(EF.Property<string>(i, "MalwareKey")))
+            : dbContext.Iocs.AsNoTracking().Where(i => values.Contains(EF.Property<string>(i, "TargetKey")));
+
+        // Exclude the resolved group itself; a group is identified by its normalized identity.
+        relatedRows = relatedRows.Where(i => !(i.IocType == seed.IocType && i.IocValue == seed.IocValue));
+        return await PageGroupsAsync(relatedRows, page, pageSize, cancellationToken);
+    }
+
+    private async Task<PagedResult<IocGroupResult>> PageGroupsAsync(
+        IQueryable<IoC> relatedRows,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
         var grouped = relatedRows.GroupBy(i => new { i.IocType, i.IocValue });
 
         var totalCount = await grouped.CountAsync(cancellationToken);

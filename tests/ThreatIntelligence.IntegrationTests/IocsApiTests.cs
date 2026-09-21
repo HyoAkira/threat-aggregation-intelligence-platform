@@ -209,6 +209,74 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Relations_support_malware_and_target_for_ip_groups()
+    {
+        int seedId;
+        await using (var context = fixture.CreateContext())
+        {
+            var seed = await IocQueryTestData.InsertIocAsync(
+                context, 1, "api-rel-meta", "44.44.44.44", IocType.Ipv4,
+                malware: "Emotet", target: "Amazon");
+            seedId = seed.Id;
+            await IocQueryTestData.InsertIocAsync(
+                context, 1, "api-rel-meta-2", "55.55.55.55", IocType.Ipv4,
+                malware: "emotet", target: "Contoso");
+        }
+
+        using var malware = await GetAuthorized($"/api/iocs/{seedId}/relations?relation=malware");
+        Assert.Equal(HttpStatusCode.OK, malware.StatusCode);
+        var malwareEnvelope = (await malware.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(1, (int)malwareEnvelope["totalCount"]!);
+        Assert.Equal("55.55.55.55", (string)malwareEnvelope["items"]!.AsArray()[0]!["iocValue"]!);
+
+        using var target = await GetAuthorized($"/api/iocs/{seedId}/relations?relation=target");
+        Assert.Equal(HttpStatusCode.OK, target.StatusCode);
+        var targetEnvelope = (await target.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(0, (int)targetEnvelope["totalCount"]!);
+    }
+
+    [Fact]
+    public async Task Search_and_browse_accept_malware_and_target_filters()
+    {
+        await using (var context = fixture.CreateContext())
+        {
+            await IocQueryTestData.InsertIocAsync(
+                context, 1, "api-meta-1", "9.9.9.9", IocType.Ipv4, malware: "Emotet", target: "Amazon");
+            await IocQueryTestData.InsertIocAsync(
+                context, 2, "api-meta-2", "9.9.9.9", IocType.Ipv4, malware: "TrickBot", target: "Contoso");
+            await IocQueryTestData.InsertIocAsync(
+                context, 1, "api-meta-3", "8.8.8.8", IocType.Ipv4, malware: "Emotet", target: "Amazon");
+        }
+
+        using var search = await GetAuthorized("/api/iocs/search?q=9.9.9.9&malware=emotet");
+        Assert.Equal(HttpStatusCode.OK, search.StatusCode);
+        var searchEnvelope = (await search.Content.ReadFromJsonAsync<JsonObject>())!;
+        var searchGroup = searchEnvelope["items"]!.AsArray().Single()!.AsObject();
+        var searchSources = searchGroup["sources"]!.AsArray();
+        Assert.Single(searchSources);
+        Assert.Equal("Emotet", (string)searchSources[0]!["malware"]!);
+
+        using var browse = await GetAuthorized("/api/iocs?target=AMAZON");
+        Assert.Equal(HttpStatusCode.OK, browse.StatusCode);
+        var browseEnvelope = (await browse.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(2, (int)browseEnvelope["totalCount"]!);
+    }
+
+    [Fact]
+    public async Task Search_and_browse_reject_over_limit_metadata_filters()
+    {
+        var longMalware = new string('a', 201);
+        using var searchMalware = await GetAuthorized($"/api/iocs/search?q=1.2.3.4&malware={longMalware}");
+        Assert.Equal(HttpStatusCode.BadRequest, searchMalware.StatusCode);
+        var problem = (await searchMalware.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("invalid_input", (string)problem["code"]!);
+
+        var longTarget = new string('a', 501);
+        using var browseTarget = await GetAuthorized($"/api/iocs?target={longTarget}");
+        Assert.Equal(HttpStatusCode.BadRequest, browseTarget.StatusCode);
+    }
+
+    [Fact]
     public async Task Guarded_conflict_maps_to_409()
     {
         using var response = await _client.GetAsync("/api/test/conflict");
@@ -239,6 +307,132 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
         Assert.DoesNotContain("InvalidOperationException", body, StringComparison.Ordinal);
         var problem = JsonNode.Parse(body)!.AsObject();
         Assert.Equal("server_error", (string)problem["code"]!);
+    }
+
+    [Fact]
+    public async Task Bulk_search_is_anonymous_and_returns_ordered_mixed_statuses()
+    {
+        using var response = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { queries = new[] { "1.2.3.4", "absent.example", "not an ioc" } });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(3, (int)body["totalCount"]!);
+        Assert.Equal(1, (int)body["matchedCount"]!);
+        Assert.Equal(1, (int)body["notFoundCount"]!);
+        Assert.Equal(1, (int)body["invalidCount"]!);
+
+        var items = body["items"]!.AsArray();
+        Assert.Equal("1.2.3.4", (string)items[0]!["input"]!);
+        Assert.Equal("matched", (string)items[0]!["status"]!);
+        Assert.Equal("absent.example", (string)items[1]!["input"]!);
+        Assert.Equal("not_found", (string)items[1]!["status"]!);
+        Assert.Equal("not an ioc", (string)items[2]!["input"]!);
+        Assert.Equal("invalid", (string)items[2]!["status"]!);
+        Assert.Equal("ipv4", (string)items[0]!["groups"]!.AsArray()[0]!["iocType"]!);
+        Assert.Equal(2, items[0]!["groups"]!.AsArray()[0]!["sources"]!.AsArray().Count);
+    }
+
+    [Fact]
+    public async Task Bulk_search_ignores_blank_lines_between_values()
+    {
+        using var response = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { queries = new[] { "  1.2.3.4  ", "", "   " } });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(1, (int)body["totalCount"]!);
+        var item = body["items"]!.AsArray().Single()!;
+        Assert.Equal("1.2.3.4", (string)item["input"]!);
+        Assert.Equal("matched", (string)item["status"]!);
+    }
+
+    [Fact]
+    public async Task Bulk_search_returns_domain_related_url_groups()
+    {
+        using var response = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { queries = new[] { "evil.example" } });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        var item = body["items"]!.AsArray().Single()!;
+        Assert.Equal("matched", (string)item["status"]!);
+        var group = item["groups"]!.AsArray().Single()!;
+        Assert.Equal("https://evil.example/x", (string)group["iocValue"]!);
+        Assert.Equal("evil.example", (string)group["urlHost"]!);
+    }
+
+    [Fact]
+    public async Task Bulk_search_applies_provider_filter_to_each_value()
+    {
+        using var response = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { queries = new[] { "1.2.3.4", "https://evil.example/x" }, provider = "2" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+        var items = body["items"]!.AsArray();
+        Assert.Equal("matched", (string)items[0]!["status"]!);
+        Assert.Equal("PhishTank", (string)items[0]!["groups"]!.AsArray()[0]!["sources"]!.AsArray()[0]!["provider"]!);
+        Assert.Equal("not_found", (string)items[1]!["status"]!);
+    }
+
+    [Fact]
+    public async Task Bulk_search_rejects_valid_limits_that_are_out_of_bounds()
+    {
+        using var tooMany = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { queries = Enumerable.Range(0, 101).Select(index => $"host{index}.example").ToArray() });
+        Assert.Equal(HttpStatusCode.BadRequest, tooMany.StatusCode);
+        var tooManyProblem = (await tooMany.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal("invalid_input", (string)tooManyProblem["code"]!);
+
+        using var oversized = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { queries = new[] { new string('a', 2049) } });
+        Assert.Equal(HttpStatusCode.BadRequest, oversized.StatusCode);
+
+        using var badPage = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { queries = new[] { "1.2.3.4" }, page = 0 });
+        Assert.Equal(HttpStatusCode.BadRequest, badPage.StatusCode);
+
+        using var badPageSize = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { queries = new[] { "1.2.3.4" }, pageSize = 101 });
+        Assert.Equal(HttpStatusCode.BadRequest, badPageSize.StatusCode);
+
+        using var missing = await _client.PostAsJsonAsync(
+            "/api/iocs/search/bulk",
+            new { tag = "botnet" });
+        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+    }
+
+    [Fact]
+    public async Task Suggestions_return_bounded_prefix_matches_and_reject_invalid_input()
+    {
+        using var matching = await _client.GetAsync("/api/iocs/suggestions?q=%201.2%20");
+        Assert.Equal(HttpStatusCode.OK, matching.StatusCode);
+        var items = (await matching.Content.ReadFromJsonAsync<JsonArray>())!;
+        var suggestion = Assert.Single(items)!.AsObject();
+        Assert.Equal("1.2.3.4", (string)suggestion["value"]!);
+        Assert.Equal("ipv4", (string)suggestion["iocType"]!);
+
+        using var none = await _client.GetAsync("/api/iocs/suggestions?q=zzz");
+        Assert.Equal(HttpStatusCode.OK, none.StatusCode);
+        Assert.Empty((await none.Content.ReadFromJsonAsync<JsonArray>())!);
+
+        using var blank = await _client.GetAsync("/api/iocs/suggestions");
+        Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);
+
+        using var tooSmall = await _client.GetAsync("/api/iocs/suggestions?q=1&limit=0");
+        Assert.Equal(HttpStatusCode.BadRequest, tooSmall.StatusCode);
+
+        using var tooLarge = await _client.GetAsync("/api/iocs/suggestions?q=1&limit=21");
+        Assert.Equal(HttpStatusCode.BadRequest, tooLarge.StatusCode);
     }
 
     private Task<HttpResponseMessage> GetAuthorized(string path)

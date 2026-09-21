@@ -10,6 +10,8 @@ export function browseParamsFingerprint(params: BrowseParams): string {
     type: params.type,
     provider: params.provider,
     tag: params.tag,
+    malware: params.malware,
+    target: params.target,
     lastSeenFrom: params.lastSeenFrom,
     lastSeenTo: params.lastSeenTo,
     orderBy: params.orderBy,

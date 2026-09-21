@@ -11,4 +11,6 @@ public sealed record SearchIocsQuery(
     string? Tag = null,
     string? Provider = null,
     int? Page = null,
-    int? PageSize = null) : IRequest<PagedResult<IocGroupResult>>;
+    int? PageSize = null,
+    string? Malware = null,
+    string? Target = null) : IRequest<PagedResult<IocGroupResult>>;

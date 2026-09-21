@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ThreatIntelligence.Application.Abstractions.Authentication;
 using ThreatIntelligence.Application.Abstractions.Hashing;
 using ThreatIntelligence.Application.Abstractions.Persistence;
+using ThreatIntelligence.Application.Abstractions.Time;
 using ThreatIntelligence.Application.BatchWriter;
 using ThreatIntelligence.Application.AI;
 using ThreatIntelligence.Application.Fetches;
@@ -100,6 +101,8 @@ public static class DependencyInjection
         services.AddScoped<IAdminProviderOperationsReader, AdminProviderOperationsReader>();
         services.AddScoped<IAdminProviderRepository, AdminProviderRepository>();
         services.AddScoped<IAdminSummaryReader, AdminSummaryReader>();
+        services.AddScoped<IAdminSummaryTimelineReader, AdminSummaryTimelineReader>();
+        services.AddSingleton<ITimeZoneResolver, TimeZoneResolver>();
         services.AddSingleton(new AdminLogOptions(
             configuration["Admin:LogDirectory"] is { Length: > 0 } logDirectory ? logDirectory : "logs",
             configuration["Admin:LogFilePrefix"] is { Length: > 0 } logPrefix ? logPrefix : "api-",

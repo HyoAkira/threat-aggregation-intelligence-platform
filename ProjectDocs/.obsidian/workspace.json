@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Spec-Reconciliation.md",
+                "file": "Technical-Presentation-TR.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Spec-Reconciliation"
+              "title": "Technical-Presentation-TR"
             }
           }
         ],
@@ -205,6 +205,8 @@
   },
   "active": "d2481235f79e9dda",
   "lastOpenFiles": [
+    "Untitled.base",
+    "Technical-Presentation-TR.md",
     "Untitled.md",
     "Spec-Reconciliation.md",
     "PRD.md",
