@@ -218,6 +218,8 @@ export function searchIocs(
 }
 
 export type BulkSearchSubmission = {
+  malware?: string | null
+  target?: string | null
   queries: string[]
   tag: string | null
   provider: string | null
@@ -235,6 +237,8 @@ export function searchIocsBulk(
     method: 'POST',
     body: {
       queries: submission.queries,
+      malware: submission.malware,
+      target: submission.target,
       tag: submission.tag,
       provider: submission.provider,
       page: submission.page,
@@ -623,4 +627,19 @@ export function putAiReportPolicy(
     body,
     signal,
   })
+}
+
+/** Prefix catalogs use the same normalized values as exact metadata filters. */
+export function getIocMetadataCatalog(
+  kind: 'malware' | 'target',
+  input: { q: string; limit: number },
+  signal?: AbortSignal,
+): Promise<IocTagCatalogItem[]> {
+  return apiFetch(
+    `/iocs/${kind === 'target' ? 'targets' : 'malware'}${buildQuery(input)}`,
+    {
+      schema: iocTagCatalogSchema,
+      signal,
+    },
+  )
 }

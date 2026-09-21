@@ -7,6 +7,7 @@ import {
   getIocRelations,
   getIocSuggestions,
   getIocTagCatalog,
+  getIocMetadataCatalog,
   login,
   searchIocs,
   searchIocsBulk,
@@ -311,6 +312,20 @@ describe('typed query functions', () => {
     fetchMock = jest.fn()
     globalThis.fetch = fetchMock
   })
+
+  it.each(['malware', 'target'] as const)(
+    'loads the %s prefix catalog with bounded results',
+    async (kind) => {
+      fetchMock.mockResolvedValue(
+        jsonResponse([{ name: 'example', usageCount: 2 }]),
+      )
+      const result = await getIocMetadataCatalog(kind, { q: 'ex', limit: 8 })
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        `/api/iocs/${kind === 'target' ? 'targets' : 'malware'}?q=ex&limit=8`,
+      )
+      expect(result).toEqual([{ name: 'example', usageCount: 2 }])
+    },
+  )
 
   it('searchIocs sends q plus optional tag and provider filters', async () => {
     fetchMock.mockResolvedValue(jsonResponse(makePaged([urlGroup], 1, 20, 1)))

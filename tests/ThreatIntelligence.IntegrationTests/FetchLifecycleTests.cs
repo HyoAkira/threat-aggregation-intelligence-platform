@@ -15,6 +15,46 @@ public sealed class FetchLifecycleTests(SqlServerFixture fixture) : IAsyncLifeti
 
     public Task DisposeAsync() => Task.CompletedTask;
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Disabled_provider_terminates_reserved_job_including_retries(bool retry)
+    {
+        var guard = new FetchGuard(fixture.CreateContextFactory(), TimeProvider.System);
+        var lifecycle = new FetchLifecycle(fixture.CreateContextFactory(), TimeProvider.System);
+        var reservation = await guard.ReserveAsync(1, FetchTrigger.Manual, FetchMode.Recent, CancellationToken.None);
+        var job = new FetchJob(reservation.JobId!.Value, 1, FetchTrigger.Manual, FetchMode.Recent, 1);
+        if (retry)
+        {
+            Assert.True(await lifecycle.TryStartAsync(job, false, CancellationToken.None));
+        }
+
+        await using (var context = fixture.CreateContext())
+        {
+            var provider = await context.Providers.SingleAsync(p => p.Id == 1);
+            provider.SetEnabled(false);
+            await context.SaveChangesAsync();
+        }
+
+        Assert.False(await lifecycle.TryStartAsync(job, retry, CancellationToken.None));
+        await using var verification = fixture.CreateContext();
+        var history = await verification.FetchHistory.SingleAsync();
+        Assert.Equal(FetchStatus.Failed, history.Status);
+        Assert.NotNull(history.FinishedAt);
+        Assert.Contains("Disabled", history.ErrorDetail);
+        Assert.Equal(0, history.RecordsAdded);
+        Assert.Equal(0, history.RecordsUpdated);
+        var disabledProvider = await verification.Providers.SingleAsync(p => p.Id == 1);
+        Assert.Equal(FetchStatus.Failed, disabledProvider.LastFetchStatus);
+
+        disabledProvider.SetEnabled(true);
+        await verification.SaveChangesAsync();
+        Assert.False(await lifecycle.TryStartAsync(job, false, CancellationToken.None));
+        await verification.Entry(history).ReloadAsync();
+        Assert.Equal(FetchStatus.Failed, history.Status);
+        Assert.Contains("Disabled", history.ErrorDetail);
+    }
+
     [Fact]
     public async Task Repeated_start_reuses_one_history_row_and_success_persists_counters()
     {

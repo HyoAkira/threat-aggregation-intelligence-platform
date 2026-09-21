@@ -133,13 +133,15 @@ public sealed class BulkSearchIocsHandlerTests
             reader);
 
         var result = await handler.Handle(
-            new BulkSearchIocsQuery(["1.2.3.4"], Tag: "botnet", Provider: "1"),
+            new BulkSearchIocsQuery(["1.2.3.4"], Tag: "botnet", Provider: "1", Malware: " Emotet ", Target: " Amazon "),
             CancellationToken.None);
 
         var item = Assert.Single(result.Items);
         Assert.Equal(BulkSearchStatus.NotFound, item.Status);
         Assert.Equal("botnet", reader.Filter!.Tag);
         Assert.Equal("1", reader.Filter.Provider);
+        Assert.Equal("Emotet", reader.Filter.Malware);
+        Assert.Equal("Amazon", reader.Filter.Target);
     }
 
     [Fact]

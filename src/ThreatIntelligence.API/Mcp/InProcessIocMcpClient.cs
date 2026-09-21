@@ -59,13 +59,14 @@ public sealed class InProcessIocMcpClient(
             cancellationToken: cancellationToken);
 
         var result = await client.CallToolAsync(toolName, arguments, cancellationToken: cancellationToken);
-        if (result.IsError == true)
-            throw new InvalidOperationException($"The MCP tool '{toolName}' returned an error.");
-
         var text = string.Join(
             "\n",
             result.Content.OfType<TextContentBlock>().Select(block => block.Text));
         _ = serverTask.ContinueWith(_ => { }, TaskScheduler.Default);
-        return text;
+        // Preserve protocol tool errors as model-visible data so it can explain missing IOC/relations.
+        // The SDK sanitizes unexpected exceptions; only intentional McpException messages are exposed.
+        return result.IsError == true
+            ? JsonSerializer.Serialize(new { error = new { message = text } })
+            : text;
     }
 }

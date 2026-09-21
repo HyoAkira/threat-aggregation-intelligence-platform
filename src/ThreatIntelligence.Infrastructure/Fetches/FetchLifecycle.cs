@@ -37,7 +37,21 @@ public sealed class FetchLifecycle(
             context, provider, job.JobId, job.Mode, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
         if (rejection is not null)
         {
+            // The consumer acknowledges rejected messages, so persist a terminal state
+            // before returning or this reservation would remain active indefinitely.
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            var reason = $"Fetch rejected by provider guard: {rejection.Value}.";
+            history.Fail(reason, now);
+            if (rejection != FetchReservationRejection.ActiveFetch)
+            {
+                provider?.MarkFetchFailed();
+            }
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             Emit(FetchLifecycleEventNames.GuardRejection, job, reason: rejection.Value.ToString());
+            Emit(FetchLifecycleEventNames.TerminalFailure, job,
+                durationMs: (long)(now - history.StartedAt).TotalMilliseconds,
+                recordsAdded: 0, recordsUpdated: 0, reason: reason);
             return false;
         }
 

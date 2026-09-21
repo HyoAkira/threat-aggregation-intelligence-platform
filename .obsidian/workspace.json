@@ -25,10 +25,14 @@
             "id": "3ce5a67f15f2a1ca",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "2026-09-22.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "2026-09-22"
             }
           }
         ]
@@ -200,20 +204,20 @@
   },
   "active": "f9ad527a4e4e69a0",
   "lastOpenFiles": [
-    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/logs/worker-20260922.json",
-    "src/ThreatIntelligence.Worker/logs/worker-20260922.json",
-    "graphify-out/cache/stat-index.pl2nfrrn.tmp",
-    "graphify-out/cache/ast/v0.9.55-s2/665a43f3a9325b93f76f6ed33f509e1d0200a24d33e1bab88e05271c632f08d9.json",
-    "graphify-out/cache/ast/v0.9.55-s2/86dbb175c52ccef4846d1ab5112e12ab2a0d6a203931b0525b42227d9c68b522.json",
-    "graphify-out/cache/ast/v0.9.55-s2/85aa1260975b2907667cc5b65c6995d997651bf30bce094b51fca5bd01dad492.json",
-    "graphify-out/cache/ast/v0.9.55-s2/1133220cf2d5af1b73f393daab3ba63f1f76873dd6b2ac53a55e2ac5d35735a7.json",
-    "graphify-out/cache/ast/v0.9.55-s2/a06227dc30770e96a4e207539c594f684ce508214c8d0cd7210683a00c6996b0.json",
-    "graphify-out/cache/ast/v0.9.55-s2/92f4eb9d2f4ebb7034876bc0e4f9d6b983d25877a0d5b3fdecf025cfa02576e2.json",
-    "graphify-out/cache/ast/v0.9.55-s2/5a9568281b837c1b8a263bee4513c147860a715362a290be68e129c8778d45a7.json",
-    "graphify-out/cache/ast/v0.9.55-s2/2cc0e0573a109750b3347f2878b2eb66b33e714695ca718d47465f68f9e0a69f.json",
-    "graphify-out/2026-09-22/GRAPH_REPORT.md",
+    "src/ThreatIntelligence.Worker/data/providers/phishtank/fulls/online-valid_20260921T233639Z.json.gz",
+    "src/ThreatIntelligence.Worker/data/providers/phishtank/fulls/online-valid_20260921T233639Z.json.gz.tmp",
+    "src/ThreatIntelligence.Worker/bin/Debug/net10.0/data/providers/threatfox/recents/recent_20260921T232141Z.json",
+    "graphify-out/cache/ast/v0.9.55-s2/0ff0c69552cc297691eb8d15d7f31141081e39d4e2cf3b132ab5374fcef781f3.json",
+    "graphify-out/cache/ast/v0.9.55-s2/0fd0d3fe0f4145272b806d6cd10721f233b40acfd1a012feb6a93be808e0bf67.json",
+    "graphify-out/cache/ast/v0.9.55-s2/b03d3c7d6d479d4612dd1339c854cc4324b4637004aba14d25c0f891153cf6f4.json",
+    "graphify-out/cache/ast/v0.9.55-s2/b03d3c7d6d479d4612dd1339c854cc4324b4637004aba14d25c0f891153cf6f4.6r3ygefl.tmp",
+    "graphify-out/cache/stat-index.9a78krpm.tmp",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260921T232141Z.json",
+    "src/ThreatIntelligence.Worker/data/providers/threatfox/recents/recent_20260921T232141Z.json.tmp",
+    "graphify-out/cache/ast/v0.9.55-s2/a49d06c1415b57816e05f121a47df98bdb1750e077689218dacd5734879cf1db.json",
     "2026-09-22.md",
     "ProjectDocs/Technical-Presentation-TR.md",
+    "graphify-out/2026-09-22/GRAPH_REPORT.md",
     "openspec/specs/admin-frontend-provider-operations/spec.md",
     "ProjectDocs/PRD.md",
     "ProjectDocs/Provider-Credential-Migration-Runbook.md",

@@ -114,9 +114,11 @@ public sealed class PublicIocMcpContractTests
     }
 
     [Theory]
+    [InlineData("urlHost", IocRelationKind.UrlHost)]
+    [InlineData(" parentDomain ", IocRelationKind.ParentDomain)]
     [InlineData("malware", IocRelationKind.Malware)]
     [InlineData("TARGET", IocRelationKind.Target)]
-    public async Task Relations_tool_accepts_metadata_kinds(string relation, IocRelationKind expected)
+    public async Task Relations_tool_accepts_all_four_kinds(string relation, IocRelationKind expected)
     {
         var sender = new CapturingSender();
         var server = CreateServer(sender);
@@ -168,6 +170,40 @@ public sealed class PublicIocMcpContractTests
             server.GetRelationsAsync(7, "target"));
 
         Assert.Equal("not_found", exception.Code);
+    }
+
+    [Fact]
+    public async Task Relations_tool_maps_real_handler_exceptions()
+    {
+        var sender = new CapturingSender { Responder = _ => throw new IocNotFoundException(IocErrorCodes.NotFound, "Missing IOC") };
+        Assert.Equal("not_found", (await Assert.ThrowsAsync<McpToolException>(() => CreateServer(sender).GetRelationsAsync(7, "target"))).Code);
+        sender.Responder = _ => throw new IocRelationNotSupportedException(IocErrorCodes.RelationNotSupported, "No host");
+        Assert.Equal("relation_not_supported", (await Assert.ThrowsAsync<McpToolException>(() => CreateServer(sender).GetRelationsAsync(7, "urlHost"))).Code);
+    }
+
+    [Theory]
+    [InlineData("urlHost")]
+    [InlineData("parentDomain")]
+    [InlineData("malware")]
+    [InlineData("target")]
+    public async Task Relations_empty_page_is_success(string relation)
+    {
+        var result = await CreateServer(new CapturingSender()).GetRelationsAsync(7, relation);
+        Assert.Empty(result.items);
+        Assert.Equal(0, result.totalCount);
+        Assert.False(result.isTruncated);
+    }
+
+    [Fact]
+    public void Chat_advertises_all_relations_and_metadata_filters()
+    {
+        var method = typeof(ThreatIntelligence.Infrastructure.AI.IocChatService).GetMethod("ToolDefinitions",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+        var definitions = (IReadOnlyList<ThreatIntelligence.Application.AI.IocChatToolDefinition>)method.Invoke(null, null)!;
+        var relation = definitions.Single(tool => tool.Name == "ioc_get_relations");
+        var json = JsonSerializer.Serialize(relation);
+        foreach (var value in new[] { "urlHost", "parentDomain", "malware", "target" })
+            Assert.Contains($"\"{value}\"", json);
     }
 
     [Fact]

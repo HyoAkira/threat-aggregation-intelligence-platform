@@ -22,6 +22,11 @@ public interface IIocQueryReader
         CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<IocTagCatalogItem>>(Array.Empty<IocTagCatalogItem>());
 
+    /// <summary>Returns distinct normalized malware/target values with provider-row usage counts.</summary>
+    Task<IReadOnlyList<IocTagCatalogItem>> GetMetadataCatalogAsync(
+        IocRelationKind kind, string? query, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<IocTagCatalogItem>>(Array.Empty<IocTagCatalogItem>());
+
     /// <summary>
     /// Resolves groups for a normalized indicator and narrows their sources by the optional filter.
     /// IP and URL inputs match their exact normalized identity. Domain inputs additionally match

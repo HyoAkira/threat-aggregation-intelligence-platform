@@ -23,7 +23,10 @@ import type { BrowseParams } from '../lib/browseParams'
 import { iocTypeTokens } from '../lib/schemas'
 import { iocTypeLabels } from '../lib/iocPresentation'
 import { focusRingClass } from '../components/AppShell'
-import { TagAutocompleteInput } from '../components/TagAutocompleteInput'
+import {
+  TagAutocompleteInput,
+  CatalogAutocompleteInput,
+} from '../components/TagAutocompleteInput'
 import { ProviderAutocompleteInput } from '../components/ProviderAutocompleteInput'
 import {
   EmptyState,
@@ -325,12 +328,12 @@ function BrowsePage() {
                 <label htmlFor="browse-malware" className={fieldLabelClass}>
                   Malware
                 </label>
-                <input
+                <CatalogAutocompleteInput
+                  kind="malware"
                   id="browse-malware"
-                  type="text"
                   value={malwareDraft}
                   maxLength={BROWSE_MALWARE_MAX_LENGTH}
-                  onChange={(event) => setMalwareDraft(event.target.value)}
+                  onChange={setMalwareDraft}
                   className={controlClass}
                 />
                 <p className="mt-1 text-[10px] text-on-surface-variant">
@@ -343,12 +346,12 @@ function BrowsePage() {
                 <label htmlFor="browse-target" className={fieldLabelClass}>
                   Target
                 </label>
-                <input
+                <CatalogAutocompleteInput
+                  kind="target"
                   id="browse-target"
-                  type="text"
                   value={targetDraft}
                   maxLength={BROWSE_TARGET_MAX_LENGTH}
-                  onChange={(event) => setTargetDraft(event.target.value)}
+                  onChange={setTargetDraft}
                   className={controlClass}
                 />
                 <p className="mt-1 text-[10px] text-on-surface-variant">

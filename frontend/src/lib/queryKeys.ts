@@ -20,6 +20,8 @@ export const iocSearchKey = (submission: SearchSubmission) =>
 export const iocSearchBulkKey = (submission: BulkSearchSubmission) =>
   [
     'ioc-search-bulk',
+    submission.malware ?? null,
+    submission.target ?? null,
     submission.queries,
     submission.tag ?? null,
     submission.provider ?? null,

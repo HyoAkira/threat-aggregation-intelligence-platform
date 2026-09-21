@@ -111,7 +111,7 @@ public sealed partial class PublicIocMcpServer(
     }
 
     [McpServerTool(Name = "ioc_get_relations", ReadOnly = true)]
-    [Description("Returns related IOC groups for a given IOC by host or metadata relationship.")]
+    [Description("Returns the same Related Indicators as the IOC detail page: urlHost = URLs on host; parentDomain = indicators under domain; malware/target = indicators sharing any malware/target across the seed sources. Excludes the seed group. Empty pages mean no matches; paginate while isTruncated.")]
     public async Task<PagedIocGroups> GetRelationsAsync(
         [Description("The database id of the IOC group")] int id,
         [Description("Relation type: urlHost, parentDomain, malware, or target")] string relation,
@@ -126,7 +126,19 @@ public sealed partial class PublicIocMcpServer(
         }
         ValidatePage(page, pageSize);
         var relationKind = ParseRelationKind(relation);
-        var result = await mediator.Send(new GetIocRelationsQuery(id, relationKind.ToString(), page, pageSize), cancellationToken);
+        PagedResult<IocGroupResult>? result;
+        try
+        {
+            result = await mediator.Send(new GetIocRelationsQuery(id, relationKind.ToString(), page, pageSize), cancellationToken);
+        }
+        catch (IocNotFoundException exception)
+        {
+            throw new McpToolException("not_found", exception.Message);
+        }
+        catch (IocRelationNotSupportedException exception)
+        {
+            throw new McpToolException("relation_not_supported", exception.Message);
+        }
         if (result is null)
         {
             throw new McpToolException("not_found", $"No IOC row exists with id {id}.");
@@ -136,7 +148,7 @@ public sealed partial class PublicIocMcpServer(
     }
 
     private static IocRelationKind ParseRelationKind(string relation) =>
-        relation.ToLowerInvariant() switch
+        relation?.Trim().ToLowerInvariant() switch
         {
             "urlhost" => IocRelationKind.UrlHost,
             "parentdomain" => IocRelationKind.ParentDomain,
@@ -198,7 +210,7 @@ public sealed partial class PublicIocMcpServer(
             source.Tags.ToList(), source.IsFalsePositive);
 }
 
-public sealed class McpToolException(string code, string message) : Exception(message)
+public sealed class McpToolException(string code, string message) : ModelContextProtocol.McpException($"{code}: {message}")
 {
     public string Code { get; } = code;
 }

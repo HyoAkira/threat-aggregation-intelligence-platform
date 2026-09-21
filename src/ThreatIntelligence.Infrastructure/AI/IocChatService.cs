@@ -182,7 +182,7 @@ public sealed class IocChatService(
         }
         if (toolName == "ioc_search_exact")
         {
-            if (!HasOnly(args, "query", "tag", "provider", "page", "pageSize") ||
+            if (!HasOnly(args, "query", "tag", "provider", "malware", "target", "page", "pageSize") ||
                 args["query"]?.GetValueKind() != JsonValueKind.String ||
                 string.IsNullOrWhiteSpace(args["query"]!.GetValue<string>()))
                 throw new IocChatException("ioc_chat_invalid_tool_arguments", "The chat model supplied invalid search arguments.", 503);
@@ -191,7 +191,7 @@ public sealed class IocChatService(
         }
         if (toolName == "ioc_browse")
         {
-            if (!HasOnly(args, "type", "provider", "tag", "firstSeenFrom", "firstSeenTo", "lastSeenFrom", "lastSeenTo", "orderBy", "dir", "page", "pageSize"))
+            if (!HasOnly(args, "type", "provider", "tag", "malware", "target", "firstSeenFrom", "firstSeenTo", "lastSeenFrom", "lastSeenTo", "orderBy", "dir", "page", "pageSize"))
                 throw new IocChatException("ioc_chat_invalid_tool_arguments", "The chat model supplied invalid browse arguments.", 503);
             ValidatePaging(args);
             return;
@@ -247,6 +247,8 @@ public sealed class IocChatService(
             {
                 ["query"] = new JsonObject { ["type"] = "string" },
                 ["tag"] = new JsonObject { ["type"] = "string" },
+                ["malware"] = new JsonObject { ["type"] = "string", ["maxLength"] = 200 },
+                ["target"] = new JsonObject { ["type"] = "string", ["maxLength"] = 500 },
                 ["provider"] = new JsonObject { ["type"] = "string" },
                 ["page"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1 },
                 ["pageSize"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 100 }
@@ -262,6 +264,8 @@ public sealed class IocChatService(
                 ["type"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("ipv4", "ipv6", "domain", "url") },
                 ["provider"] = new JsonObject { ["type"] = "string" },
                 ["tag"] = new JsonObject { ["type"] = "string" },
+                ["malware"] = new JsonObject { ["type"] = "string", ["maxLength"] = 200 },
+                ["target"] = new JsonObject { ["type"] = "string", ["maxLength"] = 500 },
                 ["firstSeenFrom"] = new JsonObject { ["type"] = "string" },
                 ["firstSeenTo"] = new JsonObject { ["type"] = "string" },
                 ["lastSeenFrom"] = new JsonObject { ["type"] = "string" },
@@ -272,13 +276,13 @@ public sealed class IocChatService(
                 ["pageSize"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 100 }
             }
         }),
-        new("ioc_get_relations", "Get bounded public IOC relations. The relation must be urlHost or parentDomain.", new JsonObject
+        new("ioc_get_relations", "Get bounded public IOC relations. Use urlHost for URLs on host, parentDomain for indicators under domain, malware for indicators sharing malware, or target for indicators sharing a target. Uses all sources of the selected IOC; excludes the seed group. Empty pages mean no matches.", new JsonObject
         {
             ["type"] = "object",
             ["properties"] = new JsonObject
             {
                 ["id"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1 },
-                ["relation"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("urlHost", "parentDomain") },
+                ["relation"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("urlHost", "parentDomain", "malware", "target") },
                 ["page"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1 },
                 ["pageSize"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 100 }
             },

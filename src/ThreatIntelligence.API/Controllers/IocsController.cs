@@ -28,10 +28,24 @@ public sealed class IocsController(ISender sender, IIocQueryReader queryReader) 
 
     [HttpGet("tags")]
     public async Task<ActionResult<IReadOnlyList<IocTagCatalogItem>>> Tags(
-        [FromQuery] string? q,
-        [FromQuery, Range(1, 100)] int limit,
+        [FromQuery, StringLength(100)] string? q,
+        [FromQuery, Range(1, 100)] int? limit,
         CancellationToken cancellationToken) =>
-        Ok(await queryReader.GetTagCatalogAsync(q, limit, cancellationToken));
+        Ok(await queryReader.GetTagCatalogAsync(q, limit ?? 8, cancellationToken));
+
+    [HttpGet("malware")]
+    public async Task<ActionResult<IReadOnlyList<IocTagCatalogItem>>> Malware(
+        [FromQuery, StringLength(200)] string? q,
+        [FromQuery, Range(1, 100)] int? limit,
+        CancellationToken cancellationToken) =>
+        Ok(await queryReader.GetMetadataCatalogAsync(IocRelationKind.Malware, q, limit ?? 8, cancellationToken));
+
+    [HttpGet("targets")]
+    public async Task<ActionResult<IReadOnlyList<IocTagCatalogItem>>> Targets(
+        [FromQuery, StringLength(500)] string? q,
+        [FromQuery, Range(1, 100)] int? limit,
+        CancellationToken cancellationToken) =>
+        Ok(await queryReader.GetMetadataCatalogAsync(IocRelationKind.Target, q, limit ?? 8, cancellationToken));
 
     [HttpGet("search")]
     public async Task<ActionResult<PagedResult<IocGroupResult>>> Search(

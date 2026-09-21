@@ -20,6 +20,8 @@ public sealed class BulkSearchIocsHandler(
         var inputs = NormalizeInputs(request.Queries);
         var (page, pageSize) = IocSearchEvaluator.ResolvePageBounds(request.Page, request.PageSize);
         var provider = IocSearchEvaluator.NormalizeProvider(request.Provider);
+        var malware = IocSearchEvaluator.NormalizeMalware(request.Malware);
+        var target = IocSearchEvaluator.NormalizeTarget(request.Target);
 
         var identities = new List<NormalizationResult?>(inputs.Count);
         var errors = new List<BulkSearchProblem?>(inputs.Count);
@@ -47,7 +49,7 @@ public sealed class BulkSearchIocsHandler(
             ? new Dictionary<NormalizationResult, PagedResult<IocGroupResult>>()
             : await reader.SearchBatchAsync(
                 distinct,
-                new IocSourceFilter(request.Tag, provider),
+                new IocSourceFilter(request.Tag, provider, malware, target),
                 page,
                 pageSize,
                 cancellationToken);

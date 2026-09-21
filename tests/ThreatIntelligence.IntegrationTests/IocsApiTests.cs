@@ -81,6 +81,92 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
         Assert.True((int)group["id"]! > 0);
     }
 
+    [Theory]
+    [InlineData("malware", "emo", "emotet")]
+    [InlineData("targets", "ama", "amazon")]
+    public async Task Metadata_catalog_is_normalized_bounded_and_filterable(string catalog, string prefix, string expected)
+    {
+        await using (var context = fixture.CreateContext())
+        {
+            await IocQueryTestData.InsertIocAsync(context, 1, "catalog-1", "5.6.7.8", IocType.Ipv4, malware: " Emotet ", target: " Amazon ");
+            await IocQueryTestData.InsertIocAsync(context, 2, "catalog-2", "5.6.7.8", IocType.Ipv4, malware: "EMOTET", target: "AMAZON");
+            await IocQueryTestData.InsertIocAsync(context, 1, "catalog-3", "5.6.7.9", IocType.Ipv4, malware: "Other", target: "Other");
+        }
+        var items = (await _client.GetFromJsonAsync<JsonArray>($"/api/iocs/{catalog}?q=%20{prefix.ToUpperInvariant()}%20&limit=1"))!;
+        Assert.Single(items);
+        Assert.Equal(expected, (string)items[0]!["name"]!);
+        Assert.Equal(2, (int)items[0]!["usageCount"]!);
+        Assert.Empty((await _client.GetFromJsonAsync<JsonArray>($"/api/iocs/{catalog}?q=absent"))!);
+        Assert.Equal(2, (await _client.GetFromJsonAsync<JsonArray>($"/api/iocs/{catalog}"))!.Count);
+        using var invalid = await _client.GetAsync($"/api/iocs/{catalog}?limit=101");
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        var filter = catalog == "targets" ? "target" : "malware";
+        var browse = (await _client.GetFromJsonAsync<JsonObject>($"/api/iocs?{filter}={expected}"))!;
+        Assert.Equal(1, (int)browse["totalCount"]!);
+        using var bulk = await _client.PostAsJsonAsync("/api/iocs/search/bulk", new Dictionary<string, object>
+        {
+            ["queries"] = new[] { "5.6.7.8", "5.6.7.9" }, [filter] = expected
+        });
+        var result = (await bulk.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(1, (int)result["matchedCount"]!);
+        Assert.Equal(1, (int)result["notFoundCount"]!);
+    }
+
+    [Theory]
+    [InlineData("urlHost")]
+    [InlineData("parentDomain")]
+    [InlineData("malware")]
+    [InlineData("target")]
+    public async Task Mcp_protocol_returns_the_same_related_groups_as_frontend_api(string relation)
+    {
+        int seedId;
+        await using (var context = fixture.CreateContext())
+        {
+            var seed = await IocQueryTestData.InsertIocAsync(context, 1, "mcp-seed", "https://mcp.example/a", IocType.Url,
+                urlHost: "mcp.example", parentDomain: "mcp.example", malware: "Emotet", target: "Amazon");
+            seedId = seed.Id;
+            await IocQueryTestData.InsertIocAsync(context, 2, "mcp-related", "https://mcp.example/b", IocType.Url,
+                urlHost: "mcp.example", parentDomain: "mcp.example", malware: "emotet", target: "amazon");
+        }
+        var api = (await _client.GetFromJsonAsync<JsonObject>($"/api/iocs/{seedId}/relations?relation={relation}"))!;
+        using var scope = _factory.Services.CreateScope();
+        var mcp = scope.ServiceProvider.GetRequiredService<ThreatIntelligence.Application.AI.IInProcessIocMcpClient>();
+        var text = await mcp.CallToolAsync("ioc_get_relations", new Dictionary<string, object?>
+        {
+            ["id"] = seedId, ["relation"] = relation
+        }, CancellationToken.None);
+        var result = JsonNode.Parse(text)!;
+        Assert.Equal(1, (int)result["totalCount"]!);
+        var expected = Assert.Single(api["items"]!.AsArray())!;
+        var actual = Assert.Single(result["items"]!.AsArray())!;
+        foreach (var field in new[] { "id", "iocValue", "iocType", "urlHost", "parentDomain" })
+            Assert.True(JsonNode.DeepEquals(expected[field], actual[field]), field);
+        var expectedSource = Assert.Single(expected["sources"]!.AsArray())!;
+        var actualSource = Assert.Single(actual["sources"]!.AsArray())!;
+        foreach (var field in new[] { "provider", "providerRecordId", "malware", "target", "tags" })
+            Assert.True(JsonNode.DeepEquals(expectedSource[field], actualSource[field]), field);
+    }
+
+    [Theory]
+    [InlineData("malware")]
+    [InlineData("target")]
+    public async Task Mcp_missing_metadata_is_empty_and_unknown_ioc_is_explicit(string relation)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var mcp = scope.ServiceProvider.GetRequiredService<ThreatIntelligence.Application.AI.IInProcessIocMcpClient>();
+        async Task<JsonNode> Call(int id, string kind) => JsonNode.Parse(await mcp.CallToolAsync("ioc_get_relations",
+            new Dictionary<string, object?> { ["id"] = id, ["relation"] = kind }, CancellationToken.None))!;
+        var empty = await Call(_ipv4.Id, relation);
+        Assert.Empty(empty["items"]!.AsArray());
+        Assert.Equal(0, (int)empty["totalCount"]!);
+        var missing = await Call(int.MaxValue, relation);
+        Assert.Contains("not_found", (string)missing["error"]!["message"]!);
+        var unsupported = await Call(_ipv4.Id, "urlHost");
+        Assert.Contains("relation_not_supported", (string)unsupported["error"]!["message"]!);
+        var invalid = await Call(_ipv4.Id, "invalid");
+        Assert.Contains("invalid_input", (string)invalid["error"]!["message"]!);
+    }
+
     [Fact]
     public async Task Tag_catalog_is_anonymous_bounded_and_usage_ordered()
     {
@@ -119,7 +205,8 @@ public sealed class IocsApiTests(SqlServerFixture fixture) : IAsyncLifetime
         Assert.Equal("phishing", (string)items[0]!["name"]!);
 
         using var missing = await _client.GetAsync("/api/iocs/tags");
-        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, missing.StatusCode);
+        Assert.Single((await missing.Content.ReadFromJsonAsync<JsonArray>())!);
         using var oversized = await _client.GetAsync("/api/iocs/tags?limit=101");
         Assert.Equal(HttpStatusCode.BadRequest, oversized.StatusCode);
     }
