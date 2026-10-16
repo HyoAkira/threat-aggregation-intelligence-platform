@@ -1,78 +1,298 @@
 # Threat Aggregation Intelligence Platform
 
-Threat intelligence sağlayıcılarından IOC verilerini toplayan, normalize eden ve arama, inceleme, yönetim arayüzü sunan bir platform. React/Vite SPA, Nginx üzerinden sunulur; `/api/*` istekleri ASP.NET Core API’ye iletilir. API işleri RabbitMQ’ya gönderir, Worker verileri işler ve SQL Server’a kaydeder.
+A multi-provider cyber threat intelligence aggregation platform. It ingests indicator-of-compromise
+(IOC) feeds from external providers, normalizes and deduplicates them, stores IOC and fetch history
+in SQL Server, and exposes a read-only query API plus an authenticated admin console. A React
+single-page application is served by Nginx and proxies same-origin `/api/*` calls to the ASP.NET Core
+API.
 
-## Önkoşullar
+The platform is designed around a small set of IOC types (`Ipv4`, `Ipv6`, `Domain`, `Url`) defined in
+`src/ThreatIntelligence.Domain/Enums/IocType.cs`.
 
-- Git, Docker Engine veya Docker Desktop ve `docker compose` (`--wait` destekleyen Compose v2 veya sonrası). Docker daemon çalışmalı ve kullanıcınız erişebilmelidir.
-- Bash uyumlu terminal, OpenSSL ve curl. Windows’ta WSL2 kullanılabilir.
-- Tam Docker kurulumu için host üzerinde Node.js veya .NET gerekmez. Yerel geliştirme/test için .NET SDK **10**, Node.js **24** ve npm gerekir.
-- Varsayılan portlar: frontend `3000`, API `8080`, Worker health `8081`, SQL `1433`, RabbitMQ `5672`, yönetim `15672`; test SQL `1432`.
+## What it is
 
-Depoyu klonlayıp kök dizine geçin. Aşağıdaki komutlar aksi belirtilmedikçe bu dizinde çalıştırılır.
+The platform aggregates IOC data from two external providers that are seeded deterministically on first
+startup (`src/ThreatIntelligence.Infrastructure/Persistence/Seeding/ProviderSeeder.cs`):
+
+- **ThreatFox** (`https://threatfox-api.abuse.ch`), ingested from its JSON export files `recent.json`
+  and `full.json.zip` (`src/ThreatIntelligence.Infrastructure/ThreatFox/ThreatFoxExportClient.cs`).
+  ThreatFox records carry malware family names, threat types, confidence levels, reporter and
+  first/last seen timestamps (`src/ThreatIntelligence.Infrastructure/ThreatFox/ThreatFoxRecordMapper.cs`).
+- **PhishTank** (`https://data.phishtank.com`), ingested from its `online-valid.json.gz` feed
+  (`src/ThreatIntelligence.Infrastructure/PhishTank/PhishTankClient.cs`). PhishTank records are
+  verified phishing URLs with target and detail metadata
+  (`src/ThreatIntelligence.Infrastructure/PhishTank/PhishTankRecordMapper.cs`).
+
+Fetches are queued by the API, delivered through RabbitMQ, and executed by a Worker process. The
+Worker normalizes each provider record, resolves its identity, upserts IOC rows atomically, and records
+fetch-history counters. The result is a queryable, provider-attributed IOC corpus with tags and
+cross-record relations, presented through the API and the web console.
+
+## Features
+
+### Ingestion and processing
+
+- Multi-provider ingestion from ThreatFox and PhishTank, each with provider-specific parsing, mapping
+  and validation pipelines (`src/ThreatIntelligence.Infrastructure/ThreatFox/`,
+  `src/ThreatIntelligence.Infrastructure/PhishTank/`).
+- Two fetch modes per provider, `recent` and `full`, modeled as a data-driven capability bitmask on the
+  provider row (`src/ThreatIntelligence.Domain/Enums/FetchMode.cs`,
+  `src/ThreatIntelligence.Domain/Enums/ProviderFetchModes.cs`).
+- Scheduled fetches through a periodic worker scheduler that publishes due providers by their configured
+  interval, plus manual triggers from the admin API
+  (`src/ThreatIntelligence.Infrastructure/Fetches/FetchSchedulerService.cs`,
+  `src/ThreatIntelligence.Worker/FetchScheduler.cs`).
+- Asynchronous job delivery over RabbitMQ using MassTransit, with a single-job-at-a-time consumer
+  (`src/ThreatIntelligence.Infrastructure/Fetches/MassTransitFetchJobPublisher.cs`,
+  `src/ThreatIntelligence.Infrastructure/Fetches/FetchJobConsumer.cs`,
+  `src/ThreatIntelligence.Worker/Program.cs`).
+- A fetch guard and job reservation model that prevents overlapping and duplicate executions, including
+  recent/full cooldowns (`src/ThreatIntelligence.Infrastructure/Fetches/FetchGuard.cs`,
+  `src/ThreatIntelligence.Application/Fetches/FetchReservation.cs`).
+- Original provider payloads are archived to disk per provider and mode before processing
+  (`src/ThreatIntelligence.Infrastructure/Storage/RawFeedStore.cs`).
+- Normalization of IP addresses (v4 and v6), domains (including IDN handling) and URLs, with parent
+  domain resolution backed by a bundled public suffix list
+  (`src/ThreatIntelligence.Application/Normalization/`,
+  `src/ThreatIntelligence.Infrastructure/PublicSuffix/PublicSuffixParentDomainResolver.cs`).
+- IOC classification into `ipv4`, `ipv6`, `domain` and `url`
+  (`src/ThreatIntelligence.Application/Normalization/IocClassifier.cs`).
+- Atomic, chunked batch upsert with identity resolution and deduplication; a failed batch rolls back all
+  IOC and tag writes (`src/ThreatIntelligence.Infrastructure/Pipeline/IocBatchWriter.cs`).
+- A computed false-positive state based on a 180-day staleness rule, evaluated at query time and never
+  persisted (`src/ThreatIntelligence.Application/BatchWriter/FalsePositiveEvaluator.cs`).
+
+### Query API
+
+- Anonymous, read-only IOC query surface: browse, exact/grouped search, bulk search, per-row detail,
+  suggestions, and relations
+  (`src/ThreatIntelligence.API/Controllers/IocsController.cs`).
+- Relations between indicators: `urlHost` (URLs on a host), `parentDomain` (indicators under a domain),
+  and `malware` / `target` (indicators sharing a malware family or target)
+  (`src/ThreatIntelligence.API/Controllers/IocsController.cs`,
+  `src/ThreatIntelligence.API/Mcp/PublicIocMcpServer.cs`).
+- Catalog endpoints for provider names, tags, malware families and targets
+  (`src/ThreatIntelligence.API/Controllers/IocsController.cs`).
+- A read-only Model Context Protocol (MCP) server exposing IOC tools (`ioc_list_providers`,
+  `ioc_search_exact`, `ioc_get_detail`, `ioc_browse`, `ioc_get_relations`) at `/mcp`
+  (`src/ThreatIntelligence.API/Mcp/PublicIocMcpServer.cs`, `src/ThreatIntelligence.API/Program.cs`).
+
+### Authentication and administration
+
+- JWT authentication signed with RS256 using a PEM private key file, with an `Admin` role policy and a
+  default authenticated-user fallback policy (`src/ThreatIntelligence.API/Program.cs`,
+  `src/ThreatIntelligence.API/Controllers/AuthController.cs`).
+- Password hashing with bcrypt and a configurable work factor
+  (`src/ThreatIntelligence.Infrastructure/Authentication/BcryptPasswordHasher.cs`,
+  `src/ThreatIntelligence.Infrastructure/Configuration/ThreatIntelligenceOptions.cs`).
+- Admin operations for provider CRUD, manual fetch triggers, fetch-history status, runtime settings and
+  summary timelines (`src/ThreatIntelligence.API/Controllers/AdminProviderOperationsController.cs`,
+  `src/ThreatIntelligence.API/Controllers/AdminProviderFetchController.cs`,
+  `src/ThreatIntelligence.API/Controllers/AdminSettingsController.cs`,
+  `src/ThreatIntelligence.API/Controllers/AdminSummaryController.cs`).
+- An encrypted provider-credential store using AES-256-GCM with a key version and associated data, so
+  provider API keys are written to SQL Server as ciphertext
+  (`src/ThreatIntelligence.Infrastructure/Secrets/AesGcmSecretProtector.cs`,
+  `src/ThreatIntelligence.API/Controllers/AdminCredentialsController.cs`,
+  `src/ThreatIntelligence.Application/Abstractions/Secrets/ManagedSecretNames.cs`).
+- Structured logs with correlation IDs and secret redaction, queryable through the admin logs endpoints
+  (`src/ThreatIntelligence.API/Program.cs`,
+  `src/ThreatIntelligence.Infrastructure/Admin/LogRedactor.cs`,
+  `src/ThreatIntelligence.API/Controllers/AdminLogsController.cs`).
+
+### Optional AI analysis
+
+These features are disabled until an operator configures an OpenAI-compatible endpoint in the admin
+console. The optional server API key is stored in the encrypted credential store, and IOC chat requires
+that credential before it will answer.
+
+- On-demand IOC report generation streamed to the browser over Server-Sent Events, with an optional
+  Markdown-to-PDF export rendered by Pandoc and XeLaTeX
+  (`src/ThreatIntelligence.API/Controllers/IocAiController.cs`,
+  `src/ThreatIntelligence.Application/AI/AiReportGenerator.cs`,
+  `src/ThreatIntelligence.Infrastructure/Reporting/MarkdownPdfRenderer.cs`,
+  `src/ThreatIntelligence.API/Dockerfile`).
+- An IOC chat assistant whose answers are grounded in the same read-only MCP tools the public API
+  exposes. The server owns the behavior rules, treats conversation and provider fields as untrusted
+  data, and does not persist turns
+  (`src/ThreatIntelligence.API/Controllers/IocChatController.cs`,
+  `src/ThreatIntelligence.Infrastructure/AI/IocChatService.cs`).
+- Versioned AI report instructions managed as a policy through the admin API
+  (`src/ThreatIntelligence.API/Controllers/AdminAiReportPolicyController.cs`).
+
+### Frontend
+
+- A static React SPA with file-based routing: IOC browse, search, detail (with relations, AI report and
+  chat panels), login, and an admin area for providers, settings, summary and logs
+  (`frontend/src/routes/`).
+- Nginx serves the built assets, proxies `/api/*` to the API with buffering disabled for streaming, and
+  returns SPA history fallback for client routes while returning 404 for missing file-like requests
+  (`frontend/nginx.conf`).
+
+### Operations
+
+- Dependency-aware health checks for the API, SQL Server and RabbitMQ, plus a separate liveness probe
+  (`src/ThreatIntelligence.API/Program.cs`,
+  `src/ThreatIntelligence.Infrastructure/HealthChecks/SqlServerHealthCheck.cs`,
+  `src/ThreatIntelligence.Infrastructure/HealthChecks/RabbitMqHealthCheck.cs`).
+- OpenAPI document generation and an interactive Scalar API reference in Development and Testing
+  environments (`src/ThreatIntelligence.API/Program.cs`).
+
+## Tech stack
+
+Backend and messaging:
+
+- .NET 10 / C# with `Nullable` and `ImplicitUsings` enabled; layered solution of
+  Domain, Application, Infrastructure, API and Worker projects
+  (`ThreatIntelligence.slnx`, `src/ThreatIntelligence.API/ThreatIntelligence.API.csproj`).
+- ASP.NET Core Web API for the HTTP host and the .NET generic host for the Worker
+  (`src/ThreatIntelligence.API/Program.cs`, `src/ThreatIntelligence.Worker/Program.cs`).
+- Entity Framework Core 10 with the SQL Server provider, plus `Microsoft.Data.SqlClient` for the batch
+  writer (`src/ThreatIntelligence.Infrastructure/ThreatIntelligence.Infrastructure.csproj`,
+  `src/ThreatIntelligence.Infrastructure/Pipeline/IocBatchWriter.cs`).
+- MassTransit 8.5.7 over RabbitMQ for fetch-job messaging
+  (`src/ThreatIntelligence.API/ThreatIntelligence.API.csproj`).
+- MediatR 12.5.0 for in-process request handling
+  (`src/ThreatIntelligence.Application/ThreatIntelligence.Application.csproj`).
+- `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.12 for RS256 JWT validation and
+  `BCrypt.Net-Next` 4.0.3 for password hashing
+  (`src/ThreatIntelligence.API/ThreatIntelligence.API.csproj`).
+- `ModelContextProtocol.AspNetCore` 2.2.0 for the MCP server
+  (`src/ThreatIntelligence.API/ThreatIntelligence.API.csproj`).
+- Serilog for structured logging, `Microsoft.AspNetCore.OpenApi` and `Scalar.AspNetCore` for API
+  documentation, and `Nager.PublicSuffix` 3.8.0 for domain parsing
+  (`src/ThreatIntelligence.API/ThreatIntelligence.API.csproj`,
+  `src/ThreatIntelligence.Infrastructure/ThreatIntelligence.Infrastructure.csproj`).
+
+Frontend:
+
+- React 19 with Vite 8, TypeScript 6, TanStack Router and TanStack Query
+  (`frontend/package.json`).
+- Tailwind CSS 4, DataTables, Recharts, Zustand and Zod (`frontend/package.json`).
+
+Infrastructure and tests:
+
+- Docker Compose with SQL Server 2025 Express, RabbitMQ 3.13 (management), the API and Worker images,
+  and an Nginx-served frontend (`docker-compose.yml`).
+- xUnit for .NET unit and integration tests, Jest for frontend unit tests and Playwright for end-to-end
+  tests (`tests/`, `frontend/package.json`).
+
+## Architecture
+
+### Component diagram
+
+```mermaid
+flowchart LR
+    Browser[Browser: React SPA]
+    Nginx[Nginx frontend]
+    API[ThreatIntelligence.API]
+    MQ[(RabbitMQ)]
+    Worker[ThreatIntelligence.Worker]
+    DB[(SQL Server)]
+    Providers[ThreatFox and PhishTank]
+    Raw[(Raw feed archive on disk)]
+    AI[OpenAI-compatible endpoint]
+
+    Browser -->|HTTP| Nginx
+    Nginx -->|/api proxied| API
+    API -->|publish FetchJob| MQ
+    MQ -->|consume FetchJob| Worker
+    API -->|EF Core| DB
+    Worker -->|upsert IOC and history| DB
+    Worker -->|download feeds| Providers
+    Worker -->|archive payloads| Raw
+    API -.->|optional reports and chat| AI
+```
+
+### Data flow
+
+1. A fetch is triggered either by an admin action through the API or by the Worker's periodic
+   scheduler. The trigger validates the provider and mode, reserves a job for that provider under the
+   fetch guard, and publishes a `FetchJob` to RabbitMQ
+   (`src/ThreatIntelligence.Infrastructure/Fetches/FetchSchedulerService.cs`,
+   `src/ThreatIntelligence.API/Controllers/AdminProviderFetchController.cs`).
+2. The Worker consumes the job, downloads the provider feed, archives the raw payload, parses and
+   validates each record, and normalizes it
+   (`src/ThreatIntelligence.Infrastructure/Fetches/FetchJobConsumer.cs`,
+   `src/ThreatIntelligence.Infrastructure/Storage/RawFeedStore.cs`,
+   `src/ThreatIntelligence.Application/Normalization/`).
+3. The batch writer resolves identities and upserts IOC rows, tag associations and fetch-history
+   counters into SQL Server inside one transaction
+   (`src/ThreatIntelligence.Infrastructure/Pipeline/IocBatchWriter.cs`).
+4. The frontend and API clients read the aggregated data through the anonymous IOC endpoints, and
+   administrators manage providers and settings through the authenticated admin endpoints. The
+   supported processing flow is also documented in `USAGE.md`.
+
+### Repository layout
+
+- `src/ThreatIntelligence.Domain`: entities, enums and domain rules.
+- `src/ThreatIntelligence.Application`: use cases, normalization, validation, batch-writer and AI
+  contracts.
+- `src/ThreatIntelligence.Infrastructure`: persistence, provider clients, messaging, secrets, storage,
+  health checks and AI adapters.
+- `src/ThreatIntelligence.API` and `src/ThreatIntelligence.Worker`: HTTP host and background host.
+- `frontend/`: React, Vite and TanStack Router SPA with its Dockerfile and Nginx configuration.
+- `tests/`: .NET unit and integration tests. `openspec/` holds the specification and design documents.
+
+## Getting started
+
+### Prerequisites
+
+- Docker Engine or Docker Desktop with Docker Compose v2 (the startup flow uses `docker compose up
+  --wait`).
+- A Bash-compatible terminal with `openssl` and `curl`.
+- For local development outside Docker only: .NET SDK 10, Node.js 24 and npm.
+
+### Configuration
+
+Copy the template and fill in every placeholder. Never commit the resulting file
+(`.env.example`, `.gitignore`).
 
 ```bash
-docker compose version
-docker info
 cp .env.example .env
 chmod 600 .env
 ```
 
-Mevcut kurulumda `.env` veya anahtarları üzerine yazmayın.
+The relevant configuration keys, with placeholder values (`docker-compose.yml`, `.env.example`):
 
-## Ortam değişkenleri ve secret hazırlığı
+- `SA_PASSWORD=<strong-sql-password>`: SQL Server bootstrap password used by the Compose database.
+- `DATABASE__CONNECTIONSTRING=<local-sql-connection-string>`: connection string for running the API
+  outside Compose. Compose overrides it to point at the `mssql` service; keep the password aligned with
+  `SA_PASSWORD`.
+- `RABBITMQ__HOST`, `RABBITMQ__PORT`, `RABBITMQ__USER`, `RABBITMQ__PASSWORD`, `RABBITMQ__EXCHANGE`:
+  broker connection and exchange name.
+- `ENCRYPTION__ROOTKEYFILE`, `ENCRYPTION__KEYVERSION`: Base64 root key file for the AES-256-GCM
+  credential store and its starting key version.
+- `JWT__PRIVATEKEYFILE`, `JWT__ISSUER`, `JWT__AUDIENCE`, `JWT__EXPIRYMINUTES`: RS256 signing key file
+  and token settings. `JWT__EXPIRYMINUTES` must be `480`
+  (`src/ThreatIntelligence.Infrastructure/Configuration/ThreatIntelligenceOptions.cs`).
+- `ADMIN__USERNAME`, `ADMIN__PASSWORD`: initial administrator account created on first startup.
+- `RAWSTORAGE__BASEPATH`: directory for archived raw provider payloads.
+- `LOGGING__MINIMUMLEVEL` and `FRONTEND_PORT`: minimum log level and the host port for the Nginx
+  frontend (default `3000`).
 
-`.env` içindeki tüm `CHANGE_ME_*` değerlerini değiştirin. Her parola için ayrı bir değer üretin; örneğin `openssl rand -hex 24` çıktısına `Aa1!` ekleyin. Böylece SQL Server’ın büyük/küçük harf, rakam ve özel karakter koşulları karşılanır ve Compose interpolasyonu/connection string için sorun yaratabilecek `$` ve `;` karakterlerinden kaçınılır.
-
-| Değişken | Açıklama |
-| --- | --- |
-| `SA_PASSWORD` | Compose SQL Server başlangıç parolası. |
-| `DATABASE__CONNECTIONSTRING` | Yerel .NET için `localhost,1433`; içindeki parola `SA_PASSWORD` ile aynı olmalı. Compose bunu `mssql,1433` ile geçersiz kılar. |
-| `TEST_SQLSERVER_PASSWORD` | İzole test SQL parolası; uygulama parolasından farklı tutun. |
-| `RABBITMQ__HOST`, `RABBITMQ__PORT` | Yerelde `localhost`, `5672`; Compose host’u `rabbitmq` yapar. |
-| `RABBITMQ__USER`, `RABBITMQ__PASSWORD`, `RABBITMQ__EXCHANGE` | Broker ve uygulama ortak ayarları; `guest` yerine örnekteki özel kullanıcıyı kullanın. |
-| `ADMIN__USERNAME`, `ADMIN__PASSWORD` | İlk yönetici hesabı. Mevcut hesabın parolası `.env` değiştirilince sıfırlanmaz. |
-| `JWT__PRIVATEKEYFILE` | Yerelde `secrets/jwt-private-key.pem`; Compose `/run/secrets/...` yolunu kullanır. |
-| `JWT__ISSUER`, `JWT__AUDIENCE` | Token üreten/doğrulayan servislerde aynı kalmalı. |
-| `JWT__EXPIRYMINUTES` | Uygulama gereği `480` olmalı. |
-| `AUTH__PASSWORDWORKFACTOR` | Varsayılan bcrypt maliyeti `12`. |
-| `ENCRYPTION__ROOTKEYFILE`, `ENCRYPTION__KEYVERSION` | Yerelde `secrets/encryption-root-key`, başlangıç sürümü `1`. |
-| `RAWSTORAGE__BASEPATH` | Worker ham veri arşivi; varsayılan `data/providers`. |
-| `LOGGING__MINIMUMLEVEL` | Varsayılan `Information`. |
-| `FRONTEND_PORT` | Compose Nginx host portu; varsayılan `3000`. |
-
-Anahtarları **yalnızca ilk kurulumda** oluşturun:
+Generate the two required secret files once (`.env.example`, `docker-compose.yml`):
 
 ```bash
 umask 077
 mkdir -p secrets
-# Var olan dosyaları yanlışlıkla ezmeyi engeller.
 (set -o noclobber; openssl rand -base64 32 > secrets/encryption-root-key)
 (set -o noclobber; openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 > secrets/jwt-private-key.pem)
 chmod 700 secrets
 chmod 600 secrets/*
-openssl pkey -in secrets/jwt-private-key.pem -check -noout
-test "$(openssl base64 -d -A < secrets/encryption-root-key | wc -c)" -eq 32
 ```
 
-Root key tam 32 rastgele byte’ın Base64 karşılığıdır. JWT anahtarı parolasız RSA PEM olmalıdır; dosya erişimi host izinleri ile korunur. Anahtarları güvenli bir yerde yedekleyin. Şifreleme anahtarını kaybetmek veritabanındaki sağlayıcı secret’larını okunamaz yapar; yeniden üretmek bir kurtarma yöntemi değildir. JWT anahtarını değiştirmek mevcut oturumları geçersiz kılar.
+The encryption root key must decode to exactly 32 bytes, and the JWT key must be a passwordless RSA PEM
+file. `docker-compose.yml` mounts both into the `api` and `worker` containers as read-only Docker
+secrets and sets `ENCRYPTION__ROOTKEYFILE` and `JWT__PRIVATEKEYFILE` to the in-container
+`/run/secrets/...` paths.
 
-### Compose secret bağlantıları
+Provider API keys are normally written to the encrypted credential store rather than the deployment
+`.env`: after logging in, store them through the admin credentials endpoint or console, and they are
+encrypted before being written to SQL Server
+(`src/ThreatIntelligence.API/Controllers/AdminCredentialsController.cs`, `.env.example`).
 
-`docker-compose.yml` içindeki üst seviye `secrets` tanımları host dosyalarını seçer. Yalnızca `api` ve `worker` bu secret’ları salt okunur olarak alır:
-
-| Host dosyası | Container yolu | Uygulama ayarı |
-| --- | --- | --- |
-| `./secrets/encryption-root-key` | `/run/secrets/threatintel-encryption-root-key` | `ENCRYPTION__ROOTKEYFILE` |
-| `./secrets/jwt-private-key.pem` | `/run/secrets/threatintel-jwt-private-key` | `JWT__PRIVATEKEYFILE` |
-
-Worker da ortak yapılandırma doğrulamasında JWT dosyasını okuduğu için iki mount’a ihtiyaç duyar. Frontend’e `.env` veya secret verilmez. `.gitignore` secret’ları Git’ten; kök ve frontend `.dockerignore` dosyaları build context’inden dışlar. Secret’ları Dockerfile `COPY`, build arg veya `VITE_*` değişkeni ile taşımayın: tarayıcıya gönderilen değerler gizli değildir.
-
-Yerel Compose dosya secret’ları host dosyasına dayanır; bir şifreli secret kasası değildir. Host dosyalarını ve Docker daemon erişimini koruyun. Mevcut uyumluluk nedeniyle SQL/RabbitMQ/admin parolaları `.env` üzerinden environment olarak aktarılır; Docker erişimi olan kişiler bunları inceleyebilir. Uygulama bu parolalar için genel bir `_FILE` sözleşmesi desteklemez. Production’da secret yöneticinizle korunan `.env` ve anahtar dosyalarını deployment sırasında hazırlayın; `docker compose config` çıktısını paylaşmayın (parolalar içerebilir), doğrulamada `config --quiet` kullanın.
-
-Sağlayıcı API anahtarlarını giriş yaptıktan sonra Admin → Settings üzerinden girin. Bunlar AES-256-GCM ile şifrelenerek SQL’e yazılır. Geçiş ve rotasyon: [Credential runbook](ProjectDocs/Provider-Credential-Migration-Runbook.md). Opsiyonel OpenAI-compatible servis URL/model/anahtarı da Admin ayarlarından yönetilir; container içindeki `localhost` host makineyi göstermez.
-
-## Tam uygulamayı Docker ile çalıştırma
+### Run the full stack with Docker Compose
 
 ```bash
 docker compose config --quiet
@@ -81,139 +301,94 @@ docker compose up -d --wait --wait-timeout 300
 docker compose ps
 ```
 
-İlk başlangıçta API migration’ları uygular ve ilk admin’i oluşturur. Nginx, API sağlıklı olunca başlar. İlk image indirmesi/build internet bağlantısı gerektirir ve birkaç dakika sürebilir.
+On first start the API applies EF Core migrations and seeds the initial administrator and the two
+providers (`src/ThreatIntelligence.Infrastructure/Persistence/DatabaseInitializer.cs`,
+`src/ThreatIntelligence.Infrastructure/Persistence/Seeding/AdminSeeder.cs`). Compose exposes
+(`docker-compose.yml`):
 
-- Arayüz: [http://localhost:3000](http://localhost:3000); `.env` admin bilgileriyle giriş yapın.
-- API: [http://localhost:8080](http://localhost:8080).
-- RabbitMQ yönetimi: [http://localhost:15672](http://localhost:15672); `.env` broker bilgilerini kullanın.
-- Worker bir kullanıcı arayüzü sunmaz, `8081` yalnızca health erişimi içindir.
+- Web console: `http://localhost:3000` (sign in with `ADMIN__USERNAME` and `ADMIN__PASSWORD`).
+- API: `http://localhost:8080`; `GET /health` reports dependency health and `GET /health/live` is a
+  liveness probe.
+- RabbitMQ management: `http://localhost:15672`.
+- Worker: no UI; port `8081` exists only for its health check.
+- SQL Server: port `1433` (`1432` for the isolated test database under the `test` Compose profile).
 
-Frontend `dist/` çıktısı Nginx image’ına alınır. `/api/*` aynı origin’den API’ye gider, SSE için buffering kapalıdır. Sayfa yenilemelerinde SPA fallback uygulanır; bulunamayan dosyalar 404 döner. HTML yeniden doğrulanır, hash’li `/assets/` dosyaları uzun süre cache’lenir. Kod güncellemesinden sonra `docker compose up -d --build --wait` çalıştırın.
+To run the API and Worker locally against containerized dependencies, or to run the frontend with Vite
+HMR, follow the development options in `docker-compose.yml` and `USAGE.md`.
 
-```bash
-# Veriyi koruyarak durdurur:
-docker compose down
-# Loglar:
-docker compose logs --tail=100 api worker frontend
-```
-
-SQL, RabbitMQ, Worker verileri ve loglar named volume’larda saklanır. `docker compose down -v` bu verileri siler; normal durdurma veya sorun giderme komutu olarak kullanmayın.
-
-## Geliştirme seçenekleri
-
-### Bağımlılıklar Docker’da, uygulama yerelde
-
-Tam stack çalışıyorsa port/iş tüketicisi çakışmasını önleyin:
-
-```bash
-docker compose stop frontend api worker
-docker compose up -d --wait mssql rabbitmq
-dotnet restore
-# Terminal 1 (API varsayılan http profili: 5092)
-dotnet run --project src/ThreatIntelligence.API
-```
-
-API migration’ları tamamlandıktan sonra ikinci terminalde:
-
-```bash
-ASPNETCORE_URLS=http://localhost:5093 dotnet run --project src/ThreatIntelligence.Worker
-```
-
-Üçüncü terminalde:
-
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-Arayüz `3000` portundadır; Vite `/api` isteklerini `5092` portuna yollar. Backend `.env` dosyasını üst dizinlerde bulup yükler; göreli secret yolları bu dosyanın dizinine göre çözülür. Shell’de önceden tanımlanmış değişkenler `.env` değerlerinden önceliklidir.
-
-Yerel PDF üretimi için Pandoc ve XeLaTeX/font paketleri de gereklidir; bunlar API Docker image’ında hazırdır. Geliştirme Scalar dokümanı: [http://localhost:5092/scalar/v1](http://localhost:5092/scalar/v1), OpenAPI: `/openapi/v1.json`.
-
-### Backend Docker’da, frontend HMR ile
-
-```bash
-docker compose up -d --build --wait api worker
-docker compose stop frontend
-cd frontend
-npm ci
-VITE_API_TARGET=http://localhost:8080 npm run dev
-```
-
-`VITE_API_TARGET` yalnızca Vite development proxy’sini değiştirir. Production image’ındaki Nginx hedefi Compose ağı içindeki `api:8080` adresidir.
-
-## Production çalıştırma
-
-Tam Docker akışı Release backend ve statik frontend build’i üretir; varsayılan ASP.NET ortamı Production’dır. Scalar/OpenAPI yalnızca Development/Testing ortamlarında açılır. Production için ayrıca:
-
-1. Güvenilir bir sunucuda secret dosyalarını provision edin, `.env` ve volume/anahtar yedeklerini koruyun; anahtarları image’a eklemeyin.
-2. Nginx frontend önünde HTTPS sonlandıran reverse proxy/load balancer kullanın. Bu Compose dosyası HTTP sunar, sertifika sağlamaz.
-3. Mevcut port uyumluluğu korunmuştur ve portlar tüm host arayüzlerine yayınlanır. İnternete açmadan önce SQL, RabbitMQ, yönetim, API ve Worker portlarını kaldırın veya loopback’e (`127.0.0.1:8080:8080` gibi) bağlayın. Yalnızca HTTPS girişini dışarı açın. Compose override listeleri port ekleyebildiği için son birleşik yapılandırmayı kontrol edin.
-4. Mevcut SQL ayarı `sa`, `TrustServerCertificate=True;Encrypt=False` kullanır. Gerçek deployment için yetkileri sınırlı DB hesabı ve doğrulanan TLS bağlantısını deployment yapılandırmasında ayarlayın; Compose’un connection string override’ını da güncelleyin.
-5. Image sürümlerini/digest’lerini deployment sürecinizde sabitleyin; migration öncesi DB yedeği alın. İmajı build ettikten sonra `docker compose up -d --wait` ve aşağıdaki smoke kontrollerini çalıştırın.
-
-## Doğrulama ve testler
-
-```bash
-docker compose config --quiet
-docker compose ps
-docker compose exec frontend nginx -t
-curl -fsS http://localhost:3000/healthz
-curl -fsS http://localhost:8080/health
-curl -fsS http://localhost:8081/health
-curl -fsS http://localhost:3000/browse > /dev/null
-# Beklenen: 404 (HTML fallback değil)
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/assets/missing.js
-# Beklenen: 401 (Nginx üzerinden gerçek API yetkilendirmesi)
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/api/admin/summary
-# Secret içeriklerini yazdırmadan mount kontrolü:
-docker compose exec api sh -c 'test -r "$JWT__PRIVATEKEYFILE" && test -r "$ENCRYPTION__ROOTKEYFILE"'
-docker compose exec worker sh -c 'test -r "$JWT__PRIVATEKEYFILE" && test -r "$ENCRYPTION__ROOTKEYFILE"'
-```
-
-Tarayıcıda giriş yapın, `/browse` sayfasını doğrudan açıp yenileyin, arama yapın ve Admin ayarlarını kontrol edin. `/health` bağımlılık sağlığını, `/health/live` host canlılığını kontrol eder; frontend `/healthz` yalnızca Nginx’in çalıştığını gösterir.
+### Tests
 
 ```bash
 dotnet test tests/ThreatIntelligence.UnitTests
-# Entegrasyon testleri ayrı veritabanları oluşturup siler; production DB kullanmayın.
 docker compose --profile test up -d --wait testsqlserver
 dotnet test tests/ThreatIntelligence.IntegrationTests
 cd frontend
 npm ci
-npm test -- --runInBand
-npm run lint
-npm run build
-# İlk kullanımda browser bağımlılıklarını kurun:
-npx playwright install --with-deps chromium
+npm test
 npm run test:e2e
 ```
 
-Test SQL varsayılanı `localhost:1432`, parola `.env` içindeki `TEST_SQLSERVER_PASSWORD` değeridir. Testleri production bağlantısıyla çalıştırmayın.
+Integration tests create and drop their own databases; do not point them at a production database
+(`tests/ThreatIntelligence.IntegrationTests/SqlServerFixture.cs`).
 
-## Sık karşılaşılan sorunlar
+## Usage example
 
-| Belirti | Kontrol / çözüm |
-| --- | --- |
-| Docker socket permission denied | Daemon ve Docker kullanıcı izinlerini kontrol edin; kurumunuzun Docker erişim politikasını izleyin. |
-| JWT dosyası bulunamadı | İki secret dosyasını oluşturun; `docker compose exec ... test -r` kontrollerini çalıştırın. Container içinde host yolu yerine `/run/secrets/...` kullanılır. |
-| Encryption unavailable / credential okunamıyor | Base64 anahtarın 32 byte olduğunu, sürümünü ve mevcut veriyi şifreleyen orijinal anahtarı kullandığınızı kontrol edin. Rastgele yeni anahtar üretmeyin. |
-| SQL unhealthy / login failed | SQL loglarını, güçlü parola koşullarını ve RAM’i kontrol edin. Kalıcı volume’daki parola `.env` değişince otomatik değişmez; mevcut DB parolasını kullanın veya SQL üzerinden yönetin. |
-| RabbitMQ ACCESS_REFUSED | Kalıcı broker’daki kullanıcı/parolayı kontrol edin; başlangıç env değerleri mevcut kullanıcıyı güncellemez. |
-| Port already allocated | Çakışan süreci durdurun veya host portunu değiştirin. Frontend için `FRONTEND_PORT` kullanın; HMR’a geçerken Compose frontend’i durdurun. |
-| Nginx 502 / API unhealthy | `docker compose logs --tail=100 api frontend` ve API `/health` kontrolü; API başlangıcı, DB migration ve broker bağlantısını inceleyin. |
-| HMR arayüzünde API bağlantısı yok | Docker API için `VITE_API_TARGET=http://localhost:8080` ile Vite’ı yeniden başlatın. |
-| Docker’da Scalar 404 | Production’da beklenen davranış; yerel Development API’sini kullanın. |
-| Admin parolası değişmedi | Seed sadece ilk hesap içindir; mevcut hesabı uygulamanın parola yönetimiyle güncelleyin. |
-| PDF üretimi başarısız | Yerelde Pandoc/XeLaTeX kurulumu; Docker’da API logları ve AI runtime ayarlarını kontrol edin. |
-| Build sırasında npm/NuGet/image indirme hatası | Registry/ağ/proxy erişimini düzeltip build’i tekrar çalıştırın. |
+The IOC query endpoints are read-only and anonymous; admin endpoints require a token
+(`src/ThreatIntelligence.API/Controllers/IocsController.cs`,
+`src/ThreatIntelligence.API/Controllers/AuthController.cs`).
 
-## Dizinler ve diğer belgeler
+Log in to obtain a JWT:
 
-- `frontend/`: React, TanStack Router, Vite SPA; Dockerfile ve Nginx yapılandırması.
-- `src/ThreatIntelligence.API`, `Worker`: HTTP ve işleyici host’ları.
-- `src/ThreatIntelligence.Application`, `Domain`, `Infrastructure`: use case, domain, persistence/adaptörler.
-- `tests/`: .NET unit ve entegrasyon testleri.
-- `openspec/`, `ProjectDocs/`: gereksinimler ve tasarım/runbook belgeleri.
+```bash
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"<admin-password>"}'
+```
 
-API kullanım örnekleri ve işlevler için [USAGE.md](USAGE.md), frontend ayrıntıları için [frontend/README.md](frontend/README.md) dosyasına bakın. Kurulum ve Compose için bu README esas alınmalıdır.
+Search aggregated IOC groups by value, tag or provider:
+
+```bash
+curl -s 'http://localhost:8080/api/iocs/search?q=evil.example&tag=phishing&page=1&pageSize=20'
+```
+
+Browse with filters and pagination (supported `type` values are `ipv4`, `ipv6`, `domain` and `url`):
+
+```bash
+curl -s 'http://localhost:8080/api/iocs?type=url&provider=ThreatFox&firstSeenFrom=2026-01-01&page=1&pageSize=20'
+```
+
+Fetch one IOC group's relations:
+
+```bash
+curl -s 'http://localhost:8080/api/iocs/42/relations?relation=urlHost&page=1&pageSize=20'
+```
+
+Trigger a manual provider fetch as an administrator (returns `202 Accepted` with a `jobId`):
+
+```bash
+curl -s -X POST http://localhost:8080/api/admin/providers/1/fetch \
+  -H "Authorization: Bearer <jwt>"
+```
+
+The full endpoint and filter reference, including request/response shapes and error statuses, is in
+`USAGE.md`.
+
+## Status and license
+
+This repository is private and there is no public deployment, demo or hosted instance; the only way to
+run the platform is the local Docker Compose flow described above. No `LICENSE` file is present in the
+repository, so no license is granted and all rights are reserved by the author unless a license is added
+later.
+
+Implemented and covered by tests, as described in this README: provider ingestion and scheduling,
+normalization and classification, atomic deduplicated persistence, the anonymous query API and
+relations, JWT authentication, the admin console and operations, the encrypted credential store, the
+MCP server, and health and structured logging.
+
+Optional and operator-dependent: AI report generation, PDF export and IOC chat require a configured
+OpenAI-compatible endpoint (with a stored server credential for IOC chat) and remain disabled until
+then (`src/ThreatIntelligence.API/Controllers/AdminAiSettingsController.cs`,
+`src/ThreatIntelligence.Application/AI/AiReportGenerator.cs`).
+
+For architecture and requirements detail beyond this README, see `USAGE.md` and `openspec/`.
+Frontend-specific detail is in `frontend/README.md`.
