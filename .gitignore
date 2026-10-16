@@ -7,7 +7,8 @@ frontend/dist/
 graphify-out
 data/
 secrets/
-.obsdian
+.obsidian/
+repomix-output.xml
 .idea
 .agents
 .opencode
